@@ -1,0 +1,19 @@
+action Install(siteName: String, email: String, password: String, setupToken: String) {
+  before Login.throttle("legura:setup", 5, 60)
+  require input.setupToken != "" && input.setupToken == env.AX_SECRET_SETUP_TOKEN else forbidden()
+  data installation = db.legura_installation.where({ id: 1 }).first()
+  require !installation else forbidden()
+  require input.siteName != "" else invalid({ siteName: "Enter a site name." })
+  require input.siteName.length <= 120 else invalid({ siteName: "Use at most 120 characters." })
+  require Validate.email(input.email) else invalid({ email: "Enter a valid email address." })
+  require Validate.password(input.password) else invalid({ password: "Use at least 15 characters." })
+  data userId = Uuid.new()
+  data passwordHash = Password.hash(input.password)
+  transaction {
+    db.legura_users.insert({ id: userId, email: input.email, role: "admin" })
+    db.legura_credentials.insert({ user_id: userId, email: input.email, password_hash: passwordHash })
+    db.legura_installation.insert({ id: 1, site_name: input.siteName, admin_id: userId })
+  }
+  Session.create(userId, {})
+  return redirect("/admin")
+}

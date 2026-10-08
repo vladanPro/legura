@@ -1,0 +1,17 @@
+type Credential {
+  user_id: String
+  email: String
+  password_hash: String
+}
+query loadCredential(email: String) -> Credential? {
+  return db.legura_credentials.where({ email: input.email }).first()
+}
+action SignIn(email: String, password: String) {
+  before Login.throttle("legura:login:" + input.email, 5, 60)
+  data credential = loadCredential(input.email)
+  data verified = Password.verifyOptional(input.password, credential?.password_hash)
+  require verified else invalid({ email: "Email or password is incorrect." })
+  require credential else invalid({ email: "Email or password is incorrect." })
+  Session.create(credential.user_id, {})
+  return redirect("/admin")
+}

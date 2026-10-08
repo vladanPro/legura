@@ -8,8 +8,10 @@ without forcing the user to learn the framework underneath.
 
 ## Status
 
-Planning and initial implementation. This repository does not yet contain an
-installable CMS. There is no production release, installer, or published package.
+Initial setup/auth pilot on a feature branch. This repository does not yet
+contain an installable CMS. There is no production release, installer, or
+published package. The pilot passes source diagnostics, but compiled auth is
+blocked on action rate limiting (Axonyx framework issue #319).
 
 ## Product
 
@@ -30,6 +32,9 @@ No page builder, marketplace, or plugin execution platform in this milestone.
 
 See [the roadmap](docs/roadmap.md), [product boundary](docs/product.md), and
 [installation model](docs/installation.md).
+
+The [setup/auth pilot](docs/setup-auth-v0.md) documents local initialization and
+the acceptance gate. Do not deploy this unverified pilot publicly.
 
 ## Development
 

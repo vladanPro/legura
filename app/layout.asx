@@ -1,0 +1,16 @@
+use "@axonyx/ui"
+import { Container } from "@axonyx/ui/foundry/Container"
+
+page RootLayout() {
+  return ASX {
+    <Head>
+      <Title>Legura CMS</Title>
+      <Theme storageKey="legura-theme" default="bronze" preflight="true" />
+      <Link rel="stylesheet" href="/legura.css" />
+    </Head>
+    <Container max="lg">
+      <header class="legura-header"><a href="/">Legura</a><span>Content, forged together.</span></header>
+      <main class="legura-main"><Slot /></main>
+    </Container>
+  }
+}
