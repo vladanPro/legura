@@ -3,10 +3,12 @@
 This is the first product slice, not an installable production CMS release.
 SQLite only. No posts, editor, recovery emails, social login or plugin loading.
 
-Current status: migrations/schema pull and `cargo ax check` pass. Compiled build
-currently stops because `before Login.throttle(...)` is supported on API routes
-but not actions. Upstream task: https://github.com/vladanPro/axonyx-framework/issues/319.
-Do not remove throttling merely to pass build; the auth acceptance gate is open.
+Current status: migrations/schema pull and `cargo ax check` pass. Action throttle
+support is published in runtime 0.6.2 and CLI 0.6.6. Compiled build now stops at
+the typed `loadCredential` query call from `SignIn`: query calls currently only
+compile from route data bindings. Upstream task:
+https://github.com/vladanPro/axonyx-framework/issues/323.
+Do not weaken optional credential verification or remove guards to pass build.
 
 ## Boundaries
 
@@ -26,6 +28,7 @@ Do not remove throttling merely to pass build; the auth acceptance gate is open.
 After installing the validated CLI release:
 
 ```powershell
+cargo install cargo-axonyx --version 0.6.6 --locked --force
 pwsh -File scripts/local.ps1 -Task init
 pwsh -File scripts/local.ps1 -Task check
 pwsh -File scripts/local.ps1 -Task build
@@ -46,6 +49,14 @@ configuration permissions, backup/restore and a demonstrated upgrade path. The
 local PowerShell helper is not a cross-platform installer.
 
 ## Acceptance Gate
+
+The executable acceptance runner is `pwsh -File scripts/smoke-auth.ps1`.
+It copies tracked source into a disposable directory, ignores the developer's
+`.env`/database, uses its own SQLite file and random secrets, and cleans up its
+own process and files. Source tooling can be selected with `-ToolManifest`.
+The initial run passed migrations/check, then stopped at issue #323 before
+server startup. Its HTTP scenarios are not yet verified; no successful auth
+end-to-end proof is claimed.
 
 Prove token rejection, invalid-input 422 retention, first administrator creation,
 setup locking (including parallel requests), password hashing, private admin

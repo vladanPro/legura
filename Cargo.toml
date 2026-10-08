@@ -7,6 +7,6 @@ publish = false
 [workspace]
 
 [dependencies]
-axonyx-runtime = { version = "0.6.1", features = ["axum"] }
+axonyx-runtime = { version = "0.6.2", features = ["axum"] }
 axonyx-ui = "0.0.84"
 serde_json = "1"
