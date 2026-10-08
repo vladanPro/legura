@@ -4,10 +4,12 @@ This is the first product slice, not an installable production CMS release.
 SQLite only. No posts, editor, recovery emails, social login or plugin loading.
 
 Current status: migrations/schema pull and `cargo ax check` pass. Action throttle
-support is published in runtime 0.6.2 and CLI 0.6.6. Compiled build now stops at
-the typed `loadCredential` query call from `SignIn`: query calls currently only
-compile from route data bindings. Upstream task:
-https://github.com/vladanPro/axonyx-framework/issues/323.
+support is published in runtime 0.6.2 and CLI 0.6.6. Typed query calls from actions
+pass upstream source tests and compiled HTTP smoke (framework #323, runtime PR
+#229 and framework PR #325), but that fix is not a registry release yet.
+The pilot's own build still fails on optional-record negation, untyped admin
+field access and String.length expressions. The next upstream gate is
+https://github.com/vladanPro/axonyx-framework/issues/324.
 Do not weaken optional credential verification or remove guards to pass build.
 
 ## Boundaries
@@ -54,8 +56,8 @@ The executable acceptance runner is `pwsh -File scripts/smoke-auth.ps1`.
 It copies tracked source into a disposable directory, ignores the developer's
 `.env`/database, uses its own SQLite file and random secrets, and cleans up its
 own process and files. Source tooling can be selected with `-ToolManifest`.
-The initial run passed migrations/check, then stopped at issue #323 before
-server startup. Its HTTP scenarios are not yet verified; no successful auth
+Source-tooling runs pass migrations/check but stop at expression parity gaps
+before server startup (issue #324). Its HTTP scenarios are not yet verified; no successful auth
 end-to-end proof is claimed.
 
 Prove token rejection, invalid-input 422 retention, first administrator creation,
