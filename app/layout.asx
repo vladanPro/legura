@@ -8,9 +8,10 @@ page RootLayout() {
       <Theme storageKey="legura-theme" default="bronze" preflight="true" />
       <Link rel="stylesheet" href="/legura.css" />
     </Head>
+    <a class="legura-skip-link" href="#main-content">Skip to content</a>
     <Container max="lg">
       <header class="legura-header"><a href="/">Legura</a><span>Content, forged together.</span></header>
-      <main class="legura-main"><Slot /></main>
+      <div class="legura-main" id="main-content" tabindex="-1"><Slot /></div>
     </Container>
   }
 }
