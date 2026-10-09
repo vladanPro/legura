@@ -26,6 +26,9 @@ V0 excludes deletion, media, rich-text formatting, revisions, pagination, search
 multi-user permissions and optimistic concurrency. Updates are last-write-wins;
 do not claim collaborative editing or production CMS readiness.
 
+Post Deletion V1 is a separate follow-up; see posts-delete-v1.md for the explicit
+confirmation flow, authorization proof and permanent-deletion limitations.
+
 ## Verification Status (2026-10-09)
 
 Passed on Windows using isolated source overrides: compiled HTTP auth/posts

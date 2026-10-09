@@ -35,6 +35,10 @@ allowlisted text during native 422 retries within the 64 KiB request budget.
 The runtime fix is published as 0.6.6; core, CLI and UI are unchanged. Concurrent
 DB conflicts and oversized requests still have separate recovery limitations.
 
+Post Deletion V1 adds a separate permanent-delete confirmation page, current
+administrator checks and slug-confirmed POST mutation. It has no trash or undo.
+See [the deletion contract](docs/posts-delete-v1.md) for acceptance and boundaries.
+
 ## Product
 
 - Own your server, content, files, and database.

@@ -212,12 +212,17 @@ try {
   }
   $limited = Invoke-Request -Path $loginPath -Method POST -Body "email=$email&password=$password" -Headers $proof -Status 429
   if ([int]$limited.Headers["Retry-After"] -lt 1 -or $limited.Headers["Cache-Control"] -ne "no-store" -or $limited.Headers["Set-Cookie"]) { throw "Login throttle failed its admission boundary" }
+  $revokedProof = Get-Proof -Cookie $cookie
   & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);d.execute("delete from legura_credentials");d.execute("delete from legura_installation");d.execute("delete from legura_users");d.commit();d.close()' $db
   if ($LASTEXITCODE -ne 0) { throw "Cannot revoke fixture identity" }
   Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
   if ($Posts) {
     Invoke-Request -Path "/admin/posts" -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
-    Invoke-Request -Path "/__axonyx/action?path=%2Fadmin%2Fposts%2Fnew&name=CreatePost" -Method POST -Body "title=Revoked&slug=revoked&body=Denied&status=draft" -Headers $sessionProof -Status 403 | Out-Null
+    Invoke-Request -Path "/__axonyx/action?path=%2Fadmin%2Fposts%2Fnew&name=CreatePost" -Method POST -Body "title=Revoked&slug=revoked&body=Denied&status=draft" -Headers $revokedProof -Status 403 | Out-Null
+    Invoke-Request -Path "/admin/posts/$revocablePostId/delete" -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
+    Invoke-Request -Path "/__axonyx/action?path=%2Fadmin%2Fposts%2F$revocablePostId%2Fdelete&name=DeletePost" -Method POST -Body "id=$revocablePostId&confirmSlug=public-story" -Headers $revokedProof -Status 403 | Out-Null
+    $count = & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);print(d.execute("select count(*) from legura_posts").fetchone()[0]);d.close()' $db
+    if ($LASTEXITCODE -ne 0 -or $count -ne "1") { throw "Revoked action changed the remaining post" }
   }
   Write-Host "Legura compiled auth smoke passed: setup race, CSRF, password hash, login/logout, restart persistence, authorization."
 } finally {
