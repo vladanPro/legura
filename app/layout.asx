@@ -6,10 +6,11 @@ page RootLayout() {
     <Head>
       <Title>Legura CMS</Title>
       <Theme storageKey="legura-theme" default="bronze" preflight="true" />
+      <Link rel="icon" href="/legura-mark.svg" type="image/svg+xml" />
       <Link rel="stylesheet" href="/legura.css" />
     </Head>
     <Container max="lg">
-      <header class="legura-header"><a href="/">Legura</a><span>Content, forged together.</span></header>
+      <header class="legura-header"><a class="legura-brand" href="/"><img src="/legura-mark.svg" alt="" width="36" height="36" />Legura</a><span>Content, forged together.</span></header>
       <main class="legura-main"><Slot /></main>
     </Container>
   }

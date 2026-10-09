@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <title>Legura</title>
+  <rect width="64" height="64" rx="14" fill="#171A1D"/>
+  <path d="M16 9 30 13v20c0 4 2 7 5 9l-9 8c-7-5-10-12-10-21V9Z" fill="#C98763"/>
+  <path d="M16 29c2 9 8 15 17 15h13l8 11H33c-10 0-17-8-17-18v-8Z" fill="#C7CBCC"/>
+</svg>
