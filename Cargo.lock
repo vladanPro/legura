@@ -48,9 +48,9 @@ checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
 name = "axonyx-core"
-version = "0.6.5"
+version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c1a3125a11df38c1a3ac749b9ca09ee53ec18ce3245607521f9df4dee7ad3db3"
+checksum = "c86c78e71d9d5f3466d6a76f46f87186463122bd2dddba4680c5f1365f482646"
 dependencies = [
  "axonyx-macros",
  "serde",
@@ -71,9 +71,9 @@ dependencies = [
 
 [[package]]
 name = "axonyx-runtime"
-version = "0.6.4"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "649a5acfd307b543dc6f9fd065c3db62ff8ed2c4159dc2e5c1942ff4254e946b"
+checksum = "5942748ecaafdcc10a204156f9c4047c8c75c3067fb555fbb48f5f6f27d8e1ab"
 dependencies = [
  "argon2",
  "axonyx-core",
@@ -103,6 +103,7 @@ dependencies = [
  "tokio",
  "tokio-postgres",
  "tokio-postgres-rustls",
+ "tokio-util",
  "uuid",
  "webpki-roots",
  "zeroize",
