@@ -32,7 +32,7 @@ Do not weaken optional credential verification or remove guards to pass build.
 Install the tested CLI, then initialize the local development pilot:
 
 ```powershell
-cargo install cargo-axonyx --version 0.6.7 --locked
+cargo install cargo-axonyx --version 0.6.8 --locked
 pwsh -File scripts/local.ps1 -Task init
 pwsh -File scripts/local.ps1 -Task check
 pwsh -File scripts/local.ps1 -Task build
@@ -68,9 +68,11 @@ database identity. Run `pwsh -File scripts/smoke-auth.ps1` to repeat the registr
 proof. For upstream changes only, add `-ToolManifest ../axonyx-framework/Cargo.toml`.
 
 This is HTTP acceptance, not browser UX/accessibility testing or a security
-audit. The registry-only toolchain gate is satisfied; the pilot can be reviewed
-for dev integration after Legura CI passes. No production-ready CMS or installer
-is claimed. CI installs CLI 0.6.7 and runs this isolated acceptance on Linux.
+audit. Pilot PR #1 passed Linux CI and merged into dev. Browser acceptance is
+documented separately in browser-auth-v0.md; it found redirect/CSRF gaps now
+fixed in core 0.6.5/runtime 0.6.4. CI installs CLI 0.6.8 and repeats isolated
+HTTP and browser acceptance on Linux. No production-ready CMS or installer
+is claimed.
 
 Prove token rejection, invalid-input 422 retention, first administrator creation,
 setup locking (including parallel requests), password hashing, private admin

@@ -1,6 +1,8 @@
 param(
   [string] $ToolManifest = "",
-  [int] $Port = 3941
+  [string] $RuntimeSource = "",
+  [int] $Port = 3941,
+  [ValidateSet("http", "javascript", "native")][string] $Mode = "http"
 )
 $ErrorActionPreference = "Stop"
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
@@ -15,6 +17,10 @@ $keys = @("AX_SECRET_DB_URL", "AX_SECRET_DB_DIALECT", "AX_SECRET_SESSION_KEY", "
 $keys = @($keys + @(Get-ChildItem Env: | Where-Object Name -Match '^(AX_SECRET_|AX_PUBLIC_|DB_|DATABASE_|DATA_|SESSION_|SETUP_TOKEN$)' | Select-Object -ExpandProperty Name) | Select-Object -Unique)
 foreach ($key in $keys) { $environment[$key] = [Environment]::GetEnvironmentVariable($key) }
 if ($ToolManifest) { $ToolManifest = [IO.Path]::GetFullPath($ToolManifest) }
+if ($RuntimeSource) {
+  $RuntimeSource = [IO.Path]::GetFullPath($RuntimeSource)
+  if (!(Test-Path -LiteralPath (Join-Path $RuntimeSource "Cargo.toml"))) { throw "Runtime source manifest is missing" }
+}
 
 function Invoke-Ax {
   param([string[]] $Arguments)
@@ -93,6 +99,11 @@ try {
     Copy-Item -LiteralPath (Join-Path $root $file) -Destination $target
   }
   Set-Location $fixture
+  if ($RuntimeSource) {
+    # Source overrides are confined to the disposable fixture, never the app manifest.
+    $path = $RuntimeSource.Replace('\', '/') | ConvertTo-Json -Compress
+    [IO.File]::AppendAllText((Join-Path $fixture "Cargo.toml"), "`n[patch.crates-io]`naxonyx-runtime = { path = $path }`n")
+  }
   foreach ($key in $keys) { [Environment]::SetEnvironmentVariable($key, $null) }
   New-Item -ItemType Directory -Path "data" | Out-Null
   $db = Join-Path $fixture "data/legura.db"
@@ -106,6 +117,7 @@ try {
   $env:AXONYX_HOST = "127.0.0.1"
   $env:AXONYX_PORT = "$Port"
   Invoke-Ax -Arguments @("db", "migrate")
+  Invoke-Ax -Arguments @("db", "pull")
   Invoke-Ax -Arguments @("check")
   Invoke-Ax -Arguments @("build", "--clean", "--compiled")
   $metadata = & cargo metadata --format-version 1 --no-deps | ConvertFrom-Json
@@ -118,6 +130,11 @@ try {
   $client = [Net.Http.HttpClient]::new($handler)
   $client.Timeout = [TimeSpan]::FromSeconds(20)
   Start-Fixture
+  if ($Mode -ne "http") {
+    & node (Join-Path $root "tests/auth-browser.mjs") $baseUrl $Mode
+    if ($LASTEXITCODE -ne 0) { throw "Browser auth acceptance failed ($Mode)" }
+    return
+  }
   Invoke-Request -Path "/admin" -Status 403 | Out-Null
   $page = Invoke-Request -Path "/setup"
   if ($page.Body.Contains($setup)) { throw "Setup page exposed the owner token" }

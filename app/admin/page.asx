@@ -5,7 +5,7 @@ page Administration() {
   data administrator: Administrator = loadAdministrator()
   return ASX {
     <Card title="Administration">
-      <p>Signed in as {administrator.email}</p>
+      <p class="legura-identity"><span>Signed in as</span><strong>{administrator.email}</strong></p>
       <p>Setup and identity pilot. Content editing is not implemented yet.</p>
       <form method="post" action={action SignOut}><Button type="submit" variant="secondary">Sign out</Button></form>
     </Card>

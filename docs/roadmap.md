@@ -7,16 +7,18 @@ This is a scoped plan, not a completion percentage or promised release date.
 - Completed: preview/compiled action-validation parity and allowlisted,
   non-secret submitted values after native 422 responses (issues #313/#314).
 - Completed on source tooling: typed action queries, backend expression parity
-  and safe compiled action conflicts (issues #323/#324). Upstream CI passed and
-  the fixes are merged into dev, not yet published as a new toolchain.
+  and safe compiled action conflicts (issues #323/#324), now published.
 - Verified on 2026-10-09: isolated compiled HTTP setup/login/logout acceptance,
   authorization, CSRF, validation, concurrent setup rollback and persistence.
   See setup-auth-v0.md for the exact boundaries and reproduction command.
 - Completed: core 0.6.4, runtime 0.6.3, CLI 0.6.7 and scaffold 0.6.5 published.
   Registry-only compiled HTTP acceptance passed without a source CLI checkout.
-- Integration gate: Legura CI repeats isolated registry-only acceptance on Linux
-  before the pilot merges into dev.
-- Next verify browser UX, accessible controls and mobile setup/login before
+- Completed: Linux registry HTTP acceptance passed; pilot PR #1 merged into dev.
+- Browser fixes published: core 0.6.5, runtime 0.6.4, CLI 0.6.8, scaffold 0.6.6.
+  Registry-only HTTP and Chromium JS/no-JS flows pass on Windows, including
+  native validation retry and explicit redirects. Required Linux browser CI
+  remains the gate before merging browser acceptance into dev.
+- Next verify accessible controls and mobile setup/login before
   treating the pilot as a reusable installation flow.
 
 Never treat the presence of primitives or passing HTTP tests as proof of product
