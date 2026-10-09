@@ -17,7 +17,8 @@ $created = Invoke-Request -Path $createPath -Method POST -Body $form -Headers $s
 if ($created.Headers.Location -ne "/admin/posts") { throw "Create redirect lost its target" }
 $id = & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);print(d.execute("select id from legura_posts where slug=?",("private-draft",)).fetchone()[0]);d.close()' $db
 if ($LASTEXITCODE -ne 0 -or !$id) { throw "Created post did not persist" }
-Invoke-Request -Path $createPath -Method POST -Body $form -Headers $sessionProof -Status 409 | Out-Null
+$conflict = Invoke-Request -Path $createPath -Method POST -Body $form -Headers $sessionProof -Status 422
+if (!$conflict.Body.Contains("This URL slug is already in use.")) { throw "Duplicate create lost field feedback" }
 $public = Invoke-Request -Path "/posts"
 if ($public.Body.Contains("Private draft") -or $public.Body.Contains("Secret draft body")) { throw "Public list leaked a draft" }
 Invoke-Request -Path "/posts/private-draft" -Status 404 | Out-Null
@@ -39,7 +40,8 @@ $story = Invoke-Request -Path "/posts/public-story"
 if (!$story.Body.Contains("Published story")) { throw "Published post did not survive restart" }
 $duplicate = $form.Replace("private-draft", "second-draft")
 Invoke-Request -Path $createPath -Method POST -Body $duplicate -Headers $sessionProof -Status 303 | Out-Null
-Invoke-Request -Path $updatePath -Method POST -Body $update.Replace("public-story", "second-draft") -Headers $sessionProof -Status 409 | Out-Null
+$conflict = Invoke-Request -Path $updatePath -Method POST -Body $update.Replace("public-story", "second-draft") -Headers $sessionProof -Status 422
+if (!$conflict.Body.Contains("This URL slug is already in use.")) { throw "Duplicate update lost field feedback" }
 Invoke-Request -Path "/posts/public-story" | Out-Null
 Invoke-Request -Path $updatePath -Method POST -Body $update.Replace("status=published", "status=draft") -Headers $sessionProof -Status 303 | Out-Null
 Invoke-Request -Path "/posts/public-story" -Status 404 | Out-Null

@@ -26,9 +26,14 @@ is integrated into dev.
 Posts V0 adds private create/edit, draft/published status, public published pages
 and plain-text rendering. Its typed not-found framework fixes are published in
 core 0.6.6/runtime 0.6.5/CLI 0.6.9/scaffold 0.6.7 after green release CI.
-This branch uses registry runtime 0.6.5 and CI CLI 0.6.9; required acceptance now
+This branch uses registry runtime 0.6.6 and CI CLI 0.6.9; required acceptance now
 includes HTTP posts and both browser modes alongside the original auth tests.
 The Posts acceptance/integration gate is recorded in docs/posts-v0.md.
+
+Editor validation adds field-level duplicate-slug feedback and preserves long
+allowlisted text during native 422 retries within the 64 KiB request budget.
+The runtime fix is published as 0.6.6; core, CLI and UI are unchanged. Concurrent
+DB conflicts and oversized requests still have separate recovery limitations.
 
 ## Product
 
