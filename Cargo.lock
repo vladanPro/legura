@@ -71,9 +71,9 @@ dependencies = [
 
 [[package]]
 name = "axonyx-runtime"
-version = "0.6.5"
+version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5942748ecaafdcc10a204156f9c4047c8c75c3067fb555fbb48f5f6f27d8e1ab"
+checksum = "4ddae194eab43e869442f8ea571a42cb8be9240fe9ca2672c7812cb5c997883a"
 dependencies = [
  "argon2",
  "axonyx-core",

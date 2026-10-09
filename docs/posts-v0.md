@@ -75,11 +75,11 @@ No source override is committed to Cargo.toml.
   editing a post may retain its own slug. DB uniqueness remains authoritative:
   a concurrent conflicting write can still return generic 409, without editor
   recovery. Pattern and whitespace constraint violations also remain generic 409.
-- Source runtime removes the 4 KiB replay field cap while retaining the 64 KiB
+- Published runtime 0.6.6 removes the 4 KiB replay field cap while retaining the 64 KiB
   encoded request budget, 32-control cap, secret exclusions and explicit form
   allowlist. Source HTTP and JS/no-JS browser acceptance pass, including long
-  Unicode text and escaped markup. This runtime fix is not published yet; do not
-  merge registry acceptance until the dependency is released and pinned.
+  Unicode text and escaped markup. This branch pins that registry runtime and
+  retains the required Linux registry HTTP/browser gate before merge.
 - The 20000-character editor limit does not override the server's 64 KiB encoded
   request limit. Large URL-encoded Unicode submissions may receive 413 before
   action validation; that response does not retain the editor text.

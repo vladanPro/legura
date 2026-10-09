@@ -22,7 +22,12 @@ This is a scoped plan, not a completion percentage or promised release date.
   publish/unpublish, escaped text, missing-post responses, constraints and
   persistence. Typed not-found fixes are published in core 0.6.6/runtime 0.6.5/
   CLI 0.6.9/scaffold 0.6.7. Registry pins/CI now use these versions and run both
-  auth and posts acceptance. Do not merge before the published-package gate passes.
+  auth and posts acceptance. Registry HTTP and browser gates passed and Posts V0
+  PR #3 is integrated into dev.
+- Editor validation uses published runtime 0.6.6: normal duplicate-slug errors
+  are field-level 422 responses, and long native form values fit within the
+  unchanged 64 KiB encoded request budget. Require registry/browser CI before
+  merging this follow-up.
 - Next verify accessible controls and mobile setup/login before
   treating the pilot as a reusable installation flow.
 
@@ -42,8 +47,9 @@ the current pilot intentionally uses explicit 403 guards.
 - API/browser tests for unauthorized requests, invalid input, and publishing.
 
 Posts V0 deliberately excludes deletion; that is a separate product task.
-Its follow-ups include field-level slug conflict feedback and preserving long
-editor text during native validation retries. See posts-v0.md.
+Its follow-ups include concurrent-conflict and oversized-request editor recovery.
+Normal duplicate-slug feedback and long native 422 retries are covered by the
+editor validation change. See posts-v0.md for acceptance and limitations.
 
 Acceptance: a fresh installation can create an administrator, publish a post,
 restart without data loss, and serve the post publicly while keeping drafts and
