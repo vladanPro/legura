@@ -9,9 +9,10 @@ page RootLayout() {
       <Link rel="icon" href="/legura-mark.svg" type="image/svg+xml" />
       <Link rel="stylesheet" href="/legura.css" />
     </Head>
+    <a class="legura-skip-link" href="#main-content">Skip to content</a>
     <Container max="lg">
       <header class="legura-header"><a class="legura-brand" href="/"><img src="/legura-mark.svg" alt="" width="36" height="36" />Legura</a><span>Content, forged together.</span></header>
-      <main class="legura-main"><Slot /></main>
+      <div class="legura-main" id="main-content" tabindex="-1"><Slot /></div>
     </Container>
   }
 }

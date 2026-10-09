@@ -44,6 +44,11 @@ snapshots and recovery to a new database, never overwriting an existing file.
 See [the operator procedure](docs/backup-restore-v1.md). Configuration secrets,
 encryption, scheduling and future media backup are outside this first version.
 
+Setup/login now have keyboard skip navigation, named forms, linked field errors
+and small-screen acceptance with and without JavaScript. See the scoped
+[accessibility proof](docs/setup-login-accessibility-v1.md); this is not a full
+accessibility audit or production certification.
+
 ## Product
 
 - Own your server, content, files, and database.

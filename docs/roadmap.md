@@ -28,8 +28,9 @@ This is a scoped plan, not a completion percentage or promised release date.
   are field-level 422 responses, and long native form values fit within the
   unchanged 64 KiB encoded request budget. Registry acceptance passed on Windows
   and Linux; PR #4 is integrated into dev.
-- Next verify accessible controls and mobile setup/login before
-  treating the pilot as a reusable installation flow.
+- Setup/Login Accessibility V1 adds keyboard navigation, linked field errors
+  and 320/390px acceptance in both browser modes. Its Linux CI gate must pass
+  before merging; see setup-login-accessibility-v1.md. This is not a WCAG audit.
 
 Never treat the presence of primitives or passing HTTP tests as proof of product
 safety. Query-guard redirects remain a separate UX task (framework issue #326);
@@ -71,6 +72,8 @@ Backup / Restore V1 is the current scoped implementation: a local SQLite tool,
 verified snapshots and recovery to a new file without replacing the active DB.
 See backup-restore-v1.md. Its unit and registry HTTP recovery gates must pass
 before merging. This does not close the broader installation/upgrade release gate.
+
+Backup / Restore V1 passed those gates and PR #6 is integrated into dev.
 
 ## 3. Further Database Adapters
 
