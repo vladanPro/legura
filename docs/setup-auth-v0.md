@@ -9,7 +9,8 @@ pass upstream source tests and compiled HTTP smoke (framework #323, runtime PR
 #229 and framework PR #325), but that fix is not a registry release yet.
 The pilot passes isolated compiled HTTP acceptance with source tooling after
 backend expression and action-conflict fixes for framework issue #324. Those
-fixes still need CI/merge and a toolchain release; CLI 0.6.6 alone is insufficient.
+fixes passed upstream CI and were merged into dev (runtime PR #230 and framework
+PR #327). A toolchain release is still required; CLI 0.6.6 alone is insufficient.
 Do not weaken optional credential verification or remove guards to pass build.
 
 ## Boundaries
@@ -68,7 +69,7 @@ database identity. Run `pwsh -File scripts/smoke-auth.ps1 -ToolManifest
 ../axonyx-framework/Cargo.toml` to repeat the isolated proof.
 
 This is HTTP acceptance, not browser UX/accessibility testing or a security
-audit. Keep the PR draft until upstream CI and release make a registry-only
+audit. Keep the PR draft until a toolchain release makes a registry-only
 installation reproducible. No production-ready CMS or installer is claimed.
 
 Prove token rejection, invalid-input 422 retention, first administrator creation,
