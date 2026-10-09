@@ -23,11 +23,12 @@ JS/no-JS acceptance pass with registry packages on Windows (2026-10-09), without
 source overrides. Required Linux registry/browser CI passed and browser PR #2
 is integrated into dev.
 
-Posts V0 is being developed on a feature branch: private create/edit,
-draft/published status, public published pages and plain-text rendering.
-Isolated HTTP and Chromium JS/no-JS acceptance pass with source overrides.
-Do not treat it as registry-ready yet: typed query/action not-found handling
-requires runtime PR #236 and framework PR #333, then published-package acceptance.
+Posts V0 adds private create/edit, draft/published status, public published pages
+and plain-text rendering. Its typed not-found framework fixes are published in
+core 0.6.6/runtime 0.6.5/CLI 0.6.9/scaffold 0.6.7 after green release CI.
+This branch uses registry runtime 0.6.5 and CI CLI 0.6.9; required acceptance now
+includes HTTP posts and both browser modes alongside the original auth tests.
+The Posts acceptance/integration gate is recorded in docs/posts-v0.md.
 
 ## Product
 

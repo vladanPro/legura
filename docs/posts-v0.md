@@ -34,9 +34,26 @@ mobile editor checks. Stored script markup remains plain escaped text. Database
 contracts were regenerated from a disposable migrated SQLite database.
 
 Upstream fixes: runtime PR #236 and framework PR #333 preserve typed not-found
-guards as 404 instead of query 500/action 422. Source versions are core 0.6.6,
-runtime 0.6.5, CLI 0.6.9 and scaffold 0.6.7; they are not yet published.
-The application's registry pins remain unchanged until that release is verified.
+guards as 404 instead of query 500/action 422. Core 0.6.6, runtime 0.6.5,
+CLI 0.6.9 and scaffold 0.6.7 are published after green dev-to-main release PRs
+#237 (runtime) and #334 (framework), with package verification and GitHub tags.
+The application pins registry runtime 0.6.5 and CI CLI 0.6.9; source overrides
+are unnecessary for normal development. Registry acceptance is the merge gate.
+
+Passed on Windows with published packages only: HTTP auth/posts plus the
+original auth and new posts Chromium tests in both JavaScript and native modes.
+CLI 0.6.9 was installed into a separate test root; no global tool was replaced.
+Linux required CI repeats this same sequence before dev integration.
+
+Reproduce registry acceptance (run sequentially with CLI 0.6.9):
+
+```powershell
+pwsh -File scripts/smoke-auth.ps1 -Posts
+pwsh -File scripts/smoke-auth.ps1 -Mode javascript
+pwsh -File scripts/smoke-auth.ps1 -Mode native
+pwsh -File scripts/smoke-auth.ps1 -Posts -Mode javascript
+pwsh -File scripts/smoke-auth.ps1 -Posts -Mode native
+```
 
 Reproduce source acceptance (run sequentially):
 
@@ -52,8 +69,8 @@ No source override is committed to Cargo.toml.
 
 ## Remaining Gates And UX Limits
 
-- Publish the upstream patch, update registry pins and CI CLI, then repeat HTTP,
-  both posts browser modes and existing auth acceptance on registry packages.
+- Required registry HTTP/posts and both auth/posts browser modes must pass
+  locally and in Linux CI before this feature is merged into dev.
 - Slug uniqueness/pattern and whitespace constraints safely return generic 409.
   Field-level conflict feedback and recovery are not implemented yet.
 - Native 422 replay has the framework's 4 KiB per-field limit. The editor allows

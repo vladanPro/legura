@@ -20,9 +20,9 @@ This is a scoped plan, not a completion percentage or promised release date.
   HTTP/browser CI passed; browser PR #2 merged into dev.
 - Posts V0 source acceptance passes: create/edit, private drafts, public
   publish/unpublish, escaped text, missing-post responses, constraints and
-  persistence. Registry acceptance is blocked on the typed not-found patch
-  (runtime PR #236/framework PR #333) and its release. Do not merge the Posts
-  feature before the published-package gate passes.
+  persistence. Typed not-found fixes are published in core 0.6.6/runtime 0.6.5/
+  CLI 0.6.9/scaffold 0.6.7. Registry pins/CI now use these versions and run both
+  auth and posts acceptance. Do not merge before the published-package gate passes.
 - Next verify accessible controls and mobile setup/login before
   treating the pilot as a reusable installation flow.
 

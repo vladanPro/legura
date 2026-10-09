@@ -16,9 +16,11 @@ Runtime PR #233 fixes both boundaries; framework PR #330 adds native and patch
 HTTP redirect regressions. Browser JS and no-JS acceptance passed locally with
 source CLI/runtime. Core 0.6.5, runtime 0.6.4, CLI 0.6.8 and scaffold 0.6.6 are
 now published after green preparation and dev-to-main release CI. This branch
-pins the fixed runtime and installs CLI 0.6.8 in CI. Isolated HTTP and Chromium
+originally pinned that runtime and installed CLI 0.6.8 in CI. Isolated HTTP and Chromium
 JS/no-JS acceptance passed on Windows on 2026-10-09 with registry packages only,
-without ToolManifest or RuntimeSource. Linux CI must pass before dev integration.
+without ToolManifest or RuntimeSource. Linux CI passed and browser PR #2 merged
+into dev. Posts V0 updates runtime to 0.6.5 and CI CLI to 0.6.9, retaining these
+original auth regressions alongside the new posts tests.
 
 Tested browser URL: http://127.0.0.1:3941 (separate disposable fixtures).
 Viewports: desktop 1280x900 setup and mobile 390x844 admin/login.
