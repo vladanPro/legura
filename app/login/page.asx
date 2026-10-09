@@ -3,13 +3,19 @@ import { Button } from "@axonyx/ui/foundry/Button"
 
 page Login() {
   return ASX {
-    <Card title="Sign in to Legura">
-      <form method="post" action={action SignIn} data-ax-retain-fields="email" class="legura-form">
-        <label class="ax-field-label" for="email">Email</label>
-        <input class="ax-input" id="email" name="email" type="email" autocomplete="username" required="true" />
-        <p class="ax-field__error" data-ax-field-error="email"></p>
-        <label class="ax-field-label" for="password">Password</label>
-        <input class="ax-input" id="password" name="password" type="password" autocomplete="current-password" required="true" />
+    <Card>
+      <h1 id="login-title">Sign in to Legura</h1>
+      <p id="login-introduction">Use your administrator account. Both fields are required.</p>
+      <form method="post" action={action SignIn} data-ax-retain-fields="email" class="legura-form" aria-labelledby="login-title" aria-describedby="login-introduction">
+        <div class="ax-field">
+          <label class="ax-field-label" for="email">Email</label>
+          <input class="ax-input" id="email" name="email" type="email" autocomplete="username" required="true" inputmode="email" autocapitalize="none" spellcheck="false" aria-describedby="email-error" />
+          <p id="email-error" class="ax-field__error" data-ax-field-error="email" aria-live="polite" aria-atomic="true"></p>
+        </div>
+        <div class="ax-field">
+          <label class="ax-field-label" for="password">Password</label>
+          <input class="ax-input" id="password" name="password" type="password" autocomplete="current-password" required="true" />
+        </div>
         <Button type="submit" variant="primary">Sign in</Button>
       </form>
     </Card>

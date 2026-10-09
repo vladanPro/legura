@@ -2,22 +2,33 @@ import { Card } from "@axonyx/ui/foundry/Card"
 import { Button } from "@axonyx/ui/foundry/Button"
 
 page Setup() {
-  data title: String = loadSetup()
+  data setupTitle: String = loadSetup()
   return ASX {
-    <Card title={title}>
-      <p>You need the one-time setup token configured by the server owner.</p>
-      <form method="post" action={action Install} data-ax-retain-fields="siteName,email" class="legura-form">
-        <label class="ax-field-label" for="siteName">Site name</label>
-        <input class="ax-input" id="siteName" name="siteName" required="true" maxlength="120" />
-        <p class="ax-field__error" data-ax-field-error="siteName"></p>
-        <label class="ax-field-label" for="email">Administrator email</label>
-        <input class="ax-input" id="email" name="email" type="email" required="true" autocomplete="username" />
-        <p class="ax-field__error" data-ax-field-error="email"></p>
-        <label class="ax-field-label" for="password">Password</label>
-        <input class="ax-input" id="password" name="password" type="password" required="true" autocomplete="new-password" />
-        <p class="ax-field__error" data-ax-field-error="password"></p>
-        <label class="ax-field-label" for="setupToken">Setup token</label>
-        <input class="ax-input" id="setupToken" name="setupToken" type="password" required="true" autocomplete="off" />
+    <Card>
+      <h1 id="setup-title">{setupTitle}</h1>
+      <p id="setup-introduction">Create the first administrator. All fields are required.</p>
+      <form method="post" action={action Install} data-ax-retain-fields="siteName,email" class="legura-form" aria-labelledby="setup-title" aria-describedby="setup-introduction">
+        <div class="ax-field">
+          <label class="ax-field-label" for="siteName">Site name</label>
+          <input class="ax-input" id="siteName" name="siteName" required="true" maxlength="120" aria-describedby="siteName-error" />
+          <p id="siteName-error" class="ax-field__error" data-ax-field-error="siteName" aria-live="polite" aria-atomic="true"></p>
+        </div>
+        <div class="ax-field">
+          <label class="ax-field-label" for="email">Administrator email</label>
+          <input class="ax-input" id="email" name="email" type="email" required="true" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" aria-describedby="email-error" />
+          <p id="email-error" class="ax-field__error" data-ax-field-error="email" aria-live="polite" aria-atomic="true"></p>
+        </div>
+        <div class="ax-field">
+          <label class="ax-field-label" for="password">Password</label>
+          <input class="ax-input" id="password" name="password" type="password" required="true" autocomplete="new-password" aria-describedby="password-hint password-error" />
+          <p id="password-hint" class="ax-field__hint">Use at least 15 characters. A long passphrase is welcome.</p>
+          <p id="password-error" class="ax-field__error" data-ax-field-error="password" aria-live="polite" aria-atomic="true"></p>
+        </div>
+        <div class="ax-field">
+          <label class="ax-field-label" for="setupToken">Setup token</label>
+          <input class="ax-input" id="setupToken" name="setupToken" type="password" required="true" autocomplete="off" aria-describedby="setupToken-hint" />
+          <p id="setupToken-hint" class="ax-field__hint">Ask the server owner for the one-time setup token. It is not your password.</p>
+        </div>
         <Button type="submit" variant="primary">Create installation</Button>
       </form>
     </Card>
