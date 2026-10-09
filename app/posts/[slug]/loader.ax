@@ -1,0 +1,5 @@
+export query loadPublishedPost(slug: String) -> Post {
+  data post = db.legura_posts.where({ slug: input.slug, status: "published" }).first()
+  require post else notFound()
+  return post
+}

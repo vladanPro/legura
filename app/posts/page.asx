@@ -1,0 +1,14 @@
+import { Card } from "@axonyx/ui/foundry/Card"
+
+page PublicPosts() {
+  data posts: Post[] = loadPublishedPosts()
+  return ASX {
+    <section class="legura-posts">
+      <h1>Published posts</h1>
+      <If when={!posts}><Card title="Nothing published yet"><p>Check back for the first story.</p></Card></If>
+      <div class="legura-post-list">
+        <Each items={posts} as="post"><Card title={post.title}><a href={"/posts/" + post.slug}>Read post</a></Card></Each>
+      </div>
+    </section>
+  }
+}

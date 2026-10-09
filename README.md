@@ -20,7 +20,14 @@ Browser acceptance subsequently found lost action redirects and missing CSRF
 proof on native validation retries in those published versions. The fixes are
 published in core 0.6.5/runtime 0.6.4/CLI 0.6.8. Isolated HTTP and Chromium
 JS/no-JS acceptance pass with registry packages on Windows (2026-10-09), without
-source overrides. Required Linux CI remains the browser PR integration gate.
+source overrides. Required Linux registry/browser CI passed and browser PR #2
+is integrated into dev.
+
+Posts V0 is being developed on a feature branch: private create/edit,
+draft/published status, public published pages and plain-text rendering.
+Isolated HTTP and Chromium JS/no-JS acceptance pass with source overrides.
+Do not treat it as registry-ready yet: typed query/action not-found handling
+requires runtime PR #236 and framework PR #333, then published-package acceptance.
 
 ## Product
 
@@ -41,6 +48,7 @@ No page builder, marketplace, or plugin execution platform in this milestone.
 
 See [the roadmap](docs/roadmap.md), [product boundary](docs/product.md), and
 [installation model](docs/installation.md).
+The [Posts V0 contract](docs/posts-v0.md) records implemented scope and remaining gates.
 
 The [setup/auth pilot](docs/setup-auth-v0.md) documents local initialization and
 the acceptance gate. HTTP acceptance is not a security audit or production

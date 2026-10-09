@@ -4,8 +4,8 @@ import { Copy } from "@axonyx/ui/foundry/Copy"
 page Home() {
   return ASX {
     <Card title="Your Legura installation">
-      <Copy>Early development build. No public registration or publishing yet.</Copy>
-      <nav class="legura-links"><a href="/setup">First-run setup</a><a href="/login">Sign in</a><a href="/admin">Administration</a></nav>
+      <Copy>Read published stories or sign in to manage your content.</Copy>
+      <nav class="legura-links"><a href="/posts">Published posts</a><a href="/setup">First-run setup</a><a href="/login">Sign in</a><a href="/admin">Administration</a></nav>
     </Card>
   }
 }

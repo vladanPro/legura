@@ -2,7 +2,9 @@ param(
   [string] $ToolManifest = "",
   [string] $RuntimeSource = "",
   [int] $Port = 3941,
-  [ValidateSet("http", "javascript", "native")][string] $Mode = "http"
+  [ValidateSet("http", "javascript", "native")][string] $Mode = "http",
+  [switch] $Posts,
+  [switch] $RefreshSchema
 )
 $ErrorActionPreference = "Stop"
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
@@ -103,6 +105,8 @@ try {
     # Source overrides are confined to the disposable fixture, never the app manifest.
     $path = $RuntimeSource.Replace('\', '/') | ConvertTo-Json -Compress
     [IO.File]::AppendAllText((Join-Path $fixture "Cargo.toml"), "`n[patch.crates-io]`naxonyx-runtime = { path = $path }`n")
+    & cargo update -p axonyx-runtime
+    if ($LASTEXITCODE -ne 0) { throw "Cannot activate fixture runtime source override" }
   }
   foreach ($key in $keys) { [Environment]::SetEnvironmentVariable($key, $null) }
   New-Item -ItemType Directory -Path "data" | Out-Null
@@ -118,6 +122,16 @@ try {
   $env:AXONYX_PORT = "$Port"
   Invoke-Ax -Arguments @("db", "migrate")
   Invoke-Ax -Arguments @("db", "pull")
+  if ($RefreshSchema) {
+    # Generate a portable contract from the isolated migrated database, not user data.
+    $databaseUrl = $env:AX_SECRET_DB_URL
+    try {
+      $env:AX_SECRET_DB_URL = "sqlite://data/legura.db"
+      Invoke-Ax -Arguments @("db", "pull")
+      Copy-Item -LiteralPath (Join-Path $fixture ".axonyx/db/schema.json") -Destination (Join-Path $root ".axonyx/db/schema.json")
+      Copy-Item -LiteralPath (Join-Path $fixture "app/generated/db.ax") -Destination (Join-Path $root "app/generated/db.ax")
+    } finally { $env:AX_SECRET_DB_URL = $databaseUrl }
+  }
   Invoke-Ax -Arguments @("check")
   Invoke-Ax -Arguments @("build", "--clean", "--compiled")
   $metadata = & cargo metadata --format-version 1 --no-deps | ConvertFrom-Json
@@ -131,7 +145,8 @@ try {
   $client.Timeout = [TimeSpan]::FromSeconds(20)
   Start-Fixture
   if ($Mode -ne "http") {
-    & node (Join-Path $root "tests/auth-browser.mjs") $baseUrl $Mode
+    $browserTest = if ($Posts) { "tests/posts-browser.mjs" } else { "tests/auth-browser.mjs" }
+    & node (Join-Path $root $browserTest) $baseUrl $Mode
     if ($LASTEXITCODE -ne 0) { throw "Browser auth acceptance failed ($Mode)" }
     return
   }
@@ -174,6 +189,7 @@ try {
   Start-Fixture
   Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } | Out-Null
   $sessionProof = Get-Proof -Cookie $cookie
+  if ($Posts) { . (Join-Path $root "tests/posts-http.ps1") }
   $logoutPath = "/__axonyx/action?path=%2Fadmin&name=SignOut"
   Invoke-Request -Path $logoutPath -Method POST -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null
   Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } | Out-Null
@@ -199,6 +215,10 @@ try {
   & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);d.execute("delete from legura_credentials");d.execute("delete from legura_installation");d.execute("delete from legura_users");d.commit();d.close()' $db
   if ($LASTEXITCODE -ne 0) { throw "Cannot revoke fixture identity" }
   Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
+  if ($Posts) {
+    Invoke-Request -Path "/admin/posts" -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
+    Invoke-Request -Path "/__axonyx/action?path=%2Fadmin%2Fposts%2Fnew&name=CreatePost" -Method POST -Body "title=Revoked&slug=revoked&body=Denied&status=draft" -Headers $sessionProof -Status 403 | Out-Null
+  }
   Write-Host "Legura compiled auth smoke passed: setup race, CSRF, password hash, login/logout, restart persistence, authorization."
 } finally {
   Stop-Fixture

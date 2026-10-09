@@ -1,0 +1,16 @@
+import { Card } from "@axonyx/ui/foundry/Card"
+import { Button } from "@axonyx/ui/foundry/Button"
+import { PostFields } from "@/components/PostFields"
+
+page NewPost() {
+  data title: String = loadNewPostTitle()
+  return ASX {
+    <Card title={title}>
+      <p>A draft is visible only to the administrator.</p>
+      <form method="post" action={action CreatePost} data-ax-retain-fields="title,slug,body,status" class="legura-form">
+        <PostFields />
+        <div class="legura-form-actions"><Button type="submit" variant="primary">Create post</Button><a href="/admin/posts">Cancel</a></div>
+      </form>
+    </Card>
+  }
+}

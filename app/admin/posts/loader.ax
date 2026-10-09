@@ -1,0 +1,14 @@
+export type Post {
+  id: String
+  title: String
+  slug: String
+  body: String
+  status: String
+}
+export query loadAdminPosts() -> Post[] {
+  require Auth.subject else forbidden()
+  data administrator = db.legura_users.where({ id: Auth.subject }).first()
+  require administrator else forbidden()
+  require administrator["role"] == "admin" else forbidden()
+  return db.legura_posts.order({ title: "asc" }).all()
+}

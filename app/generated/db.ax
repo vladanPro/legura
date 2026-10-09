@@ -34,6 +34,30 @@ export type LeguraInstallationUpdateInput {
   admin_id: Optional<String>
 }
 
+export type LeguraPostsRow {
+  id: String
+  title: String
+  slug: String
+  body: String
+  status: String
+}
+
+export type LeguraPostsCreateInput {
+  id: String
+  title: String
+  slug: String
+  body: String
+  status: Optional<String>
+}
+
+export type LeguraPostsUpdateInput {
+  id: Optional<String>
+  title: Optional<String>
+  slug: Optional<String>
+  body: Optional<String>
+  status: Optional<String>
+}
+
 export type LeguraUsersRow {
   id: String
   email: String

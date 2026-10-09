@@ -1,0 +1,16 @@
+import { Card } from "@axonyx/ui/foundry/Card"
+import { Button } from "@axonyx/ui/foundry/Button"
+import { PostFields } from "@/components/PostFields"
+
+page EditPost() {
+  data post: Post = loadEditablePost(params.id)
+  return ASX {
+    <Card title="Edit post">
+      <form method="post" action={action UpdatePost} data-ax-retain-fields="title,slug,body,status" class="legura-form">
+        <input type="hidden" name="id" value={post.id} />
+        <PostFields title={post.title} slug={post.slug} body={post.body} status={post.status} />
+        <div class="legura-form-actions"><Button type="submit" variant="primary">Save changes</Button><a href="/admin/posts">Cancel</a></div>
+      </form>
+    </Card>
+  }
+}
