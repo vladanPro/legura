@@ -49,4 +49,45 @@ $public = Invoke-Request -Path "/posts"
 if ($public.Body.Contains("Published story") -or $public.Body.Contains("Next line")) { throw "Unpublished content remained public" }
 $count = & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);print(d.execute("select count(*) from legura_posts").fetchone()[0]);d.close()' $db
 if ($LASTEXITCODE -ne 0 -or $count -ne "2") { throw "Rejected writes changed the stored post set" }
-Write-Host "Legura posts HTTP passed: private drafts, admin/CSRF guards, constraints, editing, publishing, unpublishing, escaping and restart persistence."
+
+# Confirmation is read-only; mutation authorization is checked again on POST.
+$deleteRoute = "/admin/posts/$id/delete"
+$deletePath = "/__axonyx/action?path=%2Fadmin%2Fposts%2F$id%2Fdelete&name=DeletePost"
+$deleteBody = "id=$id&confirmSlug=public-story"
+Invoke-Request -Path $updatePath -Method POST -Body $update -Headers $sessionProof -Status 303 | Out-Null
+Invoke-Request -Path $deleteRoute -Status 403 | Out-Null
+$confirmation = Invoke-Request -Path $deleteRoute -Headers @{ Cookie = $cookie }
+if (!$confirmation.Body.Contains("This permanently deletes the post.")) { throw "Deletion warning is missing" }
+Invoke-Request -Path "/posts/public-story" | Out-Null
+Invoke-Request -Path $deletePath -Headers $sessionProof -Status 405 | Out-Null
+Invoke-Request -Path $deletePath -Method POST -Body $deleteBody -Headers $anonymousProof -Status 403 | Out-Null
+Invoke-Request -Path $deletePath -Method POST -Body $deleteBody -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null
+$wrong = Invoke-Request -Path $deletePath -Method POST -Body $deleteBody.Replace("confirmSlug=public-story", "confirmSlug=wrong") -Headers $sessionProof -Status 422
+if (!$wrong.Body.Contains("URL slug to confirm deletion.")) { throw "Deletion confirmation field feedback is missing" }
+Invoke-Request -Path $deletePath -Method POST -Body $deleteBody.Replace("id=$id", "id=missing") -Headers $sessionProof -Status 404 | Out-Null
+Invoke-Request -Path "/admin/posts/missing/delete" -Headers @{ Cookie = $cookie } -Status 404 | Out-Null
+$otherId = & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);print(d.execute("select id from legura_posts where slug=?",("second-draft",)).fetchone()[0]);d.close()' $db
+if ($LASTEXITCODE -ne 0 -or !$otherId) { throw "Second post inspection failed" }
+Invoke-Request -Path $deletePath -Method POST -Body $deleteBody.Replace("id=$id", "id=$otherId") -Headers $sessionProof -Status 422 | Out-Null
+Invoke-Request -Path "/posts/public-story" | Out-Null
+$deleted = Invoke-Request -Path $deletePath -Method POST -Body $deleteBody -Headers $sessionProof -Status 303
+if ($deleted.Headers.Location -ne "/admin/posts") { throw "Delete redirect lost its target" }
+Invoke-Request -Path "/posts/public-story" -Status 404 | Out-Null
+Invoke-Request -Path "/admin/posts/$id/edit" -Headers @{ Cookie = $cookie } -Status 404 | Out-Null
+$afterDelete = Invoke-Request -Path "/posts"
+if ($afterDelete.Body.Contains("Published story")) { throw "Deleted post remained in the public list" }
+Invoke-Request -Path $deleteRoute -Headers @{ Cookie = $cookie } -Status 404 | Out-Null
+Invoke-Request -Path $deletePath -Method POST -Body $deleteBody -Headers $sessionProof -Status 404 | Out-Null
+$remaining = & $python.Source -c 'import sqlite3,sys,json;d=sqlite3.connect(sys.argv[1]);print(json.dumps([r[0] for r in d.execute("select id from legura_posts")]));d.close()' $db
+$remainingIds = @($remaining | ConvertFrom-Json)
+if ($LASTEXITCODE -ne 0 -or $remainingIds.Count -ne 1 -or $remainingIds[0] -ne $otherId) { throw "Delete affected the wrong stored post set" }
+Stop-Fixture
+Start-Fixture
+Invoke-Request -Path "/posts/public-story" -Status 404 | Out-Null
+Invoke-Request -Path $deleteRoute -Headers @{ Cookie = $cookie } -Status 404 | Out-Null
+Invoke-Request -Path $createPath -Method POST -Body $form.Replace("private-draft", "public-story") -Headers $sessionProof -Status 303 | Out-Null
+$revocablePostId = & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);print(d.execute("select id from legura_posts where slug=?",("public-story",)).fetchone()[0]);d.close()' $db
+if ($LASTEXITCODE -ne 0 -or !$revocablePostId) { throw "Reused slug did not persist a new post" }
+$draftDeletePath = "/__axonyx/action?path=%2Fadmin%2Fposts%2F$otherId%2Fdelete&name=DeletePost"
+Invoke-Request -Path $draftDeletePath -Method POST -Body "id=$otherId&confirmSlug=second-draft" -Headers $sessionProof -Status 303 | Out-Null
+Write-Host "Legura posts HTTP passed: auth/CSRF, create/edit/publish, escaped text, confirmed deletion, repeat-delete rejection and restart persistence."

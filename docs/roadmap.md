@@ -26,8 +26,8 @@ This is a scoped plan, not a completion percentage or promised release date.
   PR #3 is integrated into dev.
 - Editor validation uses published runtime 0.6.6: normal duplicate-slug errors
   are field-level 422 responses, and long native form values fit within the
-  unchanged 64 KiB encoded request budget. Require registry/browser CI before
-  merging this follow-up.
+  unchanged 64 KiB encoded request budget. Registry acceptance passed on Windows
+  and Linux; PR #4 is integrated into dev.
 - Next verify accessible controls and mobile setup/login before
   treating the pilot as a reusable installation flow.
 
@@ -47,6 +47,9 @@ the current pilot intentionally uses explicit 403 guards.
 - API/browser tests for unauthorized requests, invalid input, and publishing.
 
 Posts V0 deliberately excludes deletion; that is a separate product task.
+Post Deletion V1 adds a permanent-delete confirmation route and POST-only,
+slug-confirmed mutation. Its registry acceptance gate must pass before merge;
+see posts-delete-v1.md. No trash or undo is included.
 Its follow-ups include concurrent-conflict and oversized-request editor recovery.
 Normal duplicate-slug feedback and long native 422 retries are covered by the
 editor validation change. See posts-v0.md for acceptance and limitations.
