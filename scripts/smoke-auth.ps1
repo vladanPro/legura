@@ -4,9 +4,11 @@ param(
   [int] $Port = 3941,
   [ValidateSet("http", "javascript", "native")][string] $Mode = "http",
   [switch] $Posts,
+  [switch] $BackupRestore,
   [switch] $RefreshSchema
 )
 $ErrorActionPreference = "Stop"
+if ($BackupRestore -and (!$Posts -or $Mode -ne "http")) { throw "BackupRestore requires Posts HTTP mode" }
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $fixture = Join-Path ([IO.Path]::GetTempPath()) ("legura-auth-" + [Guid]::NewGuid().ToString("N"))
 $baseUrl = "http://127.0.0.1:$Port"
@@ -138,6 +140,12 @@ try {
   if ($LASTEXITCODE -ne 0) { throw "Cannot find compiled server" }
   $binary = Join-Path $metadata.target_directory "release/axonyx-production"
   if ($IsWindows) { $binary += ".exe" }
+  if ($BackupRestore) {
+    & cargo build --locked --release --bin legura-maintenance
+    if ($LASTEXITCODE -ne 0) { throw "Cannot build fixture maintenance tool" }
+    $maintenance = Join-Path $metadata.target_directory "release/legura-maintenance"
+    if ($IsWindows) { $maintenance += ".exe" }
+  }
   $handler = [Net.Http.HttpClientHandler]::new()
   $handler.AllowAutoRedirect = $false
   $handler.UseCookies = $false

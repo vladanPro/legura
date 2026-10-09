@@ -48,7 +48,7 @@ the current pilot intentionally uses explicit 403 guards.
 
 Posts V0 deliberately excludes deletion; that is a separate product task.
 Post Deletion V1 adds a permanent-delete confirmation route and POST-only,
-slug-confirmed mutation. Its registry acceptance gate must pass before merge;
+slug-confirmed mutation. Its registry acceptance gate passed and PR #5 merged;
 see posts-delete-v1.md. No trash or undo is included.
 Its follow-ups include concurrent-conflict and oversized-request editor recovery.
 Normal duplicate-slug feedback and long native 422 retries are covered by the
@@ -66,6 +66,11 @@ write operations private.
 - Backup/restore proof, migration failure handling, and upgrade procedure.
 - Supported platform matrix, dependency versions, and deployment smoke tests.
 - Optional Docker packaging without making Docker a requirement.
+
+Backup / Restore V1 is the current scoped implementation: a local SQLite tool,
+verified snapshots and recovery to a new file without replacing the active DB.
+See backup-restore-v1.md. Its unit and registry HTTP recovery gates must pass
+before merging. This does not close the broader installation/upgrade release gate.
 
 ## 3. Further Database Adapters
 

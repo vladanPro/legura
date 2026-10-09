@@ -39,6 +39,11 @@ Post Deletion V1 adds a separate permanent-delete confirmation page, current
 administrator checks and slug-confirmed POST mutation. It has no trash or undo.
 See [the deletion contract](docs/posts-delete-v1.md) for acceptance and boundaries.
 
+Backup / Restore V1 adds a local Rust maintenance tool for verified SQLite
+snapshots and recovery to a new database, never overwriting an existing file.
+See [the operator procedure](docs/backup-restore-v1.md). Configuration secrets,
+encryption, scheduling and future media backup are outside this first version.
+
 ## Product
 
 - Own your server, content, files, and database.

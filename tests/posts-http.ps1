@@ -60,6 +60,13 @@ $confirmation = Invoke-Request -Path $deleteRoute -Headers @{ Cookie = $cookie }
 if (!$confirmation.Body.Contains("This permanently deletes the post.")) { throw "Deletion warning is missing" }
 Invoke-Request -Path "/posts/public-story" | Out-Null
 Invoke-Request -Path $deletePath -Headers $sessionProof -Status 405 | Out-Null
+if ($BackupRestore) {
+  $bundle = Join-Path $fixture "posts-backup"
+  & $maintenance backup $db $bundle
+  if ($LASTEXITCODE -ne 0) { throw "Live fixture backup failed" }
+  & $maintenance verify $bundle
+  if ($LASTEXITCODE -ne 0) { throw "Backup verification failed" }
+}
 Invoke-Request -Path $deletePath -Method POST -Body $deleteBody -Headers $anonymousProof -Status 403 | Out-Null
 Invoke-Request -Path $deletePath -Method POST -Body $deleteBody -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null
 $wrong = Invoke-Request -Path $deletePath -Method POST -Body $deleteBody.Replace("confirmSlug=public-story", "confirmSlug=wrong") -Headers $sessionProof -Status 422
@@ -85,6 +92,37 @@ Stop-Fixture
 Start-Fixture
 Invoke-Request -Path "/posts/public-story" -Status 404 | Out-Null
 Invoke-Request -Path $deleteRoute -Headers @{ Cookie = $cookie } -Status 404 | Out-Null
+if ($BackupRestore) {
+  $recovered = Join-Path $fixture "data/recovered.db"
+  & $maintenance restore $bundle $recovered
+  if ($LASTEXITCODE -ne 0) { throw "Restore to new database failed" }
+  Stop-Fixture
+  $originalUrl = $env:AX_SECRET_DB_URL
+  try {
+    $env:AX_SECRET_DB_URL = "sqlite://" + $recovered.Replace('\', '/')
+    Start-Fixture
+    $restoredStory = Invoke-Request -Path "/posts/public-story"
+    if (!$restoredStory.Body.Contains("Published story")) { throw "Restored public post is missing" }
+    Invoke-Request -Path "/posts/second-draft" -Status 404 | Out-Null
+    Invoke-Request -Path "/admin" -Status 403 | Out-Null
+    Invoke-Request -Path "/setup" -Status 403 | Out-Null
+    $restoreProof = Get-Proof
+    $restoreEmail = [Uri]::EscapeDataString($identity.email)
+    $restoreLogin = Invoke-Request -Path "/__axonyx/action?path=%2Flogin&name=SignIn" -Method POST -Body "email=$restoreEmail&password=$password" -Headers $restoreProof -Status 303
+    $restoreCookie = ([string]$restoreLogin.Headers["Set-Cookie"]).Split(';')[0]
+    Invoke-Request -Path "/admin/posts/$id/edit" -Headers @{ Cookie = $restoreCookie } | Out-Null
+    Invoke-Request -Path "/admin/posts/$otherId/edit" -Headers @{ Cookie = $restoreCookie } | Out-Null
+    Stop-Fixture
+    Start-Fixture
+    Invoke-Request -Path "/posts/public-story" | Out-Null
+    Write-Host "Legura backup/restore passed: live snapshot, deleted-content recovery, preserved login/drafts/setup lock and restored restart."
+  } finally {
+    Stop-Fixture
+    $env:AX_SECRET_DB_URL = $originalUrl
+    Start-Fixture
+  }
+  Invoke-Request -Path "/posts/public-story" -Status 404 | Out-Null
+}
 Invoke-Request -Path $createPath -Method POST -Body $form.Replace("private-draft", "public-story") -Headers $sessionProof -Status 303 | Out-Null
 $revocablePostId = & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);print(d.execute("select id from legura_posts where slug=?",("public-story",)).fetchone()[0]);d.close()' $db
 if ($LASTEXITCODE -ne 0 -or !$revocablePostId) { throw "Reused slug did not persist a new post" }

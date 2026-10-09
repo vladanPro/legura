@@ -26,9 +26,13 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Install published Axonyx CLI
         run: cargo install cargo-axonyx --version 0.6.9 --locked --debug
+      - name: Verify SQLite maintenance safety
+        run: |
+          cargo fmt --all -- --check
+          cargo test --locked --bin legura-maintenance
       - name: Verify isolated compiled setup and identity
         shell: pwsh
-        run: ./scripts/smoke-auth.ps1 -Port 3941 -Posts
+        run: ./scripts/smoke-auth.ps1 -Port 3941 -Posts -BackupRestore
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

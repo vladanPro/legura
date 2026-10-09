@@ -3,6 +3,7 @@ name = "legura"
 version = "0.0.1"
 edition = "2021"
 publish = false
+default-run = "legura"
 
 [workspace]
 
@@ -10,3 +11,7 @@ publish = false
 axonyx-runtime = { version = "0.6.6", features = ["axum"] }
 axonyx-ui = "0.0.84"
 serde_json = "1"
+anyhow = "1"
+rusqlite = { version = "0.37", features = ["backup", "bundled"] }
+serde = { version = "1", features = ["derive"] }
+sha2 = "0.10"
