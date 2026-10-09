@@ -9,13 +9,14 @@ page DeletePostConfirmation() {
   return ASX {
     <Card title="Delete post">
       <div class="legura-identity"><h2>{post.title}</h2><p class="legura-hint">{post.slug}</p></div>
-      <p id="delete-warning"><strong>This permanently deletes the post.</strong> Its public page will be removed. There is no undo or trash yet.</p>
+      <p id="delete-warning"><strong>This permanently deletes the post.</strong></p>
+      <p id="delete-details">Its public page will be removed. There is no undo or trash yet.</p>
       <form method="post" action={action DeletePost} class="legura-form">
         <input type="hidden" name="id" value={post.id} />
         <Field htmlFor="confirmSlug">
           <FieldLabel htmlFor="confirmSlug">Type the URL slug to confirm</FieldLabel>
-          <Input id="confirmSlug" name="confirmSlug" required="true" maxlength="120" describedBy="delete-warning confirmation-hint confirmSlug-error" />
-          <p id="confirmation-hint" class="legura-hint">Enter exactly: <strong>{post.slug}</strong></p>
+          <Input id="confirmSlug" name="confirmSlug" required="true" maxlength="120" describedBy="delete-warning delete-details confirmation-hint confirmSlug-error" />
+          <p id="confirmation-hint" class="legura-hint">{"Enter exactly: " + post.slug}</p>
           <p id="confirmSlug-error" class="ax-field__error" data-ax-field-error="confirmSlug" aria-live="polite"></p>
         </Field>
         <div class="legura-form-actions">

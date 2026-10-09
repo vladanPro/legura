@@ -127,6 +127,7 @@ try {
   await navigate(page, deletePath);
   await navigate(publicPage, deletePath, 403);
   await page.getByText("This permanently deletes the post.", { exact: true }).waitFor();
+  assert.equal(await page.locator("#confirmation-hint").textContent(), "Enter exactly: browser-story");
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "Mobile deletion form overflow");
   await page.screenshot({ path: resolve(results, `delete-${mode}-mobile.png`), fullPage: true });
   await page.getByLabel("Type the URL slug to confirm", { exact: true }).fill("wrong");
