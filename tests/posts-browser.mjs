@@ -66,6 +66,19 @@ try {
   await page.getByRole("link", { name: "Edit post", exact: true }).click();
   const editPath = new URL(page.url()).pathname;
   assert.match(editPath, /^\/admin\/posts\/[^/]+\/edit$/);
+
+  const longText = `${"Editor text ".repeat(1000)}\nČuvanje </textarea><script>unsafe</script>`;
+  await navigate(page, "/admin/posts/new");
+  await fillPost("Duplicate draft", "browser-draft", longText, "draft");
+  const duplicateResponse = page.waitForResponse((response) => response.url().includes("/__axonyx/action?") && response.request().method() === "POST");
+  await page.getByRole("button", { name: "Create post", exact: true }).click();
+  assert.equal((await duplicateResponse).status(), 422);
+  await page.locator('[data-ax-field-error="slug"]').filter({ hasText: "already in use" }).waitFor({ state: "visible" });
+  assert.equal(await page.getByLabel("Title", { exact: true }).inputValue(), "Duplicate draft");
+  assert.equal(await page.getByLabel("Content", { exact: true }).inputValue(), longText);
+  assert.equal(await page.getByLabel("URL slug", { exact: true }).getAttribute("aria-invalid"), "true");
+  assert.equal(await page.locator("textarea script").count(), 0);
+  await navigate(page, editPath);
   assert.equal(await page.getByLabel("Title", { exact: true }).inputValue(), "Private browser draft");
   assert.equal(await page.getByLabel("Content", { exact: true }).inputValue(), "Only the administrator should see this.");
   assert.equal(await page.getByLabel("Status", { exact: true }).inputValue(), "draft");
@@ -73,12 +86,13 @@ try {
   // Bypass browser required validation to exercise the server's actual 422 retry.
   await page.locator("form").evaluate((form) => { form.noValidate = true; });
   await page.getByLabel("Title", { exact: true }).fill("");
+  await page.getByLabel("Content", { exact: true }).fill(longText);
   const invalidResponse = page.waitForResponse((response) => response.url().includes("/__axonyx/action?") && response.request().method() === "POST");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   assert.equal((await invalidResponse).status(), 422);
   await page.locator('[data-ax-field-error="title"]').filter({ hasText: "Enter a title" }).waitFor({ state: "visible" });
   assert.equal(await page.getByLabel("URL slug", { exact: true }).inputValue(), "browser-draft");
-  assert.equal(await page.getByLabel("Content", { exact: true }).inputValue(), "Only the administrator should see this.");
+  assert.equal(await page.getByLabel("Content", { exact: true }).inputValue(), longText);
 
   const content = '<script>window.__leguraInjected = true</script>\nSecond line, safely shown.';
   await fillPost("Published browser story", "browser-story", content, "published");

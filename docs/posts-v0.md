@@ -71,9 +71,17 @@ No source override is committed to Cargo.toml.
 
 - Required registry HTTP/posts and both auth/posts browser modes must pass
   locally and in Linux CI before this feature is merged into dev.
-- Slug uniqueness/pattern and whitespace constraints safely return generic 409.
-  Field-level conflict feedback and recovery are not implemented yet.
-- Native 422 replay has the framework's 4 KiB per-field limit. The editor allows
-  longer valid content; retry retention of long content is not yet guaranteed.
+- Duplicate slugs detected before a write return 422 with a slug field message;
+  editing a post may retain its own slug. DB uniqueness remains authoritative:
+  a concurrent conflicting write can still return generic 409, without editor
+  recovery. Pattern and whitespace constraint violations also remain generic 409.
+- Source runtime removes the 4 KiB replay field cap while retaining the 64 KiB
+  encoded request budget, 32-control cap, secret exclusions and explicit form
+  allowlist. Source HTTP and JS/no-JS browser acceptance pass, including long
+  Unicode text and escaped markup. This runtime fix is not published yet; do not
+  merge registry acceptance until the dependency is released and pinned.
+- The 20000-character editor limit does not override the server's 64 KiB encoded
+  request limit. Large URL-encoded Unicode submissions may receive 413 before
+  action validation; that response does not retain the editor text.
 - Mobile overflow and browser behavior passed; this is not an accessibility or
   security audit, and no deployment/backup/upgrade readiness is claimed.
