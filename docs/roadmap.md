@@ -16,8 +16,13 @@ This is a scoped plan, not a completion percentage or promised release date.
 - Completed: Linux registry HTTP acceptance passed; pilot PR #1 merged into dev.
 - Browser fixes published: core 0.6.5, runtime 0.6.4, CLI 0.6.8, scaffold 0.6.6.
   Registry-only HTTP and Chromium JS/no-JS flows pass on Windows, including
-  native validation retry and explicit redirects. Required Linux browser CI
-  remains the gate before merging browser acceptance into dev.
+  native validation retry and explicit redirects. Required Linux registry
+  HTTP/browser CI passed; browser PR #2 merged into dev.
+- Posts V0 source acceptance passes: create/edit, private drafts, public
+  publish/unpublish, escaped text, missing-post responses, constraints and
+  persistence. Typed not-found fixes are published in core 0.6.6/runtime 0.6.5/
+  CLI 0.6.9/scaffold 0.6.7. Registry pins/CI now use these versions and run both
+  auth and posts acceptance. Do not merge before the published-package gate passes.
 - Next verify accessible controls and mobile setup/login before
   treating the pilot as a reusable installation flow.
 
@@ -35,6 +40,10 @@ the current pilot intentionally uses explicit 403 guards.
 - Simple editor and safe public rendering of published content.
 - Empty/error/pending states, accessible controls, and mobile administration.
 - API/browser tests for unauthorized requests, invalid input, and publishing.
+
+Posts V0 deliberately excludes deletion; that is a separate product task.
+Its follow-ups include field-level slug conflict feedback and preserving long
+editor text during native validation retries. See posts-v0.md.
 
 Acceptance: a fresh installation can create an administrator, publish a post,
 restart without data loss, and serve the post publicly while keeping drafts and

@@ -32,7 +32,7 @@ Do not weaken optional credential verification or remove guards to pass build.
 Install the tested CLI, then initialize the local development pilot:
 
 ```powershell
-cargo install cargo-axonyx --version 0.6.8 --locked
+cargo install cargo-axonyx --version 0.6.9 --locked
 pwsh -File scripts/local.ps1 -Task init
 pwsh -File scripts/local.ps1 -Task check
 pwsh -File scripts/local.ps1 -Task build

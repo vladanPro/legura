@@ -6,7 +6,8 @@ page Administration() {
   return ASX {
     <Card title="Administration">
       <p class="legura-identity"><span>Signed in as</span><strong>{administrator.email}</strong></p>
-      <p>Setup and identity pilot. Content editing is not implemented yet.</p>
+      <p>Manage your drafts and published posts.</p>
+      <nav class="legura-links"><a href="/admin/posts">Manage posts</a><a href="/posts">Public posts</a></nav>
       <form method="post" action={action SignOut}><Button type="submit" variant="secondary">Sign out</Button></form>
     </Card>
   }

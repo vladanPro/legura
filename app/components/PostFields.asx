@@ -1,0 +1,35 @@
+import { Field } from "@axonyx/ui/foundry/Field"
+import { FieldLabel } from "@axonyx/ui/foundry/FieldLabel"
+import { Input } from "@axonyx/ui/foundry/Input"
+import { Textarea } from "@axonyx/ui/foundry/Textarea"
+import { Select } from "@axonyx/ui/foundry/Select"
+
+component PostFields(title = "", slug = "", body = "", status = "draft") {
+  return ASX {
+    <Field htmlFor="title">
+      <FieldLabel htmlFor="title">Title</FieldLabel>
+      <Input id="title" name="title" value={title} required="true" describedBy="title-error" maxlength="160" />
+      <p id="title-error" class="ax-field__error" data-ax-field-error="title" aria-live="polite"></p>
+    </Field>
+    <Field htmlFor="slug">
+      <FieldLabel htmlFor="slug">URL slug</FieldLabel>
+      <Input id="slug" name="slug" value={slug} required="true" describedBy="slug-hint slug-error" maxlength="120" pattern="[a-z0-9]+([a-z0-9-]*[a-z0-9])?" />
+      <p id="slug-hint" class="legura-hint">Lowercase letters, numbers and hyphens. Must be unique.</p>
+      <p id="slug-error" class="ax-field__error" data-ax-field-error="slug" aria-live="polite"></p>
+    </Field>
+    <Field htmlFor="body">
+      <FieldLabel htmlFor="body">Content</FieldLabel>
+      <Textarea id="body" name="body" value={body} required="true" describedBy="body-hint body-error" maxlength="20000" rows="12" />
+      <p id="body-hint" class="legura-hint">Plain text. HTML and scripts are displayed as text.</p>
+      <p id="body-error" class="ax-field__error" data-ax-field-error="body" aria-live="polite"></p>
+    </Field>
+    <Field htmlFor="status">
+      <FieldLabel htmlFor="status">Status</FieldLabel>
+      <Select id="status" name="status" describedBy="status-error">
+        <option value="draft" selected={status == "draft"}>Draft</option>
+        <option value="published" selected={status == "published"}>Published</option>
+      </Select>
+      <p id="status-error" class="ax-field__error" data-ax-field-error="status" aria-live="polite"></p>
+    </Field>
+  }
+}

@@ -5,4 +5,15 @@
 .legura-identity { display: grid; gap: 0.25rem; overflow-wrap: anywhere; }
 .legura-form .ax-field__error:empty { display: none; }
 .legura-links { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-top: 1.5rem; }
+.legura-page-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+.legura-post-list { display: grid; gap: 1rem; margin-top: 1.5rem; }
+.legura-post-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding: 1.25rem; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); }
+.legura-post-row h2 { font-size: 1.1rem; margin: 0; overflow-wrap: anywhere; }
+.legura-post-row p { margin: 0.4rem 0 0; }
+.legura-hint { color: var(--ax-text-muted); font-size: 0.875rem; overflow-wrap: anywhere; }
+.legura-form-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 0.75rem; }
+.legura-form :is(input, textarea, select) { min-width: 0; max-width: 100%; }
+.legura-form .ax-textarea { min-height: 15rem; }
+.legura-story h1 { overflow-wrap: anywhere; }
+.legura-story__body { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; }
 @media (max-width: 40rem) { .legura-header { flex-direction: column; } .legura-main { margin-block: 1.5rem; } }

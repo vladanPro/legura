@@ -1,0 +1,10 @@
+action CreatePost(title: String, slug: String, body: String, status: String) {
+  data administrator = loadAdministrator()
+  require input.title != "" && input.title.length <= 160 else invalid({ title: "Enter a title of at most 160 characters." })
+  require input.slug != "" && input.slug.length <= 120 else invalid({ slug: "Enter a URL slug of at most 120 characters." })
+  require input.body != "" && input.body.length <= 20000 else invalid({ body: "Enter plain text of at most 20000 characters." })
+  require input.status == "draft" || input.status == "published" else invalid({ status: "Choose draft or published." })
+  data id = Uuid.new()
+  db.legura_posts.insert({ id: id, title: input.title, slug: input.slug, body: input.body, status: input.status })
+  return redirect("/admin/posts")
+}
