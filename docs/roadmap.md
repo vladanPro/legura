@@ -12,9 +12,11 @@ This is a scoped plan, not a completion percentage or promised release date.
 - Verified on 2026-10-09: isolated compiled HTTP setup/login/logout acceptance,
   authorization, CSRF, validation, concurrent setup rollback and persistence.
   See setup-auth-v0.md for the exact boundaries and reproduction command.
-- Next gate: publish the matching framework toolchain and repeat the isolated
-  acceptance with registry packages only, without a source CLI checkout.
-- Then verify browser UX, accessible controls and mobile setup/login before
+- Completed: core 0.6.4, runtime 0.6.3, CLI 0.6.7 and scaffold 0.6.5 published.
+  Registry-only compiled HTTP acceptance passed without a source CLI checkout.
+- Integration gate: Legura CI repeats isolated registry-only acceptance on Linux
+  before the pilot merges into dev.
+- Next verify browser UX, accessible controls and mobile setup/login before
   treating the pilot as a reusable installation flow.
 
 Never treat the presence of primitives or passing HTTP tests as proof of product
