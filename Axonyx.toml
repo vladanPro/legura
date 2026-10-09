@@ -1,0 +1,22 @@
+[app]
+name = "legura"
+runtime = "native"
+
+[ui]
+entry = "app/page.asx"
+layout = "app/layout.asx"
+render_mode = "server"
+
+[server]
+generated_dir = "src/generated"
+routes_dir = "routes"
+jobs_dir = "jobs"
+max_body_bytes = "64kb"
+api_response_validation = "always"
+
+[db]
+migrations = "db/migrations"
+sqlite_busy_timeout_ms = 5000
+
+[modules]
+enabled = ["ui"]

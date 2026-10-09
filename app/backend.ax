@@ -1,0 +1,3 @@
+backend
+  env AX_SECRET_DB_URL: Secret<String>
+  env SETUP_TOKEN: Secret<String>

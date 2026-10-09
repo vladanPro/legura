@@ -1,0 +1,11 @@
+import { Card } from "@axonyx/ui/foundry/Card"
+import { Copy } from "@axonyx/ui/foundry/Copy"
+
+page Home() {
+  return ASX {
+    <Card title="Your Legura installation">
+      <Copy>Early development build. No public registration or publishing yet.</Copy>
+      <nav class="legura-links"><a href="/setup">First-run setup</a><a href="/login">Sign in</a><a href="/admin">Administration</a></nav>
+    </Card>
+  }
+}

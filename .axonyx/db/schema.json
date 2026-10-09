@@ -1,0 +1,103 @@
+{
+  "version": 3,
+  "driver": "sqlite",
+  "transport": "direct",
+  "url": "sqlite://data/legura.db",
+  "schema_hash": "sha256:cc5fc74c928a927d37e33f5ab7a3c93fad16cb6b7f5f6cf71351cc0df91b81ab",
+  "types_path": "app/generated/db.ax",
+  "tables": [
+    {
+      "name": "legura_credentials",
+      "kind": "table",
+      "record": "LeguraCredentialsRow",
+      "columns": [
+        {
+          "name": "user_id",
+          "ty": "TEXT",
+          "ax_type": "String",
+          "nullable": false,
+          "primary_key": true,
+          "default": null
+        },
+        {
+          "name": "email",
+          "ty": "TEXT",
+          "ax_type": "String",
+          "nullable": false,
+          "primary_key": false,
+          "default": null
+        },
+        {
+          "name": "password_hash",
+          "ty": "TEXT",
+          "ax_type": "String",
+          "nullable": false,
+          "primary_key": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "name": "legura_installation",
+      "kind": "table",
+      "record": "LeguraInstallationRow",
+      "columns": [
+        {
+          "name": "id",
+          "ty": "INTEGER",
+          "ax_type": "Int",
+          "nullable": false,
+          "primary_key": true,
+          "default": null
+        },
+        {
+          "name": "site_name",
+          "ty": "TEXT",
+          "ax_type": "String",
+          "nullable": false,
+          "primary_key": false,
+          "default": null
+        },
+        {
+          "name": "admin_id",
+          "ty": "TEXT",
+          "ax_type": "String",
+          "nullable": false,
+          "primary_key": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "name": "legura_users",
+      "kind": "table",
+      "record": "LeguraUsersRow",
+      "columns": [
+        {
+          "name": "id",
+          "ty": "TEXT",
+          "ax_type": "String",
+          "nullable": false,
+          "primary_key": true,
+          "default": null
+        },
+        {
+          "name": "email",
+          "ty": "TEXT",
+          "ax_type": "String",
+          "nullable": false,
+          "primary_key": false,
+          "default": null
+        },
+        {
+          "name": "role",
+          "ty": "TEXT",
+          "ax_type": "String",
+          "nullable": false,
+          "primary_key": false,
+          "default": null
+        }
+      ]
+    }
+  ]
+}

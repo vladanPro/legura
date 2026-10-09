@@ -8,8 +8,13 @@ without forcing the user to learn the framework underneath.
 
 ## Status
 
-Planning and initial implementation. This repository does not yet contain an
-installable CMS. There is no production release, installer, or published package.
+Initial setup/auth pilot on a feature branch. This repository does not yet
+contain an installable CMS. There is no production release, installer, or
+published package. The isolated compiled setup/auth smoke passes with source
+Axonyx tooling, including setup races, CSRF, sessions and authorization. Required
+typed-action-query/expression fixes (#323/#324) are published in core 0.6.4,
+runtime 0.6.3 and CLI 0.6.7. Registry-only compiled HTTP acceptance passed on
+2026-10-09; no source framework checkout is needed for that test.
 
 ## Product
 
@@ -30,6 +35,10 @@ No page builder, marketplace, or plugin execution platform in this milestone.
 
 See [the roadmap](docs/roadmap.md), [product boundary](docs/product.md), and
 [installation model](docs/installation.md).
+
+The [setup/auth pilot](docs/setup-auth-v0.md) documents local initialization and
+the acceptance gate. HTTP acceptance is not a security audit or production
+readiness proof. Do not deploy this development pilot publicly.
 
 ## Development
 

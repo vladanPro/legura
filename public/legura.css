@@ -1,0 +1,7 @@
+.legura-header { display: flex; justify-content: space-between; gap: 1rem; padding-block: 2rem; border-bottom: 1px solid var(--ax-border); }
+.legura-header a { font-size: 1.5rem; font-weight: 700; }
+.legura-main { max-width: 42rem; margin: 3rem auto; }
+.legura-form { display: grid; gap: 0.75rem; }
+.legura-form .ax-field__error:empty { display: none; }
+.legura-links { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-top: 1.5rem; }
+@media (max-width: 40rem) { .legura-header { flex-direction: column; } .legura-main { margin-block: 1.5rem; } }
