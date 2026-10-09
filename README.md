@@ -8,13 +8,17 @@ without forcing the user to learn the framework underneath.
 
 ## Status
 
-Initial setup/auth pilot on a feature branch. This repository does not yet
+Initial setup/auth pilot is integrated into dev. This repository does not yet
 contain an installable CMS. There is no production release, installer, or
 published package. The isolated compiled setup/auth smoke passes with source
 Axonyx tooling, including setup races, CSRF, sessions and authorization. Required
 typed-action-query/expression fixes (#323/#324) are published in core 0.6.4,
 runtime 0.6.3 and CLI 0.6.7. Registry-only compiled HTTP acceptance passed on
 2026-10-09; no source framework checkout is needed for that test.
+
+Browser acceptance subsequently found lost action redirects and missing CSRF
+proof on native validation retries in those published versions. Source fixes
+pass browser acceptance; the browser PR remains blocked on their package release.
 
 ## Product
 
