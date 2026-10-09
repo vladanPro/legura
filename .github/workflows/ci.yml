@@ -25,7 +25,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published Axonyx CLI
-        run: cargo install cargo-axonyx --version 0.6.7 --locked --debug
+        run: cargo install cargo-axonyx --version 0.6.8 --locked --debug
       - name: Verify isolated compiled setup and identity
         shell: pwsh
         run: ./scripts/smoke-auth.ps1 -Port 3941

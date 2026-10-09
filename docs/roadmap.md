@@ -14,9 +14,10 @@ This is a scoped plan, not a completion percentage or promised release date.
 - Completed: core 0.6.4, runtime 0.6.3, CLI 0.6.7 and scaffold 0.6.5 published.
   Registry-only compiled HTTP acceptance passed without a source CLI checkout.
 - Completed: Linux registry HTTP acceptance passed; pilot PR #1 merged into dev.
-- Browser gate: JS/no-JS flows exposed action redirect loss and missing CSRF
-  proof on native validation retries. Source fixes pass; release and repeat
-  registry-only browser CI before merging browser acceptance.
+- Browser fixes published: core 0.6.5, runtime 0.6.4, CLI 0.6.8, scaffold 0.6.6.
+  Registry-only HTTP and Chromium JS/no-JS flows pass on Windows, including
+  native validation retry and explicit redirects. Required Linux browser CI
+  remains the gate before merging browser acceptance into dev.
 - Next verify accessible controls and mobile setup/login before
   treating the pilot as a reusable installation flow.
 

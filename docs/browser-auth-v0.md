@@ -14,9 +14,19 @@ CSRF checks.
 
 Runtime PR #233 fixes both boundaries; framework PR #330 adds native and patch
 HTTP redirect regressions. Browser JS and no-JS acceptance passed locally with
-source CLI/runtime. These fixes are not yet published. Keep the browser PR draft
-until matching packages are released and registry-only CI passes. A red registry
-browser check with old packages is expected evidence of this blocker.
+source CLI/runtime. Core 0.6.5, runtime 0.6.4, CLI 0.6.8 and scaffold 0.6.6 are
+now published after green preparation and dev-to-main release CI. This branch
+pins the fixed runtime and installs CLI 0.6.8 in CI. Isolated HTTP and Chromium
+JS/no-JS acceptance passed on Windows on 2026-10-09 with registry packages only,
+without ToolManifest or RuntimeSource. Linux CI must pass before dev integration.
+
+Tested browser URL: http://127.0.0.1:3941 (separate disposable fixtures).
+Viewports: desktop 1280x900 setup and mobile 390x844 admin/login.
+Browser plugin was not available; the repository Playwright tests exercised
+real headless Chromium. Page identity, rendered content, validation/navigation,
+session persistence and unexpected browser errors are asserted. Mobile admin
+screenshots were inspected. No full browser matrix or accessibility audit is
+claimed.
 
 ## Run
 
@@ -27,7 +37,7 @@ pwsh -File scripts/smoke-auth.ps1 -Mode javascript
 pwsh -File scripts/smoke-auth.ps1 -Mode native
 ```
 
-Until the source fixes are released, add both source overrides to each command:
+For upstream regression work only, optional source overrides are available:
 
 ```powershell
 pwsh -File scripts/smoke-auth.ps1 -Mode javascript -ToolManifest ../axonyx-framework/Cargo.toml -RuntimeSource ../axonyx-framework/vendor/axonyx-runtime/crates/axonyx-runtime

@@ -17,8 +17,10 @@ runtime 0.6.3 and CLI 0.6.7. Registry-only compiled HTTP acceptance passed on
 2026-10-09; no source framework checkout is needed for that test.
 
 Browser acceptance subsequently found lost action redirects and missing CSRF
-proof on native validation retries in those published versions. Source fixes
-pass browser acceptance; the browser PR remains blocked on their package release.
+proof on native validation retries in those published versions. The fixes are
+published in core 0.6.5/runtime 0.6.4/CLI 0.6.8. Isolated HTTP and Chromium
+JS/no-JS acceptance pass with registry packages on Windows (2026-10-09), without
+source overrides. Required Linux CI remains the browser PR integration gate.
 
 ## Product
 

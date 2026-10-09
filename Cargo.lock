@@ -48,9 +48,9 @@ checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
 name = "axonyx-core"
-version = "0.6.4"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b112cca5f3c22f9867995075582dc8a0011f68aad49ba2da16feac64d9318d90"
+checksum = "c1a3125a11df38c1a3ac749b9ca09ee53ec18ce3245607521f9df4dee7ad3db3"
 dependencies = [
  "axonyx-macros",
  "serde",
@@ -71,9 +71,9 @@ dependencies = [
 
 [[package]]
 name = "axonyx-runtime"
-version = "0.6.3"
+version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "937a87fecd2d2a165fd6e204bf8e6516c2cd12643e0cad46adfc16f5df7c7a7b"
+checksum = "649a5acfd307b543dc6f9fd065c3db62ff8ed2c4159dc2e5c1942ff4254e946b"
 dependencies = [
  "argon2",
  "axonyx-core",
