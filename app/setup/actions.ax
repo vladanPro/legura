@@ -1,8 +1,8 @@
 action Install(siteName: String, email: String, password: String, setupToken: String) {
   before Login.throttle("legura:setup", 5, 60)
-  require input.setupToken != "" && input.setupToken == env.AX_SECRET_SETUP_TOKEN else forbidden()
+  require input.setupToken != "" && input.setupToken == env.SETUP_TOKEN else forbidden()
   data installation = db.legura_installation.where({ id: 1 }).first()
-  require !installation else forbidden()
+  require installation == null else forbidden()
   require input.siteName != "" else invalid({ siteName: "Enter a site name." })
   require input.siteName.length <= 120 else invalid({ siteName: "Use at most 120 characters." })
   require Validate.email(input.email) else invalid({ email: "Enter a valid email address." })

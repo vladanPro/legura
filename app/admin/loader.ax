@@ -4,9 +4,9 @@ export type Administrator {
   role: String
 }
 export query loadAdministrator() -> Administrator {
-  require Auth.subject else redirect("/login")
+  require Auth.subject else forbidden()
   data user = db.legura_users.where({ id: Auth.subject }).first()
   require user else forbidden()
-  require user.role == "admin" else forbidden()
+  require user["role"] == "admin" else forbidden()
   return user
 }

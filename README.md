@@ -10,9 +10,9 @@ without forcing the user to learn the framework underneath.
 
 Initial setup/auth pilot on a feature branch. This repository does not yet
 contain an installable CMS. There is no production release, installer, or
-published package. The pilot passes source diagnostics, but compiled auth is
-blocked on backend expression parity (Axonyx framework issue #324). Typed action
-queries pass upstream source tests but are not yet a registry release (#323).
+published package. The isolated compiled setup/auth smoke passes with source
+Axonyx tooling, including setup races, CSRF, sessions and authorization. Required
+typed-action-query/expression fixes (#323/#324) are not a registry release yet.
 Action rate limiting is available in runtime 0.6.2 / CLI 0.6.6.
 
 ## Product

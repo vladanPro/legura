@@ -118,7 +118,7 @@ try {
   $client = [Net.Http.HttpClient]::new($handler)
   $client.Timeout = [TimeSpan]::FromSeconds(20)
   Start-Fixture
-  Invoke-Request -Path "/admin" -Status 303 | Out-Null
+  Invoke-Request -Path "/admin" -Status 403 | Out-Null
   $page = Invoke-Request -Path "/setup"
   if ($page.Body.Contains($setup)) { throw "Setup page exposed the owner token" }
   $proof = Get-Proof
@@ -137,7 +137,11 @@ try {
     }
     $results = @($tasks | ForEach-Object { Read-Response ($_.GetAwaiter().GetResult()) })
   } finally { foreach ($request in $requests) { $request.Dispose() } }
-  if (@($results | Where-Object Status -eq 303).Count -ne 1 -or @($results | Where-Object { $_.Status -in @(403,409) }).Count -ne 1) { throw "Setup race did not elect exactly one owner" }
+  if (@($results | Where-Object Status -eq 303).Count -ne 1 -or @($results | Where-Object { $_.Status -in @(403,409) }).Count -ne 1) {
+    throw "Setup race did not elect exactly one owner (HTTP $($results.Status -join ', '))"
+  }
+  $loser = $results | Where-Object Status -ne 303
+  if ($loser.Headers["Set-Cookie"] -or $loser.Headers["Cache-Control"] -ne "no-store" -or $loser.Body -match 'unique_violation|legura_installation|argon2|INSERT') { throw "Losing setup response exposed internals or issued a session" }
   $winner = $results | Where-Object Status -eq 303
   $cookie = ([string]$winner.Headers["Set-Cookie"]).Split(';')[0]
   if ($winner.Headers["Set-Cookie"] -notmatch "HttpOnly") { throw "Session cookie is not private" }
@@ -146,7 +150,7 @@ try {
   $identity = $inspection | ConvertFrom-Json
   if (($identity.counts -join ',') -ne '1,1,1' -or !$identity.hashed -or $identity.plaintext) { throw "Setup persistence/rollback/password policy failed" }
   Invoke-Request -Path $installPath -Method POST -Body $body -Headers $proof -Status 403 | Out-Null
-  Invoke-Request -Path "/setup" -Status 303 | Out-Null
+  Invoke-Request -Path "/setup" -Status 403 | Out-Null
   $admin = Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie }
   if (!$admin.Body.Contains($identity.email) -or $admin.Body.Contains($password)) { throw "Protected admin render failed" }
   Stop-Fixture
@@ -157,7 +161,7 @@ try {
   Invoke-Request -Path $logoutPath -Method POST -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null
   Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } | Out-Null
   Invoke-Request -Path $logoutPath -Method POST -Headers $sessionProof -Status 303 | Out-Null
-  Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } -Status 303 | Out-Null
+  Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
   $proof = Get-Proof
   $loginPath = "/__axonyx/action?path=%2Flogin&name=SignIn"
   $email = [Uri]::EscapeDataString($identity.email)
@@ -169,6 +173,7 @@ try {
   $login = Invoke-Request -Path $loginPath -Method POST -Body "email=$email&password=$password" -Headers $proof -Status 303
   $cookie = ([string]$login.Headers["Set-Cookie"]).Split(';')[0]
   Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } | Out-Null
+  # The owner's wrong and successful logins consumed two slots; unknown email has its own key.
   foreach ($attempt in 1..3) {
     Invoke-Request -Path $loginPath -Method POST -Body "email=$email&password=wrong-password" -Headers $proof -Status 422 | Out-Null
   }

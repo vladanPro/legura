@@ -7,9 +7,9 @@ Current status: migrations/schema pull and `cargo ax check` pass. Action throttl
 support is published in runtime 0.6.2 and CLI 0.6.6. Typed query calls from actions
 pass upstream source tests and compiled HTTP smoke (framework #323, runtime PR
 #229 and framework PR #325), but that fix is not a registry release yet.
-The pilot's own build still fails on optional-record negation, untyped admin
-field access and String.length expressions. The next upstream gate is
-https://github.com/vladanPro/axonyx-framework/issues/324.
+The pilot passes isolated compiled HTTP acceptance with source tooling after
+backend expression and action-conflict fixes for framework issue #324. Those
+fixes still need CI/merge and a toolchain release; CLI 0.6.6 alone is insufficient.
 Do not weaken optional credential verification or remove guards to pass build.
 
 ## Boundaries
@@ -21,20 +21,23 @@ Do not weaken optional credential verification or remove guards to pass build.
   concurrent setup must roll back all of its writes.
 - Passwords use the framework Password API; only hashes enter the database.
 - Admin reads require a trusted session and a current database admin role.
+- Anonymous admin reads and claimed setup reads return 403. Query guard redirects
+  are not supported in this slice; framework issue #326 tracks that UX boundary.
+- `env.SETUP_TOKEN` is the logical secret key; the process environment stores it
+  as `AX_SECRET_SETUP_TOKEN`. The prefix is not repeated in the DSL lookup.
 - Mutations use framework same-origin/CSRF checks. Logout destroys the session.
 - Native validation retains site name/email only. Passwords and setup tokens
   must be entered again. Unknown-account and wrong-password errors are identical.
 
 ## Local Development
 
-After installing the validated CLI release:
+Until the required CLI fixes are released, use a matching source checkout:
 
 ```powershell
-cargo install cargo-axonyx --version 0.6.6 --locked --force
-pwsh -File scripts/local.ps1 -Task init
-pwsh -File scripts/local.ps1 -Task check
-pwsh -File scripts/local.ps1 -Task build
-pwsh -File scripts/local.ps1 -Task start
+pwsh -File scripts/local.ps1 -Task init -ToolManifest ../axonyx-framework/Cargo.toml
+pwsh -File scripts/local.ps1 -Task check -ToolManifest ../axonyx-framework/Cargo.toml
+pwsh -File scripts/local.ps1 -Task build -ToolManifest ../axonyx-framework/Cargo.toml
+pwsh -File scripts/local.ps1 -Task start -ToolManifest ../axonyx-framework/Cargo.toml
 ```
 
 Open http://127.0.0.1:3940/setup. The local init script generates independent
@@ -56,9 +59,17 @@ The executable acceptance runner is `pwsh -File scripts/smoke-auth.ps1`.
 It copies tracked source into a disposable directory, ignores the developer's
 `.env`/database, uses its own SQLite file and random secrets, and cleans up its
 own process and files. Source tooling can be selected with `-ToolManifest`.
-Source-tooling runs pass migrations/check but stop at expression parity gaps
-before server startup (issue #324). Its HTTP scenarios are not yet verified; no successful auth
-end-to-end proof is claimed.
+Verified on 2026-10-09 with source tooling: migration/check/compiled build, token
+rejection, invalid-input retention without credential replay, exactly one owner
+from parallel setup, transaction rollback, Argon2id persistence, protected admin
+reads, restart/session persistence, CSRF rejection, login/logout, identical
+unknown/wrong-password errors, rate admission and revocation after deleting the
+database identity. Run `pwsh -File scripts/smoke-auth.ps1 -ToolManifest
+../axonyx-framework/Cargo.toml` to repeat the isolated proof.
+
+This is HTTP acceptance, not browser UX/accessibility testing or a security
+audit. Keep the PR draft until upstream CI and release make a registry-only
+installation reproducible. No production-ready CMS or installer is claimed.
 
 Prove token rejection, invalid-input 422 retention, first administrator creation,
 setup locking (including parallel requests), password hashing, private admin

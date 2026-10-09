@@ -5,6 +5,6 @@ export type Installation {
 }
 export query loadSetup() -> String {
   data installation = db.legura_installation.where({ id: 1 }).first()
-  require !installation else redirect("/login")
+  require installation == null else forbidden()
   return "Create your first administrator"
 }
