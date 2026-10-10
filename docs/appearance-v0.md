@@ -13,6 +13,9 @@ Classic. The application layout owns the boundary:
 Package CSS owns surfaces, contrast, controls and overlays. Legura CSS keeps
 application layout, readable content widths and accessible focus/target sizes;
 it does not duplicate palette recipes. The existing SVG logo/favicon are kept.
+The application opts out of scaffold page padding so its own light canvas
+covers the viewport. Form height tokens preserve 44px targets and the scoped
+input typography override preserves 16px mobile text.
 
 This pilot deliberately fixes the appearance. It is not a user theme preference,
 an OS-theme detector, a persistent light/dark picker or a CMS theme installer.
