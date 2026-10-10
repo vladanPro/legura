@@ -87,6 +87,11 @@ readiness proof. Do not deploy this development pilot publicly.
 
 ## Development
 
+For a local SQLite trial, follow the [tested source preparation](docs/installation.md#local-sqlite-pilot).
+`pwsh -File scripts/local.ps1 -Task prepare` initializes/checks/builds;
+`pwsh -File scripts/local.ps1 -Task start` serves the setup screen on localhost.
+This is a development pilot, not a production installer or prebuilt release.
+
 Feature branches target `dev`. Completed releases move from `dev` to `main`
 through a pull request. Only documented, tested behavior should be described as
 available. Package names and commands in planning documents are not implemented.

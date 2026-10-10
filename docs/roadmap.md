@@ -73,6 +73,11 @@ unsaved live preview or a shareable token. See posts-preview-v0.md.
 
 ## 2. Self-Hosted Release Gate
 
+Local source preparation has an executable first-run acceptance gate:
+prepare/init/check/start, secret preservation, local-only database/config
+safeguards and setup-to-administration proof. See installation.md. This does
+not complete production packaging, service supervision or the upgrade gate.
+
 - Document native source build and prebuilt-binary installation.
 - Document service startup/restart, reverse proxy, TLS, and configuration.
 - Separate replaceable program assets from persistent data and secrets.
