@@ -47,6 +47,57 @@ async function fillPost(title, slug, body, status) {
   await page.getByLabel("Status", { exact: true }).selectOption(status);
 }
 
+async function checkEditRecovery(editPath, originalTitle, originalBody) {
+  await navigate(page, '/admin/posts/new');
+  await fillPost('Reserved slug fixture', 'reserved-edit-slug', 'Separate draft.', 'draft');
+  await submit('Create post', '/admin/posts');
+  const reservedPath = await page.getByRole('link', { name: 'Edit post: Reserved slug fixture', exact: true }).getAttribute('href');
+  assert.ok(reservedPath?.endsWith('/edit'));
+  await navigate(page, editPath);
+  const postId = await page.locator('input[name="id"]').inputValue();
+  const replacementBody = 'Recovered editor content.\nČuvanje <script>not executed</script>';
+  await fillPost('Recovered draft', 'reserved-edit-slug', replacementBody, 'published');
+  const rejected = page.waitForResponse(response => response.url().includes('/__axonyx/action?') && response.request().method() === 'POST');
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  assert.equal((await rejected).status(), 422);
+  await page.locator('[data-ax-field-error="slug"]').filter({ hasText: 'already in use' }).waitFor({ state: 'visible' });
+  assert.equal(await page.getByLabel('Title', { exact: true }).inputValue(), 'Recovered draft');
+  assert.equal(await page.getByLabel('Content', { exact: true }).inputValue(), replacementBody);
+  assert.equal(await page.getByLabel('Status', { exact: true }).inputValue(), 'published');
+  assert.equal(await page.locator('input[name="id"]').inputValue(), postId);
+  assert.equal(await page.getByLabel('URL slug', { exact: true }).getAttribute('aria-invalid'), 'true');
+  // Check persisted data through another request without discarding the retry form.
+  const persisted = await context.request.get(`${baseUrl}${editPath}`);
+  assert.equal(persisted.status(), 200);
+  const html = await persisted.text();
+  assert.ok(html.includes(originalTitle) && html.includes(originalBody));
+  assert.ok(!html.includes('Recovered draft') && !html.includes('Recovered editor content.'));
+  await page.getByLabel('URL slug', { exact: true }).fill('browser-draft');
+  await page.getByLabel('Status', { exact: true }).selectOption('draft');
+  await submit('Save changes', '/admin/posts');
+  await navigate(page, editPath);
+  assert.equal(await page.getByLabel('Title', { exact: true }).inputValue(), 'Recovered draft');
+  assert.equal(await page.getByLabel('Content', { exact: true }).inputValue(), replacementBody);
+  assert.equal(await page.locator('input[name="id"]').inputValue(), postId);
+  await fillPost('Unsaved cancellation', 'unsaved-cancellation', 'Discard this edit.', 'published');
+  await page.getByRole('link', { name: 'Cancel', exact: true }).click();
+  await page.waitForURL(`${baseUrl}/admin/posts`);
+  await navigate(page, editPath);
+  assert.equal(await page.getByLabel('Title', { exact: true }).inputValue(), 'Recovered draft');
+  assert.equal(await page.getByLabel('URL slug', { exact: true }).inputValue(), 'browser-draft');
+  assert.equal(await page.getByLabel('Content', { exact: true }).inputValue(), replacementBody);
+  assert.equal(await page.getByLabel('Status', { exact: true }).inputValue(), 'draft');
+  await navigate(publicPage, '/posts/browser-draft', 404);
+  await navigate(publicPage, '/posts/unsaved-cancellation', 404);
+  await navigate(page, reservedPath.replace(/\/edit$/, '/delete'));
+  await page.getByLabel('Type the URL slug to confirm', { exact: true }).fill('reserved-edit-slug');
+  await submit('Delete post permanently', '/admin/posts');
+  await navigate(page, editPath);
+  await fillPost(originalTitle, 'browser-draft', originalBody, 'draft');
+  await submit('Save changes', '/admin/posts');
+  await navigate(page, editPath);
+}
+
 async function checkAdminFrame() {
   const nav = page.getByRole('navigation', { name: 'Administration', exact: true });
   const active = nav.locator('[data-active="true"]');
@@ -355,6 +406,7 @@ try {
   assert.match(editPath, /^\/admin\/posts\/[^/]+\/edit$/);
   await checkAdminFrame();
   await checkSavedPreview(editPath, 'Private browser draft', 'Only the administrator should see this.', 'draft');
+  await checkEditRecovery(editPath, 'Private browser draft', 'Only the administrator should see this.');
   await navigate(page, '/admin/posts/missing-post/preview', 404);
   await navigate(page, editPath);
 
