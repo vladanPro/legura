@@ -25,7 +25,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published Axonyx CLI
-        run: cargo install cargo-axonyx --version 0.6.9 --locked --debug
+        run: cargo install cargo-axonyx --version 0.6.10 --locked --debug
       - name: Verify SQLite maintenance safety
         run: |
           cargo fmt --all -- --check

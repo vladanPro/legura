@@ -75,7 +75,7 @@ See [the roadmap](docs/roadmap.md), [product boundary](docs/product.md), and
 [installation model](docs/installation.md).
 The [Posts V0 contract](docs/posts-v0.md) records implemented scope and remaining gates.
 The [posts listing pilot](docs/posts-listing-v0.md) documents filtering,
-pagination and its pending compiled CLI dependency.
+pagination and its cargo-axonyx 0.6.10 tooling requirement.
 
 The [setup/auth pilot](docs/setup-auth-v0.md) documents local initialization and
 the acceptance gate. HTTP acceptance is not a security audit or production

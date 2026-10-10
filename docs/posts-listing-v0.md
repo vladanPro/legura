@@ -18,10 +18,10 @@ are separate statements, not a guaranteed transactional snapshot.
 
 ## Tooling Dependency
 
-This branch requires the framework compiled-query-loader-arguments fix. Older
-published CLIs cannot compile the `query.status ?? "all"` loader argument into
-the page route. Do not merge this branch or claim registry installation support
-until that fix is released and the registry CI gate passes.
+This pilot requires cargo-axonyx 0.6.10 or later, with the framework
+compiled-query-loader-arguments fix. Older CLIs cannot compile the
+`query.status ?? "all"` loader argument into the page route. The workflow pins
+0.6.10; registry CI must pass before this pilot is merged.
 
 Local source acceptance uses registry runtime/UI and the source CLI:
 
