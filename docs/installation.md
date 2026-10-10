@@ -4,6 +4,10 @@ The local source pilot below is implemented and tested. Prebuilt packages,
 Docker packaging and production installation/upgrade remain planned. This is
 not an installable production CMS release.
 
+[Native Package V0](native-package-v0.md) is an experimental runtime-only
+directory for an already initialized compatible SQLite installation. Fresh
+database initialization without the CLI is not implemented in that package.
+
 ## Prebuilt Native Package
 
 Download a package matching the server OS/architecture and supported system

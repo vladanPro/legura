@@ -35,7 +35,7 @@ jobs:
         run: ./scripts/smoke-auth.ps1 -Port 3941 -Posts -BackupRestore
       - name: Verify first-run local preparation
         shell: pwsh
-        run: ./scripts/smoke-local.ps1 -Port 3943
+        run: ./scripts/smoke-local.ps1 -Port 3943 -Package
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
