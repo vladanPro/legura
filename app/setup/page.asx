@@ -21,7 +21,7 @@ page Setup() {
         <div class="ax-field">
           <label class="ax-field-label" for="password">Password</label>
           <input class="ax-input" id="password" name="password" type="password" required="true" autocomplete="new-password" aria-describedby="password-hint password-error" />
-          <p id="password-hint" class="ax-field__hint">Use at least 15 characters. A long passphrase is welcome.</p>
+          <p id="password-hint" class="ax-field__hint">Use 10 to 256 characters and a password unique to this site. A long passphrase is welcome.</p>
           <p id="password-error" class="ax-field__error" data-ax-field-error="password" aria-live="polite" aria-atomic="true"></p>
         </div>
         <div class="ax-field">

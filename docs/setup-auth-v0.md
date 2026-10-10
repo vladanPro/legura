@@ -18,6 +18,11 @@ Do not weaken optional credential verification or remove guards to pass build.
   and singleton installation row are committed in one transaction. A losing
   concurrent setup must roll back all of its writes.
 - Passwords use the framework Password API; only hashes enter the database.
+- Legura setup uses an explicit product policy of 10 to 256 UTF-16 code units,
+  matching the current Axonyx String.length semantics. It does not trim passwords
+  or require specific character classes. This deliberately differs from the
+  framework's 15-code-point password-only registration baseline. Use a unique
+  password; this policy is not a claim of NIST password-policy compliance.
 - Admin reads require a trusted session and a current database admin role.
 - Anonymous admin reads and claimed setup reads return 403. Query guard redirects
   are not supported in this slice; framework issue #326 tracks that UX boundary.

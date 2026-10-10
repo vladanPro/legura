@@ -6,7 +6,8 @@ action Install(siteName: String, email: String, password: String, setupToken: St
   require input.siteName != "" else invalid({ siteName: "Enter a site name." })
   require input.siteName.length <= 120 else invalid({ siteName: "Use at most 120 characters." })
   require Validate.email(input.email) else invalid({ email: "Enter a valid email address." })
-  require Validate.password(input.password) else invalid({ password: "Use at least 15 characters." })
+  require input.password.length >= 10 else invalid({ password: "Use at least 10 characters." })
+  require input.password.length <= 256 else invalid({ password: "Use at most 256 characters." })
   data userId = Uuid.new()
   data passwordHash = Password.hash(input.password)
   transaction {
