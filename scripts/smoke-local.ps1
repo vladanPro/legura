@@ -155,6 +155,8 @@ try {
     if (!$refused -or (Get-FileHash -LiteralPath (Join-Path $fixture "data/recovered.db")).Hash -ne $recoveredHash) { throw "Restore overwrote an existing recovery database" }
     if ([IO.File]::ReadAllText($envPath) -cne $original) { throw "Maintenance changed application configuration" }
     Request -Path "/admin" -Status 200 | Out-Null
+    # The expected no-clobber failure must not become pwsh's final exit status.
+    $global:LASTEXITCODE = 0
     Write-Host "Legura local bootstrap passed: prepare/start, safe config, password boundaries, native setup, live backup/verify, no-clobber recovery and unchanged running application."
   } finally { Pop-Location }
 } catch {
