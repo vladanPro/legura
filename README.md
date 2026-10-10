@@ -74,6 +74,8 @@ No page builder, marketplace, or plugin execution platform in this milestone.
 See [the roadmap](docs/roadmap.md), [product boundary](docs/product.md), and
 [installation model](docs/installation.md).
 The [Posts V0 contract](docs/posts-v0.md) records implemented scope and remaining gates.
+The [posts listing pilot](docs/posts-listing-v0.md) documents filtering,
+pagination and its pending compiled CLI dependency.
 
 The [setup/auth pilot](docs/setup-auth-v0.md) documents local initialization and
 the acceptance gate. HTTP acceptance is not a security audit or production
