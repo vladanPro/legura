@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
@@ -24,6 +25,8 @@ for (const target of [page, publicPage]) {
 }
 const results = fileURLToPath(new URL("../test-results/", import.meta.url));
 await mkdir(results, { recursive: true });
+const searchResults = resolve(tmpdir(), 'legura-post-search');
+await mkdir(searchResults, { recursive: true });
 
 async function navigate(target, path, expected = 200) {
   assert.equal((await target.goto(`${baseUrl}${path}`)).status(), expected, path);
@@ -94,7 +97,8 @@ async function checkPostListing() {
   for (let index = 1; index <= 11; index += 1) {
     await navigate(page, '/admin/posts/new');
     const suffix = String(index).padStart(2, '0');
-    await fillPost(`Listing ${suffix}`, `listing-${suffix}`, 'Pagination fixture.', index <= 6 ? 'draft' : 'published');
+    const title = index === 11 ? `Listing ${suffix} & + % _ " Č` : `Listing ${suffix}`;
+    await fillPost(title, `listing-${suffix}`, 'Pagination fixture.', index <= 6 ? 'draft' : 'published');
     await submit('Create post', '/admin/posts');
   }
   const table = page.getByRole('table', { name: 'Your posts', exact: true });
@@ -102,27 +106,27 @@ async function checkPostListing() {
   const navigation = page.getByRole('navigation', { name: 'Posts pages', exact: true });
   assert.equal(await rows.count(), 10);
   assert.equal(await rows.first().textContent(), 'Listing 01listing-01');
-  assert.equal(await navigation.getByRole('link', { name: 'Previous page' }).count(), 0);
-  await navigation.getByRole('link', { name: 'Next page' }).click();
-  await page.waitForURL(`${baseUrl}/admin/posts?status=all&page=2`);
+  assert.equal(await navigation.getByRole('button', { name: 'Previous page' }).count(), 0);
+  await navigation.getByRole('button', { name: 'Next page' }).click();
+  await page.waitForURL(`${baseUrl}/admin/posts?q=&status=all&page=2`);
   assert.equal(await rows.count(), 1);
   assert.match(await rows.first().textContent(), /Listing 11/);
-  assert.equal(await navigation.getByRole('link', { name: 'Next page' }).count(), 0);
+  assert.equal(await navigation.getByRole('button', { name: 'Next page' }).count(), 0);
   await page.reload();
   assert.equal(await rows.count(), 1);
-  await navigation.getByRole('link', { name: 'Previous page' }).click();
-  await page.waitForURL(`${baseUrl}/admin/posts?status=all&page=1`);
+  await navigation.getByRole('button', { name: 'Previous page' }).click();
+  await page.waitForURL(`${baseUrl}/admin/posts?q=&status=all&page=1`);
   assert.equal(await rows.count(), 10);
 
   await navigate(page, '/admin/posts?status=all&page=2');
   await page.getByLabel('Filter status', { exact: true }).selectOption('draft');
-  await page.getByRole('button', { name: 'Apply filter', exact: true }).click();
-  await page.waitForURL(`${baseUrl}/admin/posts?status=draft`);
+  await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
+  await page.waitForURL(`${baseUrl}/admin/posts?q=&status=draft`);
   assert.equal(await rows.count(), 6);
   assert.deepEqual(await table.locator('tbody .ax-badge').allTextContents(), Array(6).fill('draft'));
   await page.getByLabel('Filter status', { exact: true }).selectOption('published');
-  await page.getByRole('button', { name: 'Apply filter', exact: true }).click();
-  await page.waitForURL(`${baseUrl}/admin/posts?status=published`);
+  await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
+  await page.waitForURL(`${baseUrl}/admin/posts?q=&status=published`);
   assert.equal(await rows.count(), 5);
   assert.deepEqual(await table.locator('tbody .ax-badge').allTextContents(), Array(5).fill('published'));
 
@@ -141,19 +145,81 @@ async function checkPostListing() {
   assert.equal(await rows.count(), 10);
   await navigate(page, '/admin/posts?status=draft&status=published&pa%67e=1');
   assert.equal(await rows.count(), 5, 'Decoded keys and last duplicate value must match rendering');
+  await navigate(page, '/admin/posts?status=all&page=2');
+  await page.getByLabel('Search titles', { exact: true }).fill('  lIsTiNg  ');
+  await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
+  await page.waitForURL(url => url.searchParams.get('q') === '  lIsTiNg  ' && !url.searchParams.has('page'));
+  assert.equal(await page.getByLabel('Search titles').inputValue(), 'lIsTiNg');
+  assert.equal(await rows.count(), 10);
+  await navigation.getByRole('button', { name: 'Next page' }).click();
+  await page.waitForURL(url => url.searchParams.get('q') === 'lIsTiNg' && url.searchParams.get('page') === '2');
+  assert.equal(await rows.count(), 1);
+  await page.reload();
+  assert.equal(await page.getByLabel('Search titles').inputValue(), 'lIsTiNg');
+  await navigation.getByRole('button', { name: 'Previous page' }).click();
+  await page.waitForURL(url => url.searchParams.get('q') === 'lIsTiNg' && url.searchParams.get('page') === '1');
+  await page.getByLabel('Filter status').selectOption('published');
+  await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
+  await page.waitForURL(url => url.searchParams.get('status') === 'published' && !url.searchParams.has('page'));
+  assert.equal(await rows.count(), 5);
+  await page.getByLabel('Search titles').fill('11');
+  await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
+  await page.waitForURL(url => url.searchParams.get('q') === '11');
+  assert.equal(await rows.count(), 1);
+  assert.match(await rows.first().textContent(), /Listing 11/);
+  for (const search of ['%', '_', '& +', '" Č']) {
+    await page.getByLabel('Search titles').fill(search);
+    await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
+    await page.waitForURL(url => url.searchParams.get('q') === search);
+    assert.equal(await rows.count(), 1, 'Search metacharacters must match literal text');
+    assert.match(await rows.first().textContent(), /Listing 11/);
+    assert.equal(await page.getByLabel('Search titles').inputValue(), search);
+    await page.reload();
+    assert.equal(await rows.count(), 1);
+  }
+  for (const search of ["' OR 1=1 --", '<script>window.__searchInjected=true</script>', 'Listing & + ? # / "']) {
+    await navigate(page, `/admin/posts?q=${encodeURIComponent(search)}`);
+    await page.getByRole('heading', { name: 'No matching posts', exact: true }).waitFor();
+    assert.equal(await rows.count(), 0);
+    assert.equal(await page.getByLabel('Search titles').inputValue(), search);
+    assert.equal(await page.evaluate(() => window.__searchInjected), undefined);
+  }
+  await navigate(page, '/admin/posts?q=' + 'x'.repeat(250));
+  assert.equal(await page.getByLabel('Search titles').inputValue(), 'x'.repeat(200));
+  await page.getByRole('link', { name: 'Reset filters', exact: true }).click();
+  await page.waitForURL(`${baseUrl}/admin/posts`);
+  assert.equal(await rows.count(), 10);
+  assert.equal(await page.getByLabel('Search titles').inputValue(), '');
+  assert.equal(await page.getByRole('link', { name: 'Reset filters', exact: true }).count(), 0);
+  await navigate(page, '/admin/posts?q=Listing+11&q=Listing+07&status=published&page=999');
+  assert.equal(await rows.count(), 1);
+  assert.match(await rows.first().textContent(), /Listing 07/);
   if (mode === 'javascript') {
     const refreshed = await page.evaluate(async () => {
-      const response = await fetch('/__axonyx/data?path=' + encodeURIComponent('/admin/posts?status=published&page=1') + '&name=listing');
+      const response = await fetch('/__axonyx/data?path=' + encodeURIComponent('/admin/posts?status=published&page=1&q=Listing%2011') + '&name=listing');
       return { status: response.status, payload: await response.json() };
     });
     assert.equal(refreshed.status, 200);
-    assert.equal(refreshed.payload.value.posts.length, 5);
+    assert.equal(refreshed.payload.value.posts.length, 1);
     assert.equal(refreshed.payload.value.status, 'published');
+    assert.equal(refreshed.payload.value.search, 'Listing 11');
     assert.ok(refreshed.payload.html.includes('Listing 11'));
   }
+  await navigate(page, '/admin/posts?q=Listing&status=all');
   await checkAdminFrame();
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Search controls overflow');
+    await page.screenshot({ path: resolve(searchResults, `posts-search-${mode}-${width}.png`), fullPage: true });
+    for (const [name, control] of [['Search titles', page.getByLabel('Search titles')], ['Filter status', page.getByLabel('Filter status')], ['Apply filters', page.getByRole('button', { name: 'Apply filters', exact: true })], ['Next page', navigation.getByRole('button', { name: 'Next page' })]]) {
+      const height = await control.evaluate(node => node.getBoundingClientRect().height);
+      assert.ok(height >= 44, `${name} target is shorter than 44px: ${height}`);
+    }
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.screenshot({ path: resolve(searchResults, `posts-search-${mode}-desktop.png`), fullPage: true });
   await page.screenshot({ path: resolve(results, `posts-filter-${mode}-desktop.png`), fullPage: true, animations: 'disabled' });
-  await navigate(publicPage, '/admin/posts?status=published&page=2', 403);
+  await navigate(publicPage, '/admin/posts?status=published&page=2&q=Listing', 403);
   await navigate(publicPage, '/posts/listing-01', 404);
 }
 
@@ -270,7 +336,7 @@ try {
   await navigate(page, deletePath, 404);
   await checkPostListing();
   assert.deepEqual(errors, [], "Unexpected browser errors");
-  console.log(`Legura posts browser passed (${mode}): CRUD, authorization, filters, bounded server pagination and URL normalization.`);
+  console.log(`Legura posts browser passed (${mode}): CRUD, authorization, literal title search, filters, bounded server pagination and URL normalization.`);
 } finally {
   await reader.close();
   await context.close();

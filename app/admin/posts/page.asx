@@ -2,6 +2,7 @@ import { Card } from "@axonyx/ui/foundry/Card"
 import { Badge } from "@axonyx/ui/foundry/Badge"
 import { Button } from "@axonyx/ui/foundry/Button"
 import { Select } from "@axonyx/ui/foundry/Select"
+import { Input } from "@axonyx/ui/foundry/Input"
 import { AdminFrame } from "@/components/AdminFrame"
 import { Table } from "@axonyx/ui/foundry/Table"
 import { TableCaption } from "@axonyx/ui/foundry/TableCaption"
@@ -12,7 +13,7 @@ import { TableHeaderCell } from "@axonyx/ui/foundry/TableHeaderCell"
 import { TableCell } from "@axonyx/ui/foundry/TableCell"
 
 page ManagePosts() {
-  data listing: AdminPostPage = loadAdminPosts(query.status ?? "all", query.page ?? "1")
+  data listing: AdminPostPage = loadAdminPosts(query.status ?? "all", query.page ?? "1", query.q ?? "")
   const posts = listing.posts
   return ASX {
     <AdminFrame section="posts">
@@ -22,17 +23,24 @@ page ManagePosts() {
         <a class="ax-button" data-variant="primary" href="/admin/posts/new">New post</a>
       </header>
       <form method="get" action="/admin/posts" class="legura-post-filters legura-form">
-        <label for="post-status">Filter status</label>
-        <Select id="post-status" name="status">
-          <option value="all" selected={listing.status == "all"}>All posts</option>
-          <option value="draft" selected={listing.status == "draft"}>Draft</option>
-          <option value="published" selected={listing.status == "published"}>Published</option>
-        </Select>
-        <Button type="submit" variant="secondary">Apply filter</Button>
+        <div class="legura-post-filter-field">
+          <label for="post-search">Search titles</label>
+          <Input type="search" id="post-search" name="q" value={listing.search} maxlength="200" />
+        </div>
+        <div class="legura-post-filter-field">
+          <label for="post-status">Filter status</label>
+          <Select id="post-status" name="status">
+            <option value="all" selected={listing.status == "all"}>All posts</option>
+            <option value="draft" selected={listing.status == "draft"}>Draft</option>
+            <option value="published" selected={listing.status == "published"}>Published</option>
+          </Select>
+        </div>
+        <Button type="submit" variant="secondary">Apply filters</Button>
+        <If when={listing.status != "all" || listing.search != ""}><a class="legura-filter-reset" href="/admin/posts">Reset filters</a></If>
       </form>
       <p class="legura-hint">{listing.total + " matching posts"}</p>
-      <If when={!posts && listing.status == "all"}><Card title="No posts yet"><p>Create your first draft. It stays private until published.</p></Card></If>
-      <If when={!posts && listing.status != "all"}><Card title="No matching posts"><p>There are no posts with this status.</p><a href="/admin/posts">Show all posts</a></Card></If>
+      <If when={!posts && listing.status == "all" && listing.search == ""}><Card title="No posts yet"><p>Create your first draft. It stays private until published.</p></Card></If>
+      <If when={!posts && (listing.status != "all" || listing.search != "")}><Card title="No matching posts"><p>No titles match these filters. Change the search or reset the filters.</p><a href="/admin/posts">Show all posts</a></Card></If>
       <If when={posts}>
         <Table class="legura-posts-table" role="region" aria-label="Scrollable posts table" tabindex="0" zebra="true">
           <TableCaption>Your posts</TableCaption>
@@ -49,9 +57,23 @@ page ManagePosts() {
         </Table>
       </If>
       <nav class="legura-post-pagination" aria-label="Posts pages">
-        <If when={listing.page > 1}><a href={"/admin/posts?status=" + listing.status + "&page=" + (listing.page - 1)}>Previous page</a></If>
+        <If when={listing.page > 1}>
+          <form method="get" action="/admin/posts">
+            <input type="hidden" name="q" value={listing.search} />
+            <input type="hidden" name="status" value={listing.status} />
+            <input type="hidden" name="page" value={listing.page - 1} />
+            <Button type="submit" variant="secondary">Previous page</Button>
+          </form>
+        </If>
         <span>{"Page " + listing.page}</span>
-        <If when={listing.page * 10 < listing.total}><a href={"/admin/posts?status=" + listing.status + "&page=" + (listing.page + 1)}>Next page</a></If>
+        <If when={listing.page * 10 < listing.total}>
+          <form method="get" action="/admin/posts">
+            <input type="hidden" name="q" value={listing.search} />
+            <input type="hidden" name="status" value={listing.status} />
+            <input type="hidden" name="page" value={listing.page + 1} />
+            <Button type="submit" variant="secondary">Next page</Button>
+          </form>
+        </If>
       </nav>
     </section>
     </AdminFrame>
