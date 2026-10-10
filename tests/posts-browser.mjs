@@ -93,6 +93,36 @@ async function checkPostsTable(title) {
   await page.setViewportSize({ width: 1280, height: 900 });
 }
 
+async function checkOverview(total, drafts, published, screenshot = false) {
+  await navigate(page, '/admin');
+  const overview = page.getByRole('region', { name: 'Content overview', exact: true });
+  for (const [title, count] of [['All posts', total], ['Drafts', drafts], ['Published', published]]) {
+    const card = overview.getByRole('article').filter({ has: page.getByRole('heading', { name: title, exact: true }) });
+    assert.equal(await card.count(), 1);
+    assert.equal(await card.locator('.legura-stat-value').textContent(), String(count));
+  }
+  assert.equal(await page.getByRole('heading', { name: 'Start with your first draft', exact: true }).count(), total === 0 ? 1 : 0);
+  const nav = page.getByRole('navigation', { name: 'Administration', exact: true });
+  assert.equal(await nav.locator('[data-active="true"]').getAttribute('href'), '/admin');
+  assert.equal(await page.getByRole('main').count(), 1);
+  assert.equal(await overview.getByRole('link', { name: 'View all posts', exact: true }).getAttribute('href'), '/admin/posts');
+  assert.equal(await overview.getByRole('link', { name: 'Review drafts', exact: true }).getAttribute('href'), '/admin/posts?status=draft');
+  assert.equal(await overview.getByRole('link', { name: 'View published posts', exact: true }).getAttribute('href'), '/admin/posts?status=published');
+  if (screenshot) {
+    const directory = resolve(tmpdir(), 'legura-overview-qa');
+    await mkdir(directory, { recursive: true });
+    for (const width of [1280, 390, 320]) {
+      await page.setViewportSize({ width, height: 900 });
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Overview overflow at ${width}px`);
+      for (const link of await overview.getByRole('link').all()) {
+        assert.ok(await link.evaluate(node => node.getBoundingClientRect().height >= 44), 'Overview link target is shorter than 44px');
+      }
+      await page.screenshot({ path: resolve(directory, `overview-${mode}-${width}.png`), fullPage: true });
+    }
+    await page.setViewportSize({ width: 1280, height: 900 });
+  }
+}
+
 async function checkPostListing() {
   for (let index = 1; index <= 11; index += 1) {
     await navigate(page, '/admin/posts/new');
@@ -101,6 +131,17 @@ async function checkPostListing() {
     await fillPost(title, `listing-${suffix}`, 'Pagination fixture.', index <= 6 ? 'draft' : 'published');
     await submit('Create post', '/admin/posts');
   }
+  await checkOverview(11, 6, 5, true);
+  await page.getByRole('link', { name: 'Review drafts', exact: true }).click();
+  await page.waitForURL(`${baseUrl}/admin/posts?status=draft`);
+  assert.equal(await page.getByRole('rowheader').count(), 6);
+  await navigate(page, '/admin');
+  await page.getByRole('link', { name: 'View published posts', exact: true }).click();
+  await page.waitForURL(`${baseUrl}/admin/posts?status=published`);
+  assert.equal(await page.getByRole('rowheader').count(), 5);
+  await navigate(page, '/admin');
+  await page.getByRole('link', { name: 'View all posts', exact: true }).click();
+  await page.waitForURL(`${baseUrl}/admin/posts`);
   const table = page.getByRole('table', { name: 'Your posts', exact: true });
   const rows = table.getByRole('rowheader');
   const navigation = page.getByRole('navigation', { name: 'Posts pages', exact: true });
@@ -224,6 +265,8 @@ async function checkPostListing() {
 }
 
 try {
+  await navigate(publicPage, "/admin", 403);
+  await navigate(publicPage, "/__axonyx/data?path=%2Fadmin&name=overview", 403);
   await navigate(publicPage, "/admin/posts", 403);
   await navigate(publicPage, "/posts");
   await publicPage.getByText("Nothing published yet", { exact: true }).waitFor();
@@ -233,6 +276,7 @@ try {
   await page.getByLabel("Password", { exact: true }).fill(`fixture-password-${randomUUID()}`);
   await page.getByLabel("Setup token", { exact: true }).fill(setupToken);
   await submit("Create installation", "/admin");
+  await checkOverview(0, 0, 0);
   await page.getByRole("link", { name: "Manage posts", exact: true }).click();
   await page.getByText("No posts yet", { exact: true }).waitFor();
   assert.equal(await page.getByRole('table', { name: 'Your posts', exact: true }).count(), 0);
@@ -246,6 +290,8 @@ try {
   await checkAdminFrame();
   await fillPost("Private browser draft", "browser-draft", "Only the administrator should see this.", "draft");
   await submit("Create post", "/admin/posts");
+  await checkOverview(1, 1, 0);
+  await navigate(page, '/admin/posts');
   await page.getByRole("link", { name: "Private browser draft", exact: true }).waitFor();
   await checkPostsTable('Private browser draft');
   await navigate(publicPage, "/posts");
@@ -289,6 +335,8 @@ try {
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "Mobile editor overflow");
   await page.screenshot({ path: resolve(results, `editor-${mode}-mobile.png`), fullPage: true });
   await submit("Save changes", "/admin/posts");
+  await checkOverview(1, 0, 1);
+  await navigate(page, '/admin/posts');
   await navigate(publicPage, "/posts");
   await publicPage.getByRole("link", { name: "Read post", exact: true }).click();
   await publicPage.getByRole("heading", { name: "Published browser story", exact: true }).waitFor();
@@ -300,6 +348,8 @@ try {
   assert.equal(await page.getByLabel("Status", { exact: true }).inputValue(), "published");
   await page.getByLabel("Status", { exact: true }).selectOption("draft");
   await submit("Save changes", "/admin/posts");
+  await checkOverview(1, 1, 0);
+  await navigate(page, '/admin/posts');
   await navigate(publicPage, "/posts/browser-story", 404);
   await navigate(publicPage, "/posts");
   await publicPage.getByText("Nothing published yet", { exact: true }).waitFor();
@@ -328,6 +378,8 @@ try {
   await navigate(publicPage, "/posts/browser-story");
   await page.getByLabel("Type the URL slug to confirm", { exact: true }).fill("browser-story");
   await submit("Delete post permanently", "/admin/posts");
+  await checkOverview(0, 0, 0);
+  await navigate(page, '/admin/posts');
   await page.getByText("No posts yet", { exact: true }).waitFor();
   await navigate(publicPage, "/posts/browser-story", 404);
   await navigate(publicPage, "/posts");
@@ -336,7 +388,7 @@ try {
   await navigate(page, deletePath, 404);
   await checkPostListing();
   assert.deepEqual(errors, [], "Unexpected browser errors");
-  console.log(`Legura posts browser passed (${mode}): CRUD, authorization, literal title search, filters, bounded server pagination and URL normalization.`);
+  console.log(`Legura posts browser passed (${mode}): CRUD, guarded overview counts, authorization, literal title search, filters, bounded server pagination and URL normalization.`);
 } finally {
   await reader.close();
   await context.close();

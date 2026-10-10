@@ -1,12 +1,39 @@
 import { Card } from "@axonyx/ui/foundry/Card"
 import { Button } from "@axonyx/ui/foundry/Button"
+import { Grid } from "@axonyx/ui/foundry/Grid"
 import { AdminFrame } from "@/components/AdminFrame"
 
 page Administration() {
-  data administrator: Administrator = loadAdministrator()
+  data overview: AdminOverview = loadAdminOverview()
+  const administrator = overview.administrator
   return ASX {
     <AdminFrame>
     <header class="legura-page-heading"><div><h1>Administration</h1><p>Content, drafts and publishing in one workspace.</p></div><a class="ax-button" data-variant="primary" href="/admin/posts/new">New post</a></header>
+    <section aria-label="Content overview" class="legura-content-overview">
+      <Grid cols="3" colsTablet="3" colsMobile="1" gap="md">
+        <Card title="All posts">
+          <p class="legura-stat-value">{overview.total}</p>
+          <p>All drafts and published posts.</p>
+          <a class="legura-overview-link" href="/admin/posts">View all posts</a>
+        </Card>
+        <Card title="Drafts">
+          <p class="legura-stat-value">{overview.drafts}</p>
+          <p>Private posts, not visible on your website.</p>
+          <a class="legura-overview-link" href="/admin/posts?status=draft">Review drafts</a>
+        </Card>
+        <Card title="Published">
+          <p class="legura-stat-value">{overview.published}</p>
+          <p>Posts visible on your website.</p>
+          <a class="legura-overview-link" href="/admin/posts?status=published">View published posts</a>
+        </Card>
+      </Grid>
+    </section>
+    <If when={overview.total == 0}>
+      <Card title="Start with your first draft">
+        <p>Create a post and save it as a draft. It stays private until you choose Published.</p>
+        <a class="ax-button legura-overview-link" data-variant="secondary" href="/admin/posts/new">Create first draft</a>
+      </Card>
+    </If>
     <Card title="Your account">
       <p class="legura-identity"><span>Signed in as</span><strong>{administrator.email}</strong></p>
       <p>Manage your drafts and published posts.</p>

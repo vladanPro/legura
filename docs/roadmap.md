@@ -63,6 +63,10 @@ Administration listing adds status filters, bounded ten-row SQLite pagination
 and literal title search through native GET forms. See posts-listing-v0.md for
 the registry tooling requirement, acceptance coverage and Unicode/adapter limits.
 
+The administration overview shows guarded database-backed total/draft/published
+counts and links to those lists, plus a first-draft prompt for empty installations.
+See admin-overview-v0.md for the behavior and acceptance gate.
+
 ## 2. Self-Hosted Release Gate
 
 - Document native source build and prebuilt-binary installation.

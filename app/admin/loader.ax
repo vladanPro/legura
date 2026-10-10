@@ -3,10 +3,25 @@ export type Administrator {
   email: String
   role: String
 }
+export type AdminOverview {
+  administrator: Administrator
+  total: Number
+  drafts: Number
+  published: Number
+}
 export query loadAdministrator() -> Administrator {
   require Auth.subject else forbidden()
   data user = db.legura_users.where({ id: Auth.subject }).first()
   require user else forbidden()
   require user["role"] == "admin" else forbidden()
   return user
+}
+export query loadAdminOverview() -> AdminOverview {
+  require Auth.subject else forbidden()
+  data administrator = db.legura_users.where({ id: Auth.subject }).first()
+  require administrator else forbidden()
+  require administrator["role"] == "admin" else forbidden()
+  data rows = db.query("SELECT COUNT(*) AS total, COALESCE(SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END), 0) AS drafts, COALESCE(SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END), 0) AS published FROM legura_posts")
+  data counts = rows[0]
+  return { administrator: administrator, total: counts["total"], drafts: counts["drafts"], published: counts["published"] }
 }
