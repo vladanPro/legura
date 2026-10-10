@@ -69,6 +69,20 @@ async function submitSuccess(button) {
 }
 
 async function checkForm(heading, fields) {
+  const appearance = await page.locator('.legura-app').evaluate(node => {
+    const css = getComputedStyle(node);
+    return { palette: node.dataset.foundry, style: node.dataset.foundryStyle,
+      mode: node.dataset.foundryMode, scheme: css.colorScheme, background: css.backgroundColor };
+  });
+  assert.deepEqual(appearance, { palette: 'silver', style: 'classic', mode: 'light',
+    scheme: 'light', background: 'rgb(243, 245, 247)' });
+  assert.equal(await page.locator('.legura-app').evaluate(node => {
+    const rect = node.getBoundingClientRect();
+    return rect.top === 0 && rect.left === 0 && rect.right === innerWidth;
+  }), true, 'Application canvas must cover the viewport without dark scaffold gutters');
+  const logo = page.locator('.legura-brand img');
+  assert.equal(await logo.getAttribute('src'), '/legura-mark.svg');
+  assert.equal(await logo.evaluate(node => node.complete && node.naturalWidth > 0), true);
   assert.equal(await page.getByRole("main").count(), 1, "Duplicate main landmarks");
   assert.equal(await page.locator("html").getAttribute("lang"), "en");
   assert.equal(await page.getByRole("heading", { level: 1, name: heading, exact: true }).count(), 1);
