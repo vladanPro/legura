@@ -28,9 +28,15 @@
 .legura-links { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-top: 1.5rem; }
 .legura-page-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
 .legura-post-list { display: grid; gap: 1rem; margin-top: 1.5rem; }
-.legura-post-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding: 1.25rem; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); }
-.legura-post-row h2 { font-size: 1.1rem; margin: 0; overflow-wrap: anywhere; }
-.legura-post-row p { margin: 0.4rem 0 0; }
+.legura-posts-table { margin-top: 1.5rem; max-width: 100%; }
+.legura-posts-table .ax-table { min-width: 32rem; }
+.legura-posts-table tbody th { font-size: 1rem; font-weight: 400; letter-spacing: normal; text-transform: none; background: transparent; }
+.legura-posts-table tbody tr:last-child th { border-bottom: 0; }
+.legura-posts-table th:first-child { width: 60%; }
+.legura-posts-table p { margin: 0.4rem 0 0; }
+.legura-post-title { overflow-wrap: anywhere; }
+.legura-post-edit { display: inline-flex; align-items: center; min-height: 2.75rem; white-space: nowrap; }
+.legura-posts-table:focus-visible { outline: 3px solid var(--ax-primary); outline-offset: 3px; }
 .legura-hint { color: var(--ax-text-muted); font-size: 0.875rem; overflow-wrap: anywhere; }
 .legura-form-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 0.75rem; }
 .legura-form :is(input, textarea, select) { min-width: 0; max-width: 100%; }

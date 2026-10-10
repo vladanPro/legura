@@ -58,6 +58,38 @@ async function checkAdminFrame() {
   }
 }
 
+async function checkPostsTable(title) {
+  const table = page.getByRole('table', { name: 'Your posts', exact: true });
+  assert.equal(await table.count(), 1);
+  assert.deepEqual(await table.getByRole('columnheader').allTextContents(), ['Title and URL slug', 'Status', 'Actions']);
+  assert.equal(await table.getByRole('rowheader').filter({ hasText: title }).count(), 1);
+  const edit = table.getByRole('link', { name: `Edit post: ${title}`, exact: true });
+  assert.ok(await edit.evaluate(node => node.getBoundingClientRect().height >= 44));
+  const region = page.getByRole('region', { name: 'Scrollable posts table', exact: true });
+  await page.screenshot({ path: resolve(results, `posts-table-${mode}-desktop.png`), fullPage: true });
+  if (mode === 'javascript') {
+    await page.getByLabel('Appearance', { exact: true }).selectOption('dark');
+    assert.equal(await table.evaluate(node => getComputedStyle(node).colorScheme), 'dark');
+    await page.screenshot({ path: resolve(results, 'posts-table-dark-desktop.png'), fullPage: true, animations: 'disabled' });
+    await page.getByLabel('Appearance', { exact: true }).selectOption('light');
+  }
+  await page.setViewportSize({ width: 320, height: 844 });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Table expands the page on mobile');
+  assert.ok(await region.evaluate(node => node.scrollWidth > node.clientWidth), 'Wide table must scroll inside its own region');
+  await region.focus();
+  await page.keyboard.press('ArrowRight');
+  // Poll in the runner so no-JS coverage does not depend on browser timers.
+  let scrolled = false;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    scrolled = await region.evaluate(node => node.scrollLeft > 0);
+    if (scrolled) break;
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+  assert.ok(scrolled, 'Focused table region must scroll with the keyboard');
+  await page.screenshot({ path: resolve(results, `posts-table-${mode}-mobile.png`), fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 900 });
+}
+
 try {
   await navigate(publicPage, "/admin/posts", 403);
   await navigate(publicPage, "/posts");
@@ -70,16 +102,18 @@ try {
   await submit("Create installation", "/admin");
   await page.getByRole("link", { name: "Manage posts", exact: true }).click();
   await page.getByText("No posts yet", { exact: true }).waitFor();
+  assert.equal(await page.getByRole('table', { name: 'Your posts', exact: true }).count(), 0);
   await checkAdminFrame();
   await page.getByRole("link", { name: "New post", exact: true }).click();
   await checkAdminFrame();
   await fillPost("Private browser draft", "browser-draft", "Only the administrator should see this.", "draft");
   await submit("Create post", "/admin/posts");
   await page.getByRole("link", { name: "Private browser draft", exact: true }).waitFor();
+  await checkPostsTable('Private browser draft');
   await navigate(publicPage, "/posts");
   assert.ok(!(await publicPage.content()).includes("Private browser draft"));
   await navigate(publicPage, "/posts/browser-draft", 404);
-  await page.getByRole("link", { name: "Edit post", exact: true }).click();
+  await page.getByRole("link", { name: "Edit post: Private browser draft", exact: true }).click();
   const editPath = new URL(page.url()).pathname;
   assert.match(editPath, /^\/admin\/posts\/[^/]+\/edit$/);
   await checkAdminFrame();
