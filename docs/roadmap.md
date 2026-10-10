@@ -59,6 +59,10 @@ Acceptance: a fresh installation can create an administrator, publish a post,
 restart without data loss, and serve the post publicly while keeping drafts and
 write operations private.
 
+Administration listing adds status filters, bounded ten-row SQLite pagination
+and literal title search through native GET forms. See posts-listing-v0.md for
+the registry tooling requirement, acceptance coverage and Unicode/adapter limits.
+
 ## 2. Self-Hosted Release Gate
 
 - Document native source build and prebuilt-binary installation.

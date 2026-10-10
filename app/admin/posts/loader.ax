@@ -10,16 +10,18 @@ export type AdminPostPage {
   page: Number
   total: Number
   status: String
+  search: String
 }
-export query loadAdminPosts(status: String = "all", page: String = "1") -> AdminPostPage {
+export query loadAdminPosts(status: String = "all", page: String = "1", search: String = "") -> AdminPostPage {
   require Auth.subject else forbidden()
   data administrator = db.legura_users.where({ id: Auth.subject }).first()
   require administrator else forbidden()
   require administrator["role"] == "admin" else forbidden()
   data status = input.status
   data page = input.page
-  data metadata = db.query("SELECT COUNT(*) AS total, CASE WHEN ? IN ('draft', 'published') THEN ? ELSE 'all' END AS status, MIN(CASE WHEN ? <> '' AND ? NOT GLOB '*[^0-9]*' THEN MAX(CAST(? AS INTEGER), 1) ELSE 1 END, MAX((COUNT(*) + 9) / 10, 1)) AS page FROM legura_posts WHERE (? NOT IN ('draft', 'published') OR status = ?)", status, status, page, page, page, status, status)
+  data search = input.search
+  data metadata = db.query("SELECT COUNT(*) AS total, CASE WHEN ? IN ('draft', 'published') THEN ? ELSE 'all' END AS status, substr(trim(?), 1, 200) AS search, MIN(CASE WHEN ? <> '' AND ? NOT GLOB '*[^0-9]*' THEN MAX(CAST(? AS INTEGER), 1) ELSE 1 END, MAX((COUNT(*) + 9) / 10, 1)) AS page FROM legura_posts WHERE (? NOT IN ('draft', 'published') OR status = ?) AND instr(lower(title), lower(substr(trim(?), 1, 200))) > 0", status, status, search, page, page, page, status, status, search)
   data summary = metadata[0]
-  data posts = db.query("SELECT id, title, slug, body, status FROM legura_posts WHERE (? = 'all' OR status = ?) ORDER BY title ASC, id ASC LIMIT 10 OFFSET (? - 1) * 10", summary["status"], summary["status"], summary["page"])
-  return { posts: posts, page: summary["page"], total: summary["total"], status: summary["status"] }
+  data posts = db.query("SELECT id, title, slug, body, status FROM legura_posts WHERE (? = 'all' OR status = ?) AND instr(lower(title), lower(?)) > 0 ORDER BY title ASC, id ASC LIMIT 10 OFFSET (? - 1) * 10", summary["status"], summary["status"], summary["search"], summary["page"])
+  return { posts: posts, page: summary["page"], total: summary["total"], status: summary["status"], search: summary["search"] }
 }
