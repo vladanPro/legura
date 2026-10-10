@@ -19,6 +19,16 @@ const context = await browser.newContext({
   viewport: { width: 1280, height: 900 },
 });
 const page = await context.newPage();
+if (mode === 'javascript') {
+  await context.addInitScript(() => {
+    const capture = () => {
+      const boundary = document.querySelector('.legura-app');
+      if (!boundary) return requestAnimationFrame(capture);
+      window.__leguraFirstFrameMode = boundary.dataset.foundryMode;
+    };
+    requestAnimationFrame(capture);
+  });
+}
 const errors = [];
 const responses = [];
 page.on("response", (response) => {
@@ -134,11 +144,54 @@ function actionCount() {
   return responses.filter((response) => response.path === "/__axonyx/action").length;
 }
 
+async function checkAppearance() {
+  const picker = page.getByLabel('Appearance', { exact: true });
+  if (mode === 'native') {
+    assert.equal(await picker.isVisible(), false, 'No-JS page must not offer an inert picker');
+    return;
+  }
+  await picker.selectOption('dark');
+  assert.equal(await page.locator('.legura-app').getAttribute('data-foundry-mode'), 'dark');
+  assert.equal(await page.locator('.legura-app').evaluate(node => getComputedStyle(node).colorScheme), 'dark');
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Dark header overflows on mobile');
+  assert.ok(await picker.evaluate(node => node.getBoundingClientRect().height >= 44), 'Appearance target is shorter than 44px');
+  await page.screenshot({ path: resolve(results, 'setup-dark-390.png'), fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.reload();
+  await page.waitForFunction(() => window.__leguraFirstFrameMode);
+  assert.equal(await page.evaluate(() => window.__leguraFirstFrameMode), 'dark', 'Saved dark mode must apply before the first frame');
+  assert.equal(await picker.inputValue(), 'dark');
+  const other = await context.newPage();
+  try {
+    await other.goto(`${baseUrl}/setup`);
+    await picker.selectOption('light');
+    await other.waitForFunction(() => document.querySelector('.legura-app')?.dataset.foundryMode === 'light');
+  } finally { await other.close(); }
+  await page.reload();
+  assert.equal(await picker.inputValue(), 'light');
+
+  const restricted = await browser.newContext();
+  try {
+    await restricted.addInitScript(() => {
+      Storage.prototype.getItem = Storage.prototype.setItem = () => { throw new Error('Storage unavailable'); };
+    });
+    const isolated = await restricted.newPage();
+    const restrictedErrors = [];
+    isolated.on('pageerror', error => restrictedErrors.push(error.message));
+    await isolated.goto(`${baseUrl}/setup`);
+    await isolated.getByLabel('Appearance', { exact: true }).selectOption('dark');
+    assert.equal(await isolated.locator('.legura-app').getAttribute('data-foundry-mode'), 'dark');
+    assert.deepEqual(restrictedErrors, [], 'Restricted storage must not crash scripts');
+  } finally { await restricted.close(); }
+}
+
 try {
   await navigate("/admin", 403);
   await navigate("/setup");
   assert.equal(await page.title(), "Legura CMS");
   await page.getByRole("button", { name: "Create installation", exact: true }).waitFor();
+  await checkAppearance();
   await checkForm("Create your first administrator", ["siteName", "email", "password", "setupToken"]);
   assert.equal(await page.locator("#password").getAttribute("autocomplete"), "new-password");
   await page.keyboard.press("Tab");
