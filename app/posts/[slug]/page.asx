@@ -1,10 +1,8 @@
+import { PostStory } from "@/components/PostStory"
+
 page PublicPost() {
   data post: Post = loadPublishedPost(params.slug)
   return ASX {
-    <article class="legura-story">
-      <a href="/posts">All posts</a>
-      <h1>{post.title}</h1>
-      <div class="legura-story__body">{post.body}</div>
-    </article>
+    <PostStory title={post.title} body={post.body} />
   }
 }

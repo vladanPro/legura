@@ -123,6 +123,59 @@ async function checkOverview(total, drafts, published, screenshot = false) {
   }
 }
 
+async function checkSavedPreview(editPath, title, body, status) {
+  const previewPath = editPath.replace(/\/edit$/, '/preview');
+  const response = await context.request.get(`${baseUrl}${previewPath}`);
+  assert.equal(response.status(), 200);
+  assert.match(response.headers()['cache-control'] || '', /no-store/, 'Private preview must not be cached');
+  await navigate(publicPage, previewPath, 403);
+  await navigate(publicPage, '/__axonyx/data?path=' + encodeURIComponent(previewPath) + '&name=post', 403);
+  await page.getByLabel('Title', { exact: true }).fill('Unsaved editor title');
+  await page.getByLabel('Content', { exact: true }).fill('Unsaved editor content');
+  const link = page.getByRole('link', { name: 'Preview saved post', exact: true });
+  assert.equal(await link.getAttribute('href'), previewPath);
+  assert.equal(await link.getAttribute('target'), '_blank');
+  assert.equal(await link.getAttribute('rel'), 'noopener');
+  const opened = page.waitForEvent('popup');
+  await link.click();
+  const preview = await opened;
+  preview.on('pageerror', error => errors.push(error.message));
+  preview.on('console', message => {
+    if (message.type() === 'error' && !message.text().startsWith('Failed to load resource:')) errors.push(message.text());
+  });
+  try {
+    await preview.waitForLoadState('domcontentloaded');
+    assert.equal(preview.url(), `${baseUrl}${previewPath}`);
+    await preview.getByRole('heading', { name: title, exact: true }).waitFor();
+    assert.equal(await preview.getByRole('region', { name: 'Private saved preview' }).locator('.ax-badge').textContent(), status);
+    assert.equal(await preview.locator('.legura-story__body').textContent(), body);
+    assert.equal(await preview.locator('.legura-story__body script').count(), 0);
+    assert.equal(await preview.evaluate(() => window.__leguraInjected), undefined);
+    assert.equal(await preview.evaluate(() => window.opener), null);
+    assert.equal(await preview.getByRole('main').count(), 1);
+    assert.equal(await preview.getByRole('navigation', { name: 'Administration', exact: true }).locator('[data-active="true"]').getAttribute('href'), '/admin/posts');
+    const directory = resolve(tmpdir(), 'legura-preview-qa');
+    await mkdir(directory, { recursive: true });
+    for (const width of [1280, 390, 320]) {
+      await preview.setViewportSize({ width, height: 900 });
+      assert.ok(await preview.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Preview overflow at ${width}px`);
+      const back = preview.getByRole('link', { name: 'Back to editor', exact: true });
+      assert.ok(await back.evaluate(node => node.getBoundingClientRect().height >= 44), 'Preview back link must meet 44px target');
+      await preview.screenshot({ path: resolve(directory, `preview-${mode}-${status}-${width}.png`), fullPage: true });
+    }
+    await preview.getByRole('link', { name: 'Back to editor', exact: true }).click();
+    await preview.waitForURL(`${baseUrl}${editPath}`);
+    assert.equal(await preview.getByLabel('Title', { exact: true }).inputValue(), title);
+  } finally {
+    await preview.close();
+  }
+  assert.equal(page.url(), `${baseUrl}${editPath}`);
+  assert.equal(await page.getByLabel('Title', { exact: true }).inputValue(), 'Unsaved editor title');
+  assert.equal(await page.getByLabel('Content', { exact: true }).inputValue(), 'Unsaved editor content');
+  await page.getByLabel('Title', { exact: true }).fill(title);
+  await page.getByLabel('Content', { exact: true }).fill(body);
+}
+
 async function checkPostListing() {
   for (let index = 1; index <= 11; index += 1) {
     await navigate(page, '/admin/posts/new');
@@ -301,6 +354,9 @@ try {
   const editPath = new URL(page.url()).pathname;
   assert.match(editPath, /^\/admin\/posts\/[^/]+\/edit$/);
   await checkAdminFrame();
+  await checkSavedPreview(editPath, 'Private browser draft', 'Only the administrator should see this.', 'draft');
+  await navigate(page, '/admin/posts/missing-post/preview', 404);
+  await navigate(page, editPath);
 
   const longText = `${"Editor text ".repeat(1000)}\nČuvanje </textarea><script>unsafe</script>`;
   await navigate(page, "/admin/posts/new");
@@ -346,6 +402,7 @@ try {
   await publicPage.screenshot({ path: resolve(results, `story-${mode}-desktop.png`), fullPage: true });
   await navigate(page, editPath);
   assert.equal(await page.getByLabel("Status", { exact: true }).inputValue(), "published");
+  await checkSavedPreview(editPath, 'Published browser story', content, 'published');
   await page.getByLabel("Status", { exact: true }).selectOption("draft");
   await submit("Save changes", "/admin/posts");
   await checkOverview(1, 1, 0);
@@ -354,6 +411,7 @@ try {
   await navigate(publicPage, "/posts");
   await publicPage.getByText("Nothing published yet", { exact: true }).waitFor();
   await navigate(page, editPath);
+  await checkSavedPreview(editPath, 'Published browser story', content, 'draft');
   await page.getByRole("link", { name: "Delete post", exact: true }).click();
   const deletePath = new URL(page.url()).pathname;
   assert.ok(deletePath.endsWith("/delete"));
@@ -386,9 +444,10 @@ try {
   await publicPage.getByText("Nothing published yet", { exact: true }).waitFor();
   await navigate(page, editPath, 404);
   await navigate(page, deletePath, 404);
+  await navigate(page, editPath.replace(/\/edit$/, '/preview'), 404);
   await checkPostListing();
   assert.deepEqual(errors, [], "Unexpected browser errors");
-  console.log(`Legura posts browser passed (${mode}): CRUD, guarded overview counts, authorization, literal title search, filters, bounded server pagination and URL normalization.`);
+  console.log(`Legura posts browser passed (${mode}): CRUD, private saved preview, guarded overview counts, authorization, literal title search, filters, bounded server pagination and URL normalization.`);
 } finally {
   await reader.close();
   await context.close();
