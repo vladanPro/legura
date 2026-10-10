@@ -1,0 +1,25 @@
+import { AppShell } from "@axonyx/ui/foundry/AppShell"
+import { Sidebar } from "@axonyx/ui/foundry/Sidebar"
+import { SidebarHeader } from "@axonyx/ui/foundry/SidebarHeader"
+import { SidebarSection } from "@axonyx/ui/foundry/SidebarSection"
+import { SidebarItem } from "@axonyx/ui/foundry/SidebarItem"
+
+component AdminFrame(section = "overview") {
+  return ASX {
+    <AppShell class="legura-admin-shell" mode="embedded" railWidth="sm">
+      <Sidebar slot="sidebar" label="Administration navigation" collapsible="true" open="true">
+        <SidebarHeader slot="header"><strong>Workspace</strong></SidebarHeader>
+        <nav aria-label="Administration">
+          <SidebarSection title="Content">
+            <SidebarItem href="/admin" active={section == "overview"}>Overview</SidebarItem>
+            <SidebarItem href="/admin/posts" active={section == "posts"}>Manage posts</SidebarItem>
+          </SidebarSection>
+          <SidebarSection title="Website">
+            <SidebarItem href="/posts">Public posts</SidebarItem>
+          </SidebarSection>
+        </nav>
+      </Sidebar>
+      <div class="ax-layout-main legura-admin-content"><Slot /></div>
+    </AppShell>
+  }
+}

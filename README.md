@@ -49,6 +49,11 @@ and small-screen acceptance with and without JavaScript. See the scoped
 [accessibility proof](docs/setup-login-accessibility-v1.md); this is not a full
 accessibility audit or production certification.
 
+The shared administration frame composes Foundry AppShell and Sidebar for
+overview, posts and editor screens. See [the layout contract](docs/admin-shell-v0.md)
+and [Light/Dark appearance](docs/appearance-v0.md). These remain development
+pilots, not an installable product release.
+
 ## Product
 
 - Own your server, content, files, and database.

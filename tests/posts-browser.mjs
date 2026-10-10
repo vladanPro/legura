@@ -44,6 +44,20 @@ async function fillPost(title, slug, body, status) {
   await page.getByLabel("Status", { exact: true }).selectOption(status);
 }
 
+async function checkAdminFrame() {
+  const nav = page.getByRole('navigation', { name: 'Administration', exact: true });
+  const active = nav.locator('[data-active="true"]');
+  assert.equal(await active.count(), 1, 'Exactly one admin section must be active');
+  assert.equal(await active.getAttribute('href'), '/admin/posts');
+  assert.equal(await active.getAttribute('aria-current'), 'true');
+  assert.equal(await page.getByRole('main').count(), 1);
+  for (const width of [320, 390, 1280]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Admin shell overflow at ${width}px`);
+    assert.ok(await active.evaluate(node => node.getBoundingClientRect().height >= 44), 'Sidebar link target is shorter than 44px');
+  }
+}
+
 try {
   await navigate(publicPage, "/admin/posts", 403);
   await navigate(publicPage, "/posts");
@@ -56,7 +70,9 @@ try {
   await submit("Create installation", "/admin");
   await page.getByRole("link", { name: "Manage posts", exact: true }).click();
   await page.getByText("No posts yet", { exact: true }).waitFor();
+  await checkAdminFrame();
   await page.getByRole("link", { name: "New post", exact: true }).click();
+  await checkAdminFrame();
   await fillPost("Private browser draft", "browser-draft", "Only the administrator should see this.", "draft");
   await submit("Create post", "/admin/posts");
   await page.getByRole("link", { name: "Private browser draft", exact: true }).waitFor();
@@ -66,6 +82,7 @@ try {
   await page.getByRole("link", { name: "Edit post", exact: true }).click();
   const editPath = new URL(page.url()).pathname;
   assert.match(editPath, /^\/admin\/posts\/[^/]+\/edit$/);
+  await checkAdminFrame();
 
   const longText = `${"Editor text ".repeat(1000)}\nČuvanje </textarea><script>unsafe</script>`;
   await navigate(page, "/admin/posts/new");
@@ -118,6 +135,7 @@ try {
   await page.getByRole("link", { name: "Delete post", exact: true }).click();
   const deletePath = new URL(page.url()).pathname;
   assert.ok(deletePath.endsWith("/delete"));
+  await checkAdminFrame();
   await page.getByRole("link", { name: "Cancel deletion", exact: true }).click();
   await page.waitForURL(`${baseUrl}${editPath}`);
   assert.equal(await page.getByLabel("Content", { exact: true }).inputValue(), content);

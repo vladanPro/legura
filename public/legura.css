@@ -8,6 +8,13 @@
 .legura-mode-picker[hidden] { display: none; }
 .legura-mode-picker .ax-select { min-height: 2.75rem; width: auto; }
 .legura-main { max-width: 42rem; margin: 3rem auto; }
+.legura-main:has(.legura-admin-shell) { max-width: none; }
+.legura-admin-content { padding: clamp(1rem, 3vw, 2rem); }
+.legura-admin-content > * + * { margin-top: 1.5rem; }
+@scope (.legura-app) {
+  :scope:not([data-legura-js='true']) .ax-layout-sidebar__toggle { display: none; }
+}
+.legura-admin-shell .ax-sidebar-item { min-height: 2.75rem; }
 .legura-form { display: grid; gap: 0.75rem; --ax-input-min-height: 2.75rem; --ax-button-min-height: 2.75rem; }
 .legura-app .legura-form input.ax-input { min-height: 2.75rem; font-size: 1rem; }
 .legura-form .ax-button { min-height: 2.75rem; }

@@ -1,10 +1,12 @@
 import { Card } from "@axonyx/ui/foundry/Card"
 import { Button } from "@axonyx/ui/foundry/Button"
 import { PostFields } from "@/components/PostFields"
+import { AdminFrame } from "@/components/AdminFrame"
 
 page EditPost() {
   data post: Post = loadEditablePost(params.id)
   return ASX {
+    <AdminFrame section="posts">
     <Card title="Edit post">
       <form method="post" action={action UpdatePost} data-ax-retain-fields="title,slug,body,status" class="legura-form">
         <input type="hidden" name="id" value={post.id} />
@@ -13,5 +15,6 @@ page EditPost() {
       </form>
       <nav class="legura-links" aria-label="Post management"><a href={"/admin/posts/" + post.id + "/delete"}>Delete post</a></nav>
     </Card>
+    </AdminFrame>
   }
 }

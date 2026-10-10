@@ -1,15 +1,16 @@
 import { Card } from "@axonyx/ui/foundry/Card"
 import { Badge } from "@axonyx/ui/foundry/Badge"
+import { AdminFrame } from "@/components/AdminFrame"
 
 page ManagePosts() {
   data posts: Post[] = loadAdminPosts()
   return ASX {
+    <AdminFrame section="posts">
     <section class="legura-posts">
       <header class="legura-page-heading">
         <div><h1>Posts</h1><p>Draft privately, publish when ready.</p></div>
         <a class="ax-button" data-variant="primary" href="/admin/posts/new">New post</a>
       </header>
-      <nav class="legura-links" aria-label="Administration"><a href="/admin">Administration</a><a href="/posts">Public posts</a></nav>
       <If when={!posts}><Card title="No posts yet"><p>Create your first draft. It stays private until published.</p></Card></If>
       <div class="legura-post-list">
         <Each items={posts} as="post">
@@ -21,5 +22,6 @@ page ManagePosts() {
         </Each>
       </div>
     </section>
+    </AdminFrame>
   }
 }
