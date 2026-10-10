@@ -6,13 +6,14 @@ page RootLayout() {
     <Head>
       <Title>Legura CMS</Title>
       <Theme storageKey="legura-theme" default="silver" preflight="true" />
+      <Script src="/appearance.js" />
       <Link rel="icon" href="/legura-mark.svg" type="image/svg+xml" />
       <Link rel="stylesheet" href="/legura.css" />
     </Head>
     <div class="legura-app" data-foundry="silver" data-foundry-style="classic" data-foundry-mode="light">
       <a class="legura-skip-link" href="#main-content">Skip to content</a>
       <Container max="lg">
-        <header class="legura-header"><a class="legura-brand" href="/"><img src="/legura-mark.svg" alt="" width="36" height="36" />Legura</a><span>Content, forged together.</span></header>
+        <header class="legura-header"><a class="legura-brand" href="/"><img src="/legura-mark.svg" alt="" width="36" height="36" />Legura</a><span>Content, forged together.</span><label class="legura-mode-picker" hidden="true">Appearance<select class="ax-select" aria-label="Appearance" data-legura-mode-picker="true"><option value="light">Light</option><option value="dark">Dark</option></select></label></header>
         <div class="legura-main" id="main-content" tabindex="-1"><Slot /></div>
       </Container>
     </div>
