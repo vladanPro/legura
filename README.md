@@ -43,6 +43,8 @@ Backup / Restore V1 adds a local Rust maintenance tool for verified SQLite
 snapshots and recovery to a new database, never overwriting an existing file.
 See [the operator procedure](docs/backup-restore-v1.md). Configuration secrets,
 encryption, scheduling and future media backup are outside this first version.
+For source-pilot start/stop and wrapper commands that locate the shared Cargo
+target automatically, see [Local Operator Quickstart](docs/operator-quickstart.md).
 
 Setup/login now have keyboard skip navigation, named forms, linked field errors
 and small-screen acceptance with and without JavaScript. See the scoped
@@ -86,6 +88,11 @@ the acceptance gate. HTTP acceptance is not a security audit or production
 readiness proof. Do not deploy this development pilot publicly.
 
 ## Development
+
+For a local SQLite trial, follow the [tested source preparation](docs/installation.md#local-sqlite-pilot).
+`pwsh -File scripts/local.ps1 -Task prepare` initializes/checks/builds;
+`pwsh -File scripts/local.ps1 -Task start` serves the setup screen on localhost.
+This is a development pilot, not a production installer or prebuilt release.
 
 Feature branches target `dev`. Completed releases move from `dev` to `main`
 through a pull request. Only documented, tested behavior should be described as

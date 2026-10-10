@@ -12,7 +12,8 @@ assert.ok(["javascript", "native"].includes(mode), "Choose a browser mode");
 const setupToken = process.env.AX_SECRET_SETUP_TOKEN;
 assert.ok(setupToken, "Fixture owner token is required");
 const email = "browser-owner@example.com";
-const password = `fixture-password-${randomUUID()}`;
+// Exercise setup and subsequent login at the product's minimum length.
+const password = randomUUID().replaceAll("-", "").slice(0, 10);
 const browser = await chromium.launch();
 const context = await browser.newContext({
   javaScriptEnabled: mode === "javascript",
@@ -215,7 +216,7 @@ try {
   await page.getByLabel("Administrator email", { exact: true }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill("short");
   await page.getByLabel("Setup token", { exact: true }).fill(setupToken);
-  await submitValidation("Create installation", "password", "Use at least 15 characters.");
+  await submitValidation("Create installation", "password", "Use at least 10 characters.");
   assert.equal(await page.getByLabel("Site name", { exact: true }).inputValue(), "Browser fixture");
   assert.equal(await page.getByLabel("Administrator email", { exact: true }).inputValue(), email);
   if (mode === "native") {

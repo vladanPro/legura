@@ -38,6 +38,12 @@ the current pilot intentionally uses explicit 403 guards.
 
 ## 1. First End-to-End CMS
 
+Local operator acceptance now covers the maintenance wrapper, live SQLite backup,
+verified no-clobber recovery and unchanged running application/configuration.
+See operator-quickstart.md. Actual content/login recovery remains covered by
+the isolated Backup / Restore HTTP gate. This is not a prebuilt installation,
+service supervisor, automatic upgrade or production release.
+
 - Axonyx application with SQLite schema and versioned migrations.
 - First-run setup: site name and first administrator.
 - One-time setup locking, including concurrent setup requests.
@@ -72,6 +78,11 @@ renderer, opening a separate tab without saving/publishing. It is not an
 unsaved live preview or a shareable token. See posts-preview-v0.md.
 
 ## 2. Self-Hosted Release Gate
+
+Local source preparation has an executable first-run acceptance gate:
+prepare/init/check/start, secret preservation, local-only database/config
+safeguards and setup-to-administration proof. See installation.md. This does
+not complete production packaging, service supervision or the upgrade gate.
 
 - Document native source build and prebuilt-binary installation.
 - Document service startup/restart, reverse proxy, TLS, and configuration.

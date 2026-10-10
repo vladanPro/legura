@@ -18,6 +18,11 @@ Do not weaken optional credential verification or remove guards to pass build.
   and singleton installation row are committed in one transaction. A losing
   concurrent setup must roll back all of its writes.
 - Passwords use the framework Password API; only hashes enter the database.
+- Legura setup uses an explicit product policy of 10 to 256 UTF-16 code units,
+  matching the current Axonyx String.length semantics. It does not trim passwords
+  or require specific character classes. This deliberately differs from the
+  framework's 15-code-point password-only registration baseline. Use a unique
+  password; this policy is not a claim of NIST password-policy compliance.
 - Admin reads require a trusted session and a current database admin role.
 - Anonymous admin reads and claimed setup reads return 403. Query guard redirects
   are not supported in this slice; framework issue #326 tracks that UX boundary.
@@ -32,18 +37,18 @@ Do not weaken optional credential verification or remove guards to pass build.
 Install the tested CLI, then initialize the local development pilot:
 
 ```powershell
-cargo install cargo-axonyx --version 0.6.9 --locked
-pwsh -File scripts/local.ps1 -Task init
-pwsh -File scripts/local.ps1 -Task check
-pwsh -File scripts/local.ps1 -Task build
+cargo install cargo-axonyx --version 0.6.10 --locked --force
+pwsh -File scripts/local.ps1 -Task prepare
 pwsh -File scripts/local.ps1 -Task start
 ```
 
-Open http://127.0.0.1:3940/setup. The local init script generates independent
+Requires PowerShell 7.4 or later. Open http://127.0.0.1:3940/setup. The local prepare script generates independent
 random secrets into the ignored .env file, runs migrations and pulls schema.
 Read the setup token from that local file; do not commit or share it.
 Database and credentials remain in ignored data/ storage. Never point this
 development pilot at a production database.
+
+See installation.md for the exact source workflow and local-only safeguards.
 
 For upstream work only, pass `-ToolManifest ../axonyx-framework/Cargo.toml` to
 use source CLI tooling. Legura dependencies remain registry packages.

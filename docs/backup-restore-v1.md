@@ -7,6 +7,10 @@ backup whose manifest was also replaced.
 
 ## Build and Backup
 
+For the local source pilot, [Operator Quickstart](operator-quickstart.md) provides
+`scripts/maintenance.ps1` commands that discover the Cargo target directory.
+The direct Rust tool commands below remain available for explicit operator paths.
+
 From the Legura repository:
 
 ```sh
@@ -59,6 +63,16 @@ To switch the application:
    does not contain `.env`, session/setup secrets, TLS settings or program files.
 5. Start the same compatible application build. Verify public content, login,
    private drafts and the setup lock. Keep the original database for rollback.
+
+For the source pilot, an explicit start command (from the repository root) is:
+
+```sh
+cargo ax run start --compiled --host 127.0.0.1 --port 3940
+```
+
+Unlike scripts/local.ps1, this does not require the fixed local data/legura.db
+path. Check for conflicting process environment values before starting; they
+can override .env. Do not rerun local init/prepare on the recovered configuration.
 
 Do not switch configuration while the server is running or expose restore as
 an admin HTTP action. No automatic server stop/start or atomic service switch

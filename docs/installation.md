@@ -1,6 +1,8 @@
 # Installation Model
 
-Planned distribution paths; none is implemented yet.
+The local source pilot below is implemented and tested. Prebuilt packages,
+Docker packaging and production installation/upgrade remain planned. This is
+not an installable production CMS release.
 
 ## Prebuilt Native Package
 
@@ -14,10 +16,78 @@ run on a Linux host. Rust is not required to run a compatible prebuilt binary.
 
 ## Source Build
 
-Administrators may install Rust/Cargo and required native build dependencies,
-compile on the server or a matching build machine, and run the resulting binary.
-Compilation has different memory/CPU requirements from serving requests.
-Document the actual build command once the application's build pipeline exists.
+### Local SQLite Pilot
+
+For day-to-day start/stop, backup and recovery, see
+[Local Operator Quickstart](operator-quickstart.md).
+
+Prerequisites: Git, Rust/Cargo with a working native linker/C toolchain, and
+PowerShell 7.4 or later. These commands use the development branch, not a stable
+Legura release. From a terminal:
+
+```powershell
+git clone --branch dev https://github.com/vladanPro/legura.git
+Set-Location legura
+cargo install cargo-axonyx --version 0.6.10 --locked --force
+pwsh -File scripts/local.ps1 -Task prepare
+pwsh -File scripts/local.ps1 -Task start
+```
+
+`prepare` creates data/ and an ignored .env only when absent, generates
+independent random session/setup secrets, runs SQLite migrations/schema pull,
+checks source and builds the compiled production-server binary. That build mode
+does not make the development product production-ready. Cargo resolves the
+registry runtime/UI; no Axonyx framework checkout or Node/npm install is needed
+for running this pilot. Node/Python are test-tool requirements, not CMS startup
+requirements.
+
+`start` binds 127.0.0.1:3940. Open http://127.0.0.1:3940/setup, read
+AX_SECRET_SETUP_TOKEN from your private .env in a local editor, then set site
+name, administrator email and password. The token is never printed by the
+helper or embedded in setup HTML. Do not share or commit that file. After
+successful setup, the browser goes to administration and setup locks.
+Stop with Ctrl+C in the start terminal. To use another unprivileged port:
+
+```powershell
+pwsh -File scripts/local.ps1 -Task start -Port 3945
+```
+
+Individual init/check/build tasks still exist. Repeated init preserves existing
+configuration and checks pending migrations; it does not reset users/content
+or rotate secrets. Prepare updates generated schema/types and rebuilds output.
+
+The helper deliberately accepts only the exact sqlite://data/legura.db path,
+SQLite dialect, independent 32-byte hexadecimal secrets and local HTTP cookies.
+It refuses conflicting process overrides, duplicate keys and linked .env/data
+paths before running database commands. Existing .env is not silently repaired
+or replaced. Its supported config uses plain, unquoted KEY=value entries.
+Unix newly created .env/data use 0600/0700; Windows inherits directory ACLs,
+which the operator must restrict. Use a trusted private working directory.
+This helper is not an arbitrary database migration command or a production
+setup tool. Other databases/HTTPS need a separate operator procedure.
+
+Compilation uses more resources than serving requests. The binary matches the
+build machine's OS/architecture and needs generated dist assets/config/data;
+copying just an executable is not yet a supported Legura installation bundle.
+
+### Acceptance
+
+```powershell
+pwsh -File scripts/smoke-local.ps1 -Port 3943
+```
+
+The runner copies tracked source into a disposable directory, excludes local
+secrets/data/generated build output and clears inherited backend configuration.
+It invokes the actual prepare/init/check/start commands, verifies configuration
+preservation and unsafe-config refusal, then completes native HTTP browser-setup
+requests and verifies administration/setup locking. It stops only its own
+process tree and deletes only its checked temporary fixture. Linux CI repeats
+this gate alongside the existing registry auth/posts/browser acceptance.
+
+Windows registry-only bootstrap passed on 2026-10-10 using CLI 0.6.10, including
+case-sensitive database path refusal and unchanged configuration/database after
+invalid attempts. Unix owner-only creation and linked-file refusal are checked
+by the Linux CI branch, not claimed as locally verified on Windows.
 
 ## Docker
 
