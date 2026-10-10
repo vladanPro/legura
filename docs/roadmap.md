@@ -81,8 +81,11 @@ unsaved live preview or a shareable token. See posts-preview-v0.md.
 
 Native Package V0 adds a runtime-only directory (server, maintenance tool, assets
 and file inventory), with disposable relocated/no-toolchain acceptance. It is
-for an already initialized compatible SQLite installation, not a fresh database
-installer. Windows acceptance passed; Linux must pass CI before integration.
+for a restored installation or a new SQLite DB using embedded migrations.
+Fresh DB init and native local HTTP configuration are no-clobber. Session/setup
+secrets are generated independently from OS randomness; production settings
+remain operator-managed.
+Windows acceptance passed; Linux must pass CI before integration.
 See native-package-v0.md. No signed archive or production platform matrix yet.
 
 Local source preparation has an executable first-run acceptance gate:

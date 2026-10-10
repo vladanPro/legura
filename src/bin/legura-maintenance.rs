@@ -1,4 +1,5 @@
 use anyhow::{bail, ensure, Context, Result};
+use axonyx_runtime::backend::{runtime_from_env, AxEnv, AxMigration, AxMigrationExecutor};
 use rusqlite::{
     backup::{Backup, StepResult},
     Connection, OpenFlags,
@@ -7,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     env, fs,
-    io::Read,
+    io::{Read, Write},
     path::Path,
     time::{Duration, Instant},
 };
@@ -44,6 +45,14 @@ fn main() {
 fn run() -> Result<()> {
     let args: Vec<_> = env::args_os().skip(1).collect();
     match args.as_slice() {
+        [command, root] if command == "config-local" => {
+            configure_local(Path::new(root))?;
+            println!("New local HTTP configuration created. Read the setup token from the private .env file; secrets were not printed.");
+        }
+        [command, destination] if command == "init" => {
+            initialize(Path::new(destination))?;
+            println!("Empty database initialized with compatible migrations. Configure independent secrets before starting browser setup.");
+        }
         [command, source, destination] if command == "backup" => {
             backup(Path::new(source), Path::new(destination))?;
             println!("Backup verified. Protect this directory: it contains private content and password hashes.");
@@ -56,9 +65,47 @@ fn run() -> Result<()> {
             restore(Path::new(bundle), Path::new(destination))?;
             println!("Restored to a NEW database. Stop the CMS before switching its database configuration; rotate the session key.");
         }
-        _ => bail!("usage: legura-maintenance backup <database-file> <new-backup-directory> | verify <backup-directory> | restore <backup-directory> <new-database-file>"),
+        _ => bail!("usage: legura-maintenance config-local <package-directory> | init <new-database-file> | backup <database-file> <new-backup-directory> | verify <backup-directory> | restore <backup-directory> <new-database-file>"),
     }
     Ok(())
+}
+
+fn random_secret() -> Result<String> {
+    let mut bytes = [0u8; 32];
+    getrandom::getrandom(&mut bytes).map_err(|_| anyhow::anyhow!("OS randomness unavailable"))?;
+    Ok(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
+}
+
+fn configure_local(root: &Path) -> Result<()> {
+    ensure!(
+        fs::symlink_metadata(root)?.file_type().is_dir(),
+        "package root must be a directory, not a symlink"
+    );
+    let data = root.join("data");
+    ensure!(
+        fs::symlink_metadata(&data)?.file_type().is_dir(),
+        "data must be a directory, not a symlink"
+    );
+    let database = data.join("legura.db");
+    validate(&open_readonly(&database)?)?;
+    let session = random_secret()?;
+    let setup = random_secret()?;
+    ensure!(
+        session != setup,
+        "independent secrets could not be generated"
+    );
+    let content = format!("AX_SECRET_DB_URL=sqlite://data/legura.db\nAX_SECRET_DB_DIALECT=sqlite\nAX_SECRET_SESSION_KEY={session}\nAX_SECRET_SETUP_TOKEN={setup}\nAX_SECRET_SESSION_COOKIE_SECURE=false\n");
+    let path = root.join(".env");
+    // create_new refuses existing configuration, including symlinks and empty files.
+    let mut file = private_file(&path)?;
+    let result = file
+        .write_all(content.as_bytes())
+        .and_then(|_| file.sync_all());
+    drop(file);
+    if result.is_err() {
+        let _ = fs::remove_file(&path);
+    }
+    result.context("could not persist local configuration")
 }
 
 fn regular_file(path: &Path) -> Result<()> {
@@ -84,6 +131,59 @@ fn migration_hash(up: &str, down: &str) -> String {
     hash.update(b"\0");
     hash.update(down.replace("\r\n", "\n"));
     format!("{:x}", hash.finalize())
+}
+
+fn embedded_migrations() -> Vec<AxMigration> {
+    MIGRATIONS
+        .iter()
+        .map(|(version, up, down)| AxMigration {
+            version: (*version).into(),
+            name: match *version {
+                "20261008000000_001" => "identity",
+                "20261009000000_002" => "posts",
+                _ => unreachable!("embedded migration name is missing"),
+            }
+            .into(),
+            checksum: migration_hash(up, down),
+            up_sql: (*up).into(),
+            down_sql: (*down).into(),
+        })
+        .collect()
+}
+
+fn initialize(path: &Path) -> Result<()> {
+    initialize_with_migrations(path, &embedded_migrations())
+}
+
+fn initialize_with_migrations(path: &Path, migrations: &[AxMigration]) -> Result<()> {
+    let path = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        env::current_dir()?.join(path)
+    };
+    let url = format!(
+        "sqlite:{}",
+        path.to_str().context("database path must be UTF-8")?
+    );
+    reject_destination_sidecars(&path)?;
+    // Reserve only a NEW file. Never infer a database from process env or .env.
+    let file = private_file(&path)?;
+    let result = (|| {
+        let env = AxEnv::new()
+            .with_secret("db_url", url)
+            .with_secret("db_dialect", "sqlite");
+        let runtime = runtime_from_env(env)?;
+        AxMigrationExecutor::apply_migrations(&runtime, migrations)?;
+        validate(&open_readonly(&path)?)?;
+        file.sync_all()?;
+        Ok(())
+    })();
+    drop(file);
+    if result.is_err() {
+        // Only our newly reserved file is removed; existing destinations never reach here.
+        let _ = fs::remove_file(&path);
+    }
+    result
 }
 
 fn validate(connection: &Connection) -> Result<()> {
@@ -151,7 +251,7 @@ fn private_file(path: &Path) -> Result<fs::File> {
 }
 
 // SQLite's backup API includes committed WAL data; copying the .db file does not.
-fn snapshot(source: &Connection, target: &Path) -> Result<()> {
+fn reject_destination_sidecars(target: &Path) -> Result<()> {
     for suffix in ["-wal", "-shm", "-journal"] {
         let sidecar = target.with_file_name(format!(
             "{}{suffix}",
@@ -165,6 +265,11 @@ fn snapshot(source: &Connection, target: &Path) -> Result<()> {
             "destination has a SQLite sidecar; choose a different filename"
         );
     }
+    Ok(())
+}
+
+fn snapshot(source: &Connection, target: &Path) -> Result<()> {
+    reject_destination_sidecars(target)?;
     let file = private_file(target)?;
     let result = (|| {
         let mut destination = Connection::open(target)?;
@@ -301,6 +406,101 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn local_configuration_is_private_independent_and_never_replaced() {
+        let fixture = Fixture::new();
+        let root = fixture.path("package");
+        fs::create_dir(&root).unwrap();
+        fs::create_dir(root.join("data")).unwrap();
+        assert!(configure_local(&root).is_err());
+        assert!(!root.join(".env").exists());
+        initialize(&root.join("data/legura.db")).unwrap();
+        configure_local(&root).unwrap();
+        let config = fs::read_to_string(root.join(".env")).unwrap();
+        let values: std::collections::HashMap<_, _> = config
+            .lines()
+            .map(|line| line.split_once('=').unwrap())
+            .collect();
+        assert_eq!(values.len(), 5);
+        for key in ["AX_SECRET_SESSION_KEY", "AX_SECRET_SETUP_TOKEN"] {
+            assert_eq!(values[key].len(), 64);
+            assert!(values[key].bytes().all(|byte| byte.is_ascii_hexdigit()));
+        }
+        assert_ne!(
+            values["AX_SECRET_SESSION_KEY"],
+            values["AX_SECRET_SETUP_TOKEN"]
+        );
+        assert_eq!(values["AX_SECRET_SESSION_COOKIE_SECURE"], "false");
+        assert!(configure_local(&root).is_err());
+        assert_eq!(fs::read_to_string(root.join(".env")).unwrap(), config);
+        fs::remove_file(root.join(".env")).unwrap();
+        fs::write(root.join(".env"), b"").unwrap();
+        assert!(configure_local(&root).is_err());
+        assert_eq!(fs::metadata(root.join(".env")).unwrap().len(), 0);
+    }
+
+    #[test]
+    fn initialization_uses_embedded_migrations_and_is_empty() {
+        let fixture = Fixture::new();
+        let path = fixture.path("fresh.db");
+        initialize(&path).unwrap();
+        let connection = open_readonly(&path).unwrap();
+        validate(&connection).unwrap();
+        for table in [
+            "legura_users",
+            "legura_credentials",
+            "legura_installation",
+            "legura_posts",
+        ] {
+            assert_eq!(
+                connection
+                    .query_row(&format!("SELECT count(*) FROM {table}"), [], |row| row
+                        .get::<_, i64>(0))
+                    .unwrap(),
+                0
+            );
+        }
+        let history: (String, String) = connection
+            .query_row(
+                "SELECT name, applied_at FROM _axonyx_migrations ORDER BY version LIMIT 1",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(history.0, "identity");
+        assert!(!history.1.is_empty());
+    }
+
+    #[test]
+    fn initialization_never_replaces_existing_files_or_sidecars() {
+        let fixture = Fixture::new();
+        let before = digest(&fixture.path("source.db")).unwrap();
+        assert!(initialize(&fixture.path("source.db")).is_err());
+        assert_eq!(digest(&fixture.path("source.db")).unwrap(), before);
+        fs::write(fixture.path("empty.db"), b"").unwrap();
+        assert!(initialize(&fixture.path("empty.db")).is_err());
+        for suffix in ["-wal", "-shm", "-journal"] {
+            let sidecar = fixture.path(&format!("fresh.db{suffix}"));
+            fs::write(&sidecar, b"preserve").unwrap();
+            assert!(initialize(&fixture.path("fresh.db")).is_err());
+            assert!(!fixture.path("fresh.db").exists());
+            assert_eq!(fs::read(&sidecar).unwrap(), b"preserve");
+            fs::remove_file(sidecar).unwrap();
+        }
+    }
+
+    #[test]
+    fn initialization_failure_rolls_back_and_removes_only_its_new_file() {
+        let fixture = Fixture::new();
+        let mut migrations = embedded_migrations();
+        migrations[1].up_sql = "INVALID SQL".into();
+        assert!(initialize_with_migrations(&fixture.path("failed.db"), &migrations).is_err());
+        assert!(!fixture.path("failed.db").exists());
+        validate(&open_readonly(&fixture.path("source.db")).unwrap()).unwrap();
+        assert!(initialize(&fixture.path("absent-parent/fresh.db")).is_err());
+        assert!(!fixture.path("absent-parent").exists());
     }
 
     #[test]
@@ -441,7 +641,36 @@ mod tests {
             0o600
         );
         symlink(fixture.path("source.db"), fixture.path("linked.db")).unwrap();
+        assert!(initialize(&fixture.path("linked.db")).is_err());
         assert!(backup(&fixture.path("linked.db"), &fixture.path("linked-bundle")).is_err());
         assert!(restore(&fixture.path("bundle"), &fixture.path("linked.db")).is_err());
+        initialize(&fixture.path("fresh.db")).unwrap();
+        assert_eq!(
+            fs::metadata(fixture.path("fresh.db"))
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
+        let root = fixture.path("package");
+        fs::create_dir(&root).unwrap();
+        symlink(&fixture.0, root.join("data")).unwrap();
+        assert!(configure_local(&root).is_err());
+        fs::remove_file(root.join("data")).unwrap();
+        fs::create_dir(root.join("data")).unwrap();
+        initialize(&root.join("data/legura.db")).unwrap();
+        symlink(fixture.path("source.db"), root.join(".env")).unwrap();
+        assert!(configure_local(&root).is_err());
+        fs::remove_file(root.join(".env")).unwrap();
+        configure_local(&root).unwrap();
+        assert_eq!(
+            fs::metadata(root.join(".env"))
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
     }
 }

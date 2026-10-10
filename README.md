@@ -46,8 +46,10 @@ encryption, scheduling and future media backup are outside this first version.
 For source-pilot start/stop and wrapper commands that locate the shared Cargo
 target automatically, see [Local Operator Quickstart](docs/operator-quickstart.md).
 The experimental [Native Package V0](docs/native-package-v0.md) runs an already
-initialized compatible installation without source or Cargo at runtime. Fresh
-database initialization and a production installer remain separate gates.
+initialized compatible installation without source or Cargo at runtime. Native
+DB initialization and new local HTTP configuration with random secrets are
+available through the native maintenance tool; a
+production installer remains a separate gate.
 
 Setup/login now have keyboard skip navigation, named forms, linked field errors
 and small-screen acceptance with and without JavaScript. See the scoped
