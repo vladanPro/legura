@@ -13,7 +13,11 @@ page EditPost() {
         <PostFields title={post.title} slug={post.slug} body={post.body} status={post.status} />
         <div class="legura-form-actions"><Button type="submit" variant="primary">Save changes</Button><a href="/admin/posts">Cancel</a></div>
       </form>
-      <nav class="legura-links" aria-label="Post management"><a href={"/admin/posts/" + post.id + "/delete"}>Delete post</a></nav>
+      <nav class="legura-links" aria-label="Post management">
+        <a href={"/admin/posts/" + post.id + "/preview"} target="_blank" rel="noopener" aria-describedby="preview-hint">Preview saved post</a>
+        <a href={"/admin/posts/" + post.id + "/delete"}>Delete post</a>
+      </nav>
+      <p id="preview-hint" class="legura-hint">Preview opens in a new tab. Save changes first to include them.</p>
     </Card>
     </AdminFrame>
   }

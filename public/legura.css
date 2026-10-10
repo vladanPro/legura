@@ -30,6 +30,11 @@
 .legura-content-overview .ax-card { min-width: 0; }
 .legura-stat-value { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; line-height: 1.1; margin-block: 0.75rem; font-variant-numeric: tabular-nums; }
 .legura-overview-link { display: inline-flex; align-items: center; min-height: 2.75rem; }
+.legura-preview-notice { padding: 1rem; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-md); background: var(--ax-surface-2); }
+.legura-preview-notice p { margin: 0; line-height: 1.6; }
+.legura-preview-notice p + p { margin-top: 0.5rem; }
+.legura-preview-notice .ax-badge { margin-left: 0.5rem; }
+.legura-links a, .legura-story > a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 .legura-post-list { display: grid; gap: 1rem; margin-top: 1.5rem; }
 .legura-post-filters { display: flex; align-items: center; flex-wrap: wrap; margin-block: 1.5rem 0.75rem; }
 .legura-post-filters .ax-select { width: auto; min-height: 2.75rem; }

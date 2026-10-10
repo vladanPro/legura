@@ -1,0 +1,9 @@
+component PostStory(title = "", body = "", backHref = "/posts", backLabel = "All posts") {
+  return ASX {
+    <article class="legura-story">
+      <a href={backHref}>{backLabel}</a>
+      <h1>{title}</h1>
+      <div class="legura-story__body">{body}</div>
+    </article>
+  }
+}

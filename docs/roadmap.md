@@ -67,6 +67,10 @@ The administration overview shows guarded database-backed total/draft/published
 counts and links to those lists, plus a first-draft prompt for empty installations.
 See admin-overview-v0.md for the behavior and acceptance gate.
 
+Private saved preview reuses the guarded editor loader and the public story
+renderer, opening a separate tab without saving/publishing. It is not an
+unsaved live preview or a shareable token. See posts-preview-v0.md.
+
 ## 2. Self-Hosted Release Gate
 
 - Document native source build and prebuilt-binary installation.

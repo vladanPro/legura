@@ -78,6 +78,8 @@ The [posts listing pilot](docs/posts-listing-v0.md) documents filtering,
 pagination, title search and its cargo-axonyx 0.6.10 tooling requirement.
 The [administration overview](docs/admin-overview-v0.md) documents database-backed
 post counts, filtered-list shortcuts and the first-draft prompt.
+The [private saved preview](docs/posts-preview-v0.md) lets an administrator
+review a post without publishing it or losing unsaved editor text.
 
 The [setup/auth pilot](docs/setup-auth-v0.md) documents local initialization and
 the acceptance gate. HTTP acceptance is not a security audit or production

@@ -1,0 +1,16 @@
+import { AdminFrame } from "@/components/AdminFrame"
+import { Badge } from "@axonyx/ui/foundry/Badge"
+import { PostStory } from "@/components/PostStory"
+
+page PreviewPost() {
+  data post: Post = loadEditablePost(params.id)
+  return ASX {
+    <AdminFrame section="posts">
+      <section class="legura-preview-notice" aria-label="Private saved preview">
+        <p><strong>Private preview</strong> <Badge>{post.status}</Badge></p>
+        <p>This shows the last saved version, not unsaved changes in the editor. Viewing it does not publish the post.</p>
+      </section>
+      <PostStory title={post.title} body={post.body} backHref={"/admin/posts/" + post.id + "/edit"} backLabel="Back to editor" />
+    </AdminFrame>
+  }
+}
