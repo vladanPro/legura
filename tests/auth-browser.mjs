@@ -230,10 +230,25 @@ try {
   await page.locator("p").filter({ hasText: email }).waitFor();
   await page.reload();
   await page.locator("p").filter({ hasText: email }).waitFor();
+  const adminNav = page.getByRole('navigation', { name: 'Administration', exact: true });
+  assert.equal(await adminNav.locator('[data-active="true"]').getAttribute('href'), '/admin');
+  assert.equal(await page.getByRole('main').count(), 1, 'Admin shell must not add a second main landmark');
   const session = (await context.cookies()).filter((cookie) => cookie.httpOnly);
   assert.ok(session.length > 0, "No private session cookie after setup");
 
   await page.setViewportSize({ width: 390, height: 844 });
+  const navigationToggle = page.getByRole('button', { name: 'Administration navigation', exact: true });
+  if (mode === 'javascript') {
+    await navigationToggle.click();
+    assert.equal(await navigationToggle.getAttribute('aria-expanded'), 'false');
+    assert.equal(await adminNav.isVisible(), false);
+    await navigationToggle.click();
+    assert.equal(await navigationToggle.getAttribute('aria-expanded'), 'true');
+    assert.equal(await adminNav.isVisible(), true);
+  } else {
+    assert.equal(await navigationToggle.isVisible(), false, 'No-JS navigation must not have an inert toggle');
+    assert.equal(await adminNav.isVisible(), true);
+  }
   if (mode === "javascript") {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "Mobile horizontal overflow");
   }

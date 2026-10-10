@@ -3,10 +3,12 @@ import { Button } from "@axonyx/ui/foundry/Button"
 import { Field } from "@axonyx/ui/foundry/Field"
 import { FieldLabel } from "@axonyx/ui/foundry/FieldLabel"
 import { Input } from "@axonyx/ui/foundry/Input"
+import { AdminFrame } from "@/components/AdminFrame"
 
 page DeletePostConfirmation() {
   data post: Post = loadDeletablePost(params.id)
   return ASX {
+    <AdminFrame section="posts">
     <Card title="Delete post">
       <div class="legura-identity"><h2>{post.title}</h2><p class="legura-hint">{post.slug}</p></div>
       <p id="delete-warning"><strong>This permanently deletes the post.</strong></p>
@@ -25,5 +27,6 @@ page DeletePostConfirmation() {
         </div>
       </form>
     </Card>
+    </AdminFrame>
   }
 }

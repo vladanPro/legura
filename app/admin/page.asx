@@ -1,14 +1,17 @@
 import { Card } from "@axonyx/ui/foundry/Card"
 import { Button } from "@axonyx/ui/foundry/Button"
+import { AdminFrame } from "@/components/AdminFrame"
 
 page Administration() {
   data administrator: Administrator = loadAdministrator()
   return ASX {
-    <Card title="Administration">
+    <AdminFrame>
+    <header class="legura-page-heading"><div><h1>Administration</h1><p>Content, drafts and publishing in one workspace.</p></div><a class="ax-button" data-variant="primary" href="/admin/posts/new">New post</a></header>
+    <Card title="Your account">
       <p class="legura-identity"><span>Signed in as</span><strong>{administrator.email}</strong></p>
       <p>Manage your drafts and published posts.</p>
-      <nav class="legura-links"><a href="/admin/posts">Manage posts</a><a href="/posts">Public posts</a></nav>
       <form method="post" action={action SignOut}><Button type="submit" variant="secondary">Sign out</Button></form>
     </Card>
+    </AdminFrame>
   }
 }

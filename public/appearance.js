@@ -11,6 +11,7 @@
 
   function apply() {
     document.querySelectorAll('.legura-app').forEach(node => {
+      node.dataset.leguraJs = 'true';
       if (node.dataset.foundryMode !== mode) node.dataset.foundryMode = mode;
     });
     document.querySelectorAll('[data-legura-mode-picker]').forEach(control => {
