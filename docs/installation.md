@@ -6,7 +6,9 @@ not an installable production CMS release.
 
 [Native Package V0](native-package-v0.md) is an experimental runtime-only
 directory for a new or restored compatible SQLite installation. Native DB init
-uses embedded migrations without the CLI; secret/configuration setup is manual.
+uses embedded migrations without the CLI. Native `config-local` generates a new
+local HTTP .env with independent random secrets; production configuration remains
+operator-managed. Neither command overwrites existing operator files.
 
 ## Prebuilt Native Package
 

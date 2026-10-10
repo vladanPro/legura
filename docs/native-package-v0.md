@@ -53,7 +53,17 @@ sidecars. Parent directories must exist and be trusted/private. Failed SQL
 rolls back and removes only the newly created file. It never loads .env or
 process DB configuration, creates an administrator, upgrades or resets content.
 
-Create a private .env in the package root with:
+For local HTTP, generate a NEW private .env from the package root:
+
+```sh
+./legura-maintenance config-local .
+```
+
+This validates `data/legura.db`, creates independent OS-random 32-byte session
+and setup secrets, and never prints them. Existing .env files (even empty ones
+or symlinks) are refused, not updated. Unix files are created with mode 0600;
+Windows storage ACLs remain the operator's responsibility. Read the setup token
+privately from .env, never through logs or public assets. The generated values are:
 
 ```dotenv
 AX_SECRET_DB_URL=sqlite://data/legura.db
@@ -63,10 +73,10 @@ AX_SECRET_SETUP_TOKEN=<another independent random 32-byte hex value>
 AX_SECRET_SESSION_COOKIE_SECURE=false
 ```
 
-Replace placeholders with independently generated cryptographic random values,
-not words or example passwords. Configuration/secrets are still operator-managed;
-no setup script generates them in this package yet. The false cookie setting is
-for local HTTP only. Start the server, open /setup and supply the owner token to
+The placeholders above describe generated secrets, not literal values to copy.
+The false cookie setting is for local HTTP only; this command is not a production
+configuration assistant. Clear conflicting AX_SECRET_* process overrides before
+starting. Start the server, open /setup and supply the owner token to
 create the first administrator. Setup locks after success. Repeating init cannot
 reset the installation; this is not a migration/upgrade command.
 
@@ -119,7 +129,7 @@ pwsh -File scripts/package.ps1 -OutputDirectory ../legura-native-pilot
 ```
 
 Output directory must be new and its parent must exist. Partial output without
-package.json is not a completed package. Automatic secret/configuration setup,
+package.json is not a completed package. Production configuration assistance,
 signed archives, supported platform matrix, service installers and upgrade
 acceptance remain subsequent gates. Do not advertise this as a finished CMS
 installer.
@@ -137,6 +147,7 @@ absent from PATH. HTTP checks prove readiness, login, restored published/private
 posts, private admin/data guards, setup lock, CSS and denied configuration/source
 paths. No developer database, secrets or server are used. Windows passed locally;
 Linux acceptance is a separate required CI gate, not assumed from that result.
-The gate also initializes a second empty DB with the packaged maintenance binary,
-refuses repeat init without changes, creates an administrator through browser
+The gate also initializes a second empty DB and private local configuration with
+the packaged maintenance binary, refuses repeat init/config without changes,
+creates an administrator through browser
 setup, publishes a post and verifies logout/login, without Cargo in runtime PATH.

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     env, fs,
-    io::Read,
+    io::{Read, Write},
     path::Path,
     time::{Duration, Instant},
 };
@@ -45,6 +45,10 @@ fn main() {
 fn run() -> Result<()> {
     let args: Vec<_> = env::args_os().skip(1).collect();
     match args.as_slice() {
+        [command, root] if command == "config-local" => {
+            configure_local(Path::new(root))?;
+            println!("New local HTTP configuration created. Read the setup token from the private .env file; secrets were not printed.");
+        }
         [command, destination] if command == "init" => {
             initialize(Path::new(destination))?;
             println!("Empty database initialized with compatible migrations. Configure independent secrets before starting browser setup.");
@@ -61,9 +65,47 @@ fn run() -> Result<()> {
             restore(Path::new(bundle), Path::new(destination))?;
             println!("Restored to a NEW database. Stop the CMS before switching its database configuration; rotate the session key.");
         }
-        _ => bail!("usage: legura-maintenance init <new-database-file> | backup <database-file> <new-backup-directory> | verify <backup-directory> | restore <backup-directory> <new-database-file>"),
+        _ => bail!("usage: legura-maintenance config-local <package-directory> | init <new-database-file> | backup <database-file> <new-backup-directory> | verify <backup-directory> | restore <backup-directory> <new-database-file>"),
     }
     Ok(())
+}
+
+fn random_secret() -> Result<String> {
+    let mut bytes = [0u8; 32];
+    getrandom::getrandom(&mut bytes).map_err(|_| anyhow::anyhow!("OS randomness unavailable"))?;
+    Ok(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
+}
+
+fn configure_local(root: &Path) -> Result<()> {
+    ensure!(
+        fs::symlink_metadata(root)?.file_type().is_dir(),
+        "package root must be a directory, not a symlink"
+    );
+    let data = root.join("data");
+    ensure!(
+        fs::symlink_metadata(&data)?.file_type().is_dir(),
+        "data must be a directory, not a symlink"
+    );
+    let database = data.join("legura.db");
+    validate(&open_readonly(&database)?)?;
+    let session = random_secret()?;
+    let setup = random_secret()?;
+    ensure!(
+        session != setup,
+        "independent secrets could not be generated"
+    );
+    let content = format!("AX_SECRET_DB_URL=sqlite://data/legura.db\nAX_SECRET_DB_DIALECT=sqlite\nAX_SECRET_SESSION_KEY={session}\nAX_SECRET_SETUP_TOKEN={setup}\nAX_SECRET_SESSION_COOKIE_SECURE=false\n");
+    let path = root.join(".env");
+    // create_new refuses existing configuration, including symlinks and empty files.
+    let mut file = private_file(&path)?;
+    let result = file
+        .write_all(content.as_bytes())
+        .and_then(|_| file.sync_all());
+    drop(file);
+    if result.is_err() {
+        let _ = fs::remove_file(&path);
+    }
+    result.context("could not persist local configuration")
 }
 
 fn regular_file(path: &Path) -> Result<()> {
@@ -367,6 +409,39 @@ mod tests {
     }
 
     #[test]
+    fn local_configuration_is_private_independent_and_never_replaced() {
+        let fixture = Fixture::new();
+        let root = fixture.path("package");
+        fs::create_dir(&root).unwrap();
+        fs::create_dir(root.join("data")).unwrap();
+        assert!(configure_local(&root).is_err());
+        assert!(!root.join(".env").exists());
+        initialize(&root.join("data/legura.db")).unwrap();
+        configure_local(&root).unwrap();
+        let config = fs::read_to_string(root.join(".env")).unwrap();
+        let values: std::collections::HashMap<_, _> = config
+            .lines()
+            .map(|line| line.split_once('=').unwrap())
+            .collect();
+        assert_eq!(values.len(), 5);
+        for key in ["AX_SECRET_SESSION_KEY", "AX_SECRET_SETUP_TOKEN"] {
+            assert_eq!(values[key].len(), 64);
+            assert!(values[key].bytes().all(|byte| byte.is_ascii_hexdigit()));
+        }
+        assert_ne!(
+            values["AX_SECRET_SESSION_KEY"],
+            values["AX_SECRET_SETUP_TOKEN"]
+        );
+        assert_eq!(values["AX_SECRET_SESSION_COOKIE_SECURE"], "false");
+        assert!(configure_local(&root).is_err());
+        assert_eq!(fs::read_to_string(root.join(".env")).unwrap(), config);
+        fs::remove_file(root.join(".env")).unwrap();
+        fs::write(root.join(".env"), b"").unwrap();
+        assert!(configure_local(&root).is_err());
+        assert_eq!(fs::metadata(root.join(".env")).unwrap().len(), 0);
+    }
+
+    #[test]
     fn initialization_uses_embedded_migrations_and_is_empty() {
         let fixture = Fixture::new();
         let path = fixture.path("fresh.db");
@@ -572,6 +647,25 @@ mod tests {
         initialize(&fixture.path("fresh.db")).unwrap();
         assert_eq!(
             fs::metadata(fixture.path("fresh.db"))
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
+        let root = fixture.path("package");
+        fs::create_dir(&root).unwrap();
+        symlink(&fixture.0, root.join("data")).unwrap();
+        assert!(configure_local(&root).is_err());
+        fs::remove_file(root.join("data")).unwrap();
+        fs::create_dir(root.join("data")).unwrap();
+        initialize(&root.join("data/legura.db")).unwrap();
+        symlink(fixture.path("source.db"), root.join(".env")).unwrap();
+        assert!(configure_local(&root).is_err());
+        fs::remove_file(root.join(".env")).unwrap();
+        configure_local(&root).unwrap();
+        assert_eq!(
+            fs::metadata(root.join(".env"))
                 .unwrap()
                 .permissions()
                 .mode()

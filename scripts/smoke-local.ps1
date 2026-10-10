@@ -229,7 +229,17 @@ try {
       $process.WaitForExit()
       $process.Dispose()
       $process = $null
-      $freshPath = Join-Path $packageData 'fresh.db'
+      $freshRoot = Join-Path $fixture 'fresh-native-package'
+      New-Item -ItemType Directory -Path $freshRoot | Out-Null
+      foreach ($entry in Get-ChildItem -LiteralPath $packageRoot) {
+        if ($entry.Name -notin @('data', '.env')) { Copy-Item -LiteralPath $entry.FullName -Destination $freshRoot -Recurse }
+      }
+      $freshData = Join-Path $freshRoot 'data'
+      New-Item -ItemType Directory -Path $freshData | Out-Null
+      if (!$IsWindows) { [IO.File]::SetUnixFileMode($freshData, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute) }
+      $freshPath = Join-Path $freshData 'legura.db'
+      $packageConfig = Join-Path $freshRoot '.env'
+      $options.ArgumentList = @('-NoProfile', '-File', (Join-Path $freshRoot 'start.ps1'), '-Port', "$Port")
       $pathBefore = $env:PATH
       try {
         $env:PATH = Join-Path $fixture 'no-toolchain-path'
@@ -238,10 +248,14 @@ try {
         $freshHash = (Get-FileHash -LiteralPath $freshPath).Hash
         & $maintenance init $freshPath
         if ($LASTEXITCODE -eq 0 -or (Get-FileHash -LiteralPath $freshPath).Hash -ne $freshHash) { throw "Native initialization overwrote an existing database" }
-        $freshKey = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
-        $freshToken = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
-        $freshConfig = $original.Replace('sqlite://data/legura.db', 'sqlite://data/fresh.db').Replace($config.AX_SECRET_SESSION_KEY, $freshKey).Replace($config.AX_SECRET_SETUP_TOKEN, $freshToken)
-        [IO.File]::WriteAllText($packageConfig, $freshConfig)
+        $configOutput = & $maintenance config-local $freshRoot
+        if ($LASTEXITCODE -ne 0) { throw "Native configuration failed" }
+        $freshConfig = [IO.File]::ReadAllText($packageConfig)
+        $freshKey = [regex]::Match($freshConfig, '(?m)^AX_SECRET_SESSION_KEY=([a-f0-9]{64})$').Groups[1].Value
+        $freshToken = [regex]::Match($freshConfig, '(?m)^AX_SECRET_SETUP_TOKEN=([a-f0-9]{64})$').Groups[1].Value
+        if (!$freshKey -or !$freshToken -or $freshKey -eq $freshToken -or "$configOutput".Contains($freshKey) -or "$configOutput".Contains($freshToken)) { throw "Native config did not create independent private secrets" }
+        & $maintenance config-local $freshRoot
+        if ($LASTEXITCODE -eq 0 -or [IO.File]::ReadAllText($packageConfig) -cne $freshConfig) { throw "Native config overwrote existing secrets" }
         $process = Start-Process @options
       } finally { $env:PATH = $pathBefore }
       $ready = $false
@@ -270,7 +284,7 @@ try {
       Request -Path '/__axonyx/action?path=%2Flogin&name=SignIn' -Status 303 -Body "email=native%40example.com&password=$password" -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
       Request -Path '/admin' -Status 200 | Out-Null
       if ([IO.File]::ReadAllText($packageConfig) -cne $freshConfig) { throw "Fresh server modified configuration" }
-      Write-Host "Fresh native DB passed without CLI: embedded migrations, no-clobber repeat init, setup/admin, publication, logout and fresh login."
+      Write-Host "Fresh native DB passed without CLI: embedded migrations, private generated config, no-clobber repeat init/config, setup/admin, publication, logout and fresh login."
     }
     # The expected no-clobber failure must not become pwsh's final exit status.
     $global:LASTEXITCODE = 0
