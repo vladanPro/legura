@@ -18,6 +18,9 @@ run on a Linux host. Rust is not required to run a compatible prebuilt binary.
 
 ### Local SQLite Pilot
 
+For day-to-day start/stop, backup and recovery, see
+[Local Operator Quickstart](operator-quickstart.md).
+
 Prerequisites: Git, Rust/Cargo with a working native linker/C toolchain, and
 PowerShell 7.4 or later. These commands use the development branch, not a stable
 Legura release. From a terminal:

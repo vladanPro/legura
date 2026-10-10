@@ -38,6 +38,12 @@ the current pilot intentionally uses explicit 403 guards.
 
 ## 1. First End-to-End CMS
 
+Local operator acceptance now covers the maintenance wrapper, live SQLite backup,
+verified no-clobber recovery and unchanged running application/configuration.
+See operator-quickstart.md. Actual content/login recovery remains covered by
+the isolated Backup / Restore HTTP gate. This is not a prebuilt installation,
+service supervisor, automatic upgrade or production release.
+
 - Axonyx application with SQLite schema and versioned migrations.
 - First-run setup: site name and first administrator.
 - One-time setup locking, including concurrent setup requests.

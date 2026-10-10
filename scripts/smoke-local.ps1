@@ -61,6 +61,7 @@ try {
     & ./scripts/local.ps1 -Task prepare -Port $Port
     $envPath = Join-Path $fixture ".env"
     $original = [IO.File]::ReadAllText($envPath)
+    if ($IsWindows) { [IO.File]::SetAttributes($envPath, [IO.File]::GetAttributes($envPath) -bor [IO.FileAttributes]::Hidden) }
     $config = ConvertFrom-StringData $original
     if ($config.AX_SECRET_SESSION_KEY -notmatch '^[0-9A-F]{64}$' -or $config.AX_SECRET_SETUP_TOKEN -notmatch '^[0-9A-F]{64}$' -or $config.AX_SECRET_SESSION_KEY -eq $config.AX_SECRET_SETUP_TOKEN) {
       throw "Local preparation did not generate independent random secrets"
@@ -69,6 +70,7 @@ try {
     & ./scripts/local.ps1 -Task init
     if ([IO.File]::ReadAllText($envPath) -cne $original) { throw "Repeated initialization replaced existing configuration" }
     & ./scripts/local.ps1 -Task check
+    if ($IsWindows) { [IO.File]::SetAttributes($envPath, [IO.File]::GetAttributes($envPath) -band (-bnot [IO.FileAttributes]::Hidden)) }
     $database = Join-Path $fixture "data/legura.db"
     $before = (Get-FileHash -LiteralPath $database).Hash
     $env:AX_SECRET_DB_URL = "sqlite://outside.db"
@@ -125,13 +127,35 @@ try {
     if ($setupPage.Contains($config.AX_SECRET_SETUP_TOKEN) -or $setupPage.Contains($config.AX_SECRET_SESSION_KEY)) { throw "Setup HTML exposed configuration secrets" }
     Request -Path "/admin" -Status 403 | Out-Null
     $proof = (Request -Path "/__axonyx/csrf" -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
-    $password = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(24))
+    $password = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(5))
     $body = "siteName=Local+bootstrap&email=bootstrap%40example.com&password=$password&setupToken=$($config.AX_SECRET_SETUP_TOKEN)"
+    $headers = @{ Origin = $baseUrl; Accept = "text/html"; "X-Axonyx-CSRF" = $proof }
+    $invalid = Request -Path "/__axonyx/action?path=%2Fsetup&name=Install" -Status 422 -Body $body.Replace("password=$password", "password=$($password.Substring(0, 9))") -Headers $headers
+    if (!$invalid.Contains('Use at least 10 characters.')) { throw "Nine-character password was not rejected with the expected validation" }
+    $invalid = Request -Path "/__axonyx/action?path=%2Fsetup&name=Install" -Status 422 -Body $body.Replace("password=$password", "password=$('a' * 257)") -Headers $headers
+    if (!$invalid.Contains('Use at most 256 characters.')) { throw "Oversized password was not rejected with the expected validation" }
     Request -Path "/__axonyx/action?path=%2Fsetup&name=Install" -Status 303 -Body $body -Headers @{ Origin = $baseUrl; Accept = "text/html"; "X-Axonyx-CSRF" = $proof } | Out-Null
     $admin = Request -Path "/admin" -Status 200
     if (!$admin.Contains('bootstrap@example.com') -or !$admin.Contains('Start with your first draft')) { throw "Local setup did not reach the empty administration overview" }
     Request -Path "/setup" -Status 403 | Out-Null
-    Write-Host "Legura local bootstrap passed: fresh prepare/start, independent secrets, preserved config, rejected unsafe config, native setup and setup lock."
+    $backups = Join-Path $fixture "backups"
+    New-Item -ItemType Directory -Path $backups | Out-Null
+    if (!$IsWindows) { [IO.File]::SetUnixFileMode($backups, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute) }
+    # Exercise the operator wrapper with a live server, without switching its DB.
+    & ./scripts/maintenance.ps1 -Task backup -Bundle backups/first-install
+    & ./scripts/maintenance.ps1 -Task verify -Bundle backups/first-install
+    & ./scripts/maintenance.ps1 -Task restore -Bundle backups/first-install -Destination data/recovered.db
+    if (!(Test-Path -LiteralPath (Join-Path $fixture "data/recovered.db") -PathType Leaf)) { throw "Maintenance wrapper did not create a recovered database" }
+    $recoveredHash = (Get-FileHash -LiteralPath (Join-Path $fixture "data/recovered.db")).Hash
+    $refused = $false
+    try { & ./scripts/maintenance.ps1 -Task restore -Bundle backups/first-install -Destination data/recovered.db } catch {
+      if ($_.Exception.Message -notmatch 'Legura maintenance restore failed') { throw }
+      $refused = $true
+    }
+    if (!$refused -or (Get-FileHash -LiteralPath (Join-Path $fixture "data/recovered.db")).Hash -ne $recoveredHash) { throw "Restore overwrote an existing recovery database" }
+    if ([IO.File]::ReadAllText($envPath) -cne $original) { throw "Maintenance changed application configuration" }
+    Request -Path "/admin" -Status 200 | Out-Null
+    Write-Host "Legura local bootstrap passed: prepare/start, safe config, password boundaries, native setup, live backup/verify, no-clobber recovery and unchanged running application."
   } finally { Pop-Location }
 } catch {
   foreach ($log in @("server.out", "server.err")) {

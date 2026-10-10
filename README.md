@@ -43,6 +43,8 @@ Backup / Restore V1 adds a local Rust maintenance tool for verified SQLite
 snapshots and recovery to a new database, never overwriting an existing file.
 See [the operator procedure](docs/backup-restore-v1.md). Configuration secrets,
 encryption, scheduling and future media backup are outside this first version.
+For source-pilot start/stop and wrapper commands that locate the shared Cargo
+target automatically, see [Local Operator Quickstart](docs/operator-quickstart.md).
 
 Setup/login now have keyboard skip navigation, named forms, linked field errors
 and small-screen acceptance with and without JavaScript. See the scoped

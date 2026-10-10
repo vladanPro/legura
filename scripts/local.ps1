@@ -21,7 +21,7 @@ function Invoke-Ax {
 function Assert-LocalConfiguration {
   $path = Join-Path $root ".env"
   if (!(Test-Path -LiteralPath $path -PathType Leaf)) { throw "Run local.ps1 -Task init first to create local configuration" }
-  if ((Get-Item -LiteralPath $path).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "Local configuration must not be a symlink" }
+  if ((Get-Item -LiteralPath $path -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "Local configuration must not be a symlink" }
   $values = @{}
   foreach ($line in [IO.File]::ReadAllLines($path)) {
     if (!$line.Trim() -or $line.Trim().StartsWith('#')) { continue }
@@ -46,7 +46,7 @@ function Assert-LocalConfiguration {
   $data = Join-Path $root "data"
   if (!(Test-Path -LiteralPath $data -PathType Container)) { throw "Local data directory is missing; run init" }
   foreach ($candidate in @($data, (Join-Path $data "legura.db"), (Join-Path $data "legura.db-wal"), (Join-Path $data "legura.db-shm"))) {
-    if ((Test-Path -LiteralPath $candidate) -and ((Get-Item -LiteralPath $candidate).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+    if ((Test-Path -LiteralPath $candidate) -and ((Get-Item -LiteralPath $candidate -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
       throw "Local data paths must not be symlinks"
     }
   }
