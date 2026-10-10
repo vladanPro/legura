@@ -1,3 +1,4 @@
+.legura-app { min-height: 100vh; }
 .legura-header { display: flex; justify-content: space-between; gap: 1rem; padding-block: 2rem; border-bottom: 1px solid var(--ax-border); }
 .legura-header a { font-size: 1.5rem; font-weight: 700; }
 .legura-brand { display: inline-flex; align-items: center; gap: 0.7rem; width: fit-content; }
