@@ -1,4 +1,4 @@
-param([ValidateRange(1024, 65535)][int] $Port = 3943)
+param([ValidateRange(1024, 65535)][int] $Port = 3943, [switch] $Package)
 $ErrorActionPreference = "Stop"
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $temporaryRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
@@ -138,6 +138,13 @@ try {
     $admin = Request -Path "/admin" -Status 200
     if (!$admin.Contains('bootstrap@example.com') -or !$admin.Contains('Start with your first draft')) { throw "Local setup did not reach the empty administration overview" }
     Request -Path "/setup" -Status 403 | Out-Null
+    if ($Package) {
+      $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+      $headers = @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof }
+      foreach ($status in @('published', 'draft')) {
+        Request -Path '/__axonyx/action?path=%2Fadmin%2Fposts%2Fnew&name=CreatePost' -Status 303 -Body "title=Package+$status&slug=package-$status&body=Package+content+$status&status=$status" -Headers $headers | Out-Null
+      }
+    }
     $backups = Join-Path $fixture "backups"
     New-Item -ItemType Directory -Path $backups | Out-Null
     if (!$IsWindows) { [IO.File]::SetUnixFileMode($backups, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute) }
@@ -155,6 +162,70 @@ try {
     if (!$refused -or (Get-FileHash -LiteralPath (Join-Path $fixture "data/recovered.db")).Hash -ne $recoveredHash) { throw "Restore overwrote an existing recovery database" }
     if ([IO.File]::ReadAllText($envPath) -cne $original) { throw "Maintenance changed application configuration" }
     Request -Path "/admin" -Status 200 | Out-Null
+    if ($Package) {
+      $process.Kill($true)
+      $process.WaitForExit()
+      $process.Dispose()
+      $process = $null
+      & ./scripts/package.ps1 -OutputDirectory native-package
+      $packageRoot = Join-Path $fixture "native-package"
+      $manifest = Get-Content -LiteralPath (Join-Path $packageRoot "package.json") -Raw | ConvertFrom-Json
+      if ($manifest.format -ne 1 -or $manifest.product -ne 'legura') { throw "Package manifest is invalid" }
+      $listed = @($manifest.files | ForEach-Object path | Sort-Object)
+      $actual = @(Get-ChildItem -LiteralPath $packageRoot -Recurse -File -Force | ForEach-Object { [IO.Path]::GetRelativePath($packageRoot, $_.FullName).Replace('\', '/') } | Where-Object { $_ -ne 'package.json' } | Sort-Object)
+      if (($listed -join "`n") -cne ($actual -join "`n")) { throw "Package inventory is incomplete" }
+      foreach ($entry in $manifest.files) {
+        if ((Get-FileHash -LiteralPath (Join-Path $packageRoot $entry.path)).Hash.ToLowerInvariant() -cne $entry.sha256) { throw "Package hash mismatch" }
+        if ($entry.path -match '(^|/)(\.env[^/]*|Cargo\.toml|Cargo\.lock|package-lock\.json)$|^(app|src|data|backups|db)/|\.sqlite$|\.db$|dist/_ax/melt/') { throw "Package contains private/source artifacts" }
+      }
+      $extension = if ($IsWindows) { '.exe' } else { '' }
+      $maintenance = Join-Path $packageRoot "legura-maintenance$extension"
+      $packageData = Join-Path $packageRoot "data"
+      New-Item -ItemType Directory -Path $packageData | Out-Null
+      if (!$IsWindows) { [IO.File]::SetUnixFileMode($packageData, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute) }
+      & $maintenance restore (Join-Path $fixture 'backups/first-install') (Join-Path $packageData 'legura.db')
+      if ($LASTEXITCODE -ne 0) { throw "Packaged maintenance tool failed" }
+      $newKey = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+      $packageConfig = Join-Path $packageRoot '.env'
+      [IO.File]::WriteAllText($packageConfig, $original.Replace($config.AX_SECRET_SESSION_KEY, $newKey))
+      if (!$IsWindows) { [IO.File]::SetUnixFileMode($packageConfig, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite) }
+      $launcher = (Get-Command pwsh -ErrorAction Stop).Source
+      $options.ArgumentList = @('-NoProfile', '-File', (Join-Path $packageRoot 'start.ps1'), '-Port', "$Port")
+      $options.WorkingDirectory = $temporaryRoot
+      $pathBefore = $env:PATH
+      try {
+        $env:PATH = Join-Path $fixture 'no-toolchain-path'
+        if (Get-Command cargo,git,node,cargo-ax -ErrorAction SilentlyContinue) { throw "Runtime test still exposes developer tools" }
+        $options.FilePath = $launcher
+        $process = Start-Process @options
+      } finally { $env:PATH = $pathBefore }
+      $ready = $false
+      for ($attempt = 0; $attempt -lt 120; $attempt++) {
+        if ($process.HasExited) { throw "Packaged server exited before readiness" }
+        try { Request -Path '/__axonyx/ready' -Status 200 | Out-Null; $ready = $true; break } catch { Start-Sleep -Milliseconds 250 }
+      }
+      if (!$ready) { throw "Packaged server was not ready" }
+      Request -Path '/admin' -Status 403 | Out-Null
+      Request -Path '/__axonyx/data?path=%2Fadmin&name=overview' -Status 403 | Out-Null
+      foreach ($privatePath in @('/.env', '/package.json', '/Cargo.toml', '/src/generated/backend.rs')) { Request -Path $privatePath -Status 404 | Out-Null }
+      $story = Request -Path '/posts/package-published' -Status 200
+      if (!$story.Contains('Package content published')) { throw "Packaged public content was not recovered" }
+      Request -Path '/posts/package-draft' -Status 404 | Out-Null
+      $login = Request -Path '/login' -Status 200
+      if (!$login.Contains('Password')) { throw "Packaged login page failed" }
+      $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+      Request -Path '/__axonyx/action?path=%2Flogin&name=SignIn' -Status 303 -Body "email=bootstrap%40example.com&password=$password" -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
+      $admin = Request -Path '/admin' -Status 200
+      if (!$admin.Contains('bootstrap@example.com')) { throw "Packaged login/admin identity failed" }
+      $posts = Request -Path '/admin/posts' -Status 200
+      if (!$posts.Contains('Package published') -or !$posts.Contains('Package draft')) { throw "Packaged private content was not recovered" }
+      Request -Path '/setup' -Status 403 | Out-Null
+      $asset = [regex]::Match($login, 'href="([^"]+\.css)"').Groups[1].Value
+      if (!$asset.StartsWith('/')) { throw "Packaged CSS reference missing" }
+      Request -Path $asset -Status 200 | Out-Null
+      if ([IO.File]::ReadAllText($packageConfig) -cne $original.Replace($config.AX_SECRET_SESSION_KEY, $newKey)) { throw "Packaged startup modified secrets" }
+      Write-Host "Native package passed: complete hashes, no source/secrets, relocated launcher, no developer tools, restored login/admin, private setup and CSS assets."
+    }
     # The expected no-clobber failure must not become pwsh's final exit status.
     $global:LASTEXITCODE = 0
     Write-Host "Legura local bootstrap passed: prepare/start, safe config, password boundaries, native setup, live backup/verify, no-clobber recovery and unchanged running application."
