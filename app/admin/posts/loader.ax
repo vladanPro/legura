@@ -5,10 +5,21 @@ export type Post {
   body: String
   status: String
 }
-export query loadAdminPosts() -> Post[] {
+export type AdminPostPage {
+  posts: Post[]
+  page: Number
+  total: Number
+  status: String
+}
+export query loadAdminPosts(status: String = "all", page: String = "1") -> AdminPostPage {
   require Auth.subject else forbidden()
   data administrator = db.legura_users.where({ id: Auth.subject }).first()
   require administrator else forbidden()
   require administrator["role"] == "admin" else forbidden()
-  return db.legura_posts.order({ title: "asc" }).all()
+  data status = input.status
+  data page = input.page
+  data metadata = db.query("SELECT COUNT(*) AS total, CASE WHEN ? IN ('draft', 'published') THEN ? ELSE 'all' END AS status, MIN(CASE WHEN ? <> '' AND ? NOT GLOB '*[^0-9]*' THEN MAX(CAST(? AS INTEGER), 1) ELSE 1 END, MAX((COUNT(*) + 9) / 10, 1)) AS page FROM legura_posts WHERE (? NOT IN ('draft', 'published') OR status = ?)", status, status, page, page, page, status, status)
+  data summary = metadata[0]
+  data posts = db.query("SELECT id, title, slug, body, status FROM legura_posts WHERE (? = 'all' OR status = ?) ORDER BY title ASC, id ASC LIMIT 10 OFFSET (? - 1) * 10", summary["status"], summary["status"], summary["page"])
+  return { posts: posts, page: summary["page"], total: summary["total"], status: summary["status"] }
 }

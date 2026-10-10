@@ -28,6 +28,10 @@
 .legura-links { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-top: 1.5rem; }
 .legura-page-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
 .legura-post-list { display: grid; gap: 1rem; margin-top: 1.5rem; }
+.legura-post-filters { display: flex; align-items: center; flex-wrap: wrap; margin-block: 1.5rem 0.75rem; }
+.legura-post-filters .ax-select { width: auto; min-height: 2.75rem; }
+.legura-post-pagination { display: flex; align-items: center; flex-wrap: wrap; gap: 1.5rem; margin-top: 1rem; }
+.legura-post-pagination a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 .legura-posts-table { margin-top: 1.5rem; max-width: 100%; }
 .legura-posts-table .ax-table { min-width: 32rem; }
 .legura-posts-table tbody th { font-size: 1rem; font-weight: 400; letter-spacing: normal; text-transform: none; background: transparent; }

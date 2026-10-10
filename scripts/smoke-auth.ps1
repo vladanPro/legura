@@ -233,6 +233,12 @@ try {
     if ($LASTEXITCODE -ne 0 -or $count -ne "1") { throw "Revoked action changed the remaining post" }
   }
   Write-Host "Legura compiled auth smoke passed: setup race, CSRF, password hash, login/logout, restart persistence, authorization."
+} catch {
+  foreach ($log in @("server.out", "server.err")) {
+    $path = Join-Path $fixture $log
+    if (Test-Path -LiteralPath $path) { Get-Content -LiteralPath $path -Tail 40 | Write-Host }
+  }
+  throw
 } finally {
   Stop-Fixture
   if ($client) { $client.Dispose() }

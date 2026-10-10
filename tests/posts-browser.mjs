@@ -90,6 +90,73 @@ async function checkPostsTable(title) {
   await page.setViewportSize({ width: 1280, height: 900 });
 }
 
+async function checkPostListing() {
+  for (let index = 1; index <= 11; index += 1) {
+    await navigate(page, '/admin/posts/new');
+    const suffix = String(index).padStart(2, '0');
+    await fillPost(`Listing ${suffix}`, `listing-${suffix}`, 'Pagination fixture.', index <= 6 ? 'draft' : 'published');
+    await submit('Create post', '/admin/posts');
+  }
+  const table = page.getByRole('table', { name: 'Your posts', exact: true });
+  const rows = table.getByRole('rowheader');
+  const navigation = page.getByRole('navigation', { name: 'Posts pages', exact: true });
+  assert.equal(await rows.count(), 10);
+  assert.equal(await rows.first().textContent(), 'Listing 01listing-01');
+  assert.equal(await navigation.getByRole('link', { name: 'Previous page' }).count(), 0);
+  await navigation.getByRole('link', { name: 'Next page' }).click();
+  await page.waitForURL(`${baseUrl}/admin/posts?status=all&page=2`);
+  assert.equal(await rows.count(), 1);
+  assert.match(await rows.first().textContent(), /Listing 11/);
+  assert.equal(await navigation.getByRole('link', { name: 'Next page' }).count(), 0);
+  await page.reload();
+  assert.equal(await rows.count(), 1);
+  await navigation.getByRole('link', { name: 'Previous page' }).click();
+  await page.waitForURL(`${baseUrl}/admin/posts?status=all&page=1`);
+  assert.equal(await rows.count(), 10);
+
+  await navigate(page, '/admin/posts?status=all&page=2');
+  await page.getByLabel('Filter status', { exact: true }).selectOption('draft');
+  await page.getByRole('button', { name: 'Apply filter', exact: true }).click();
+  await page.waitForURL(`${baseUrl}/admin/posts?status=draft`);
+  assert.equal(await rows.count(), 6);
+  assert.deepEqual(await table.locator('tbody .ax-badge').allTextContents(), Array(6).fill('draft'));
+  await page.getByLabel('Filter status', { exact: true }).selectOption('published');
+  await page.getByRole('button', { name: 'Apply filter', exact: true }).click();
+  await page.waitForURL(`${baseUrl}/admin/posts?status=published`);
+  assert.equal(await rows.count(), 5);
+  assert.deepEqual(await table.locator('tbody .ax-badge').allTextContents(), Array(5).fill('published'));
+
+  for (const value of ['', '0', '-1', 'abc', '1.5', "1; DROP TABLE legura_posts"]) {
+    await navigate(page, `/admin/posts?status=all&page=${encodeURIComponent(value)}`);
+    assert.equal(await navigation.textContent(), 'Page 1Next page', `Invalid page ${value}`);
+    assert.equal(await rows.count(), 10);
+  }
+  await navigate(page, '/admin/posts?status=all&page=999999999999999999999999999');
+  assert.equal(await rows.count(), 1);
+  await navigate(page, '/admin/posts?status=published&page=99');
+  assert.equal(await rows.count(), 5);
+  assert.equal(await navigation.textContent(), 'Page 1');
+  await navigate(page, `/admin/posts?status=${encodeURIComponent("draft' OR 1=1 --")}`);
+  assert.equal(await page.getByLabel('Filter status').inputValue(), 'all');
+  assert.equal(await rows.count(), 10);
+  await navigate(page, '/admin/posts?status=draft&status=published&pa%67e=1');
+  assert.equal(await rows.count(), 5, 'Decoded keys and last duplicate value must match rendering');
+  if (mode === 'javascript') {
+    const refreshed = await page.evaluate(async () => {
+      const response = await fetch('/__axonyx/data?path=' + encodeURIComponent('/admin/posts?status=published&page=1') + '&name=listing');
+      return { status: response.status, payload: await response.json() };
+    });
+    assert.equal(refreshed.status, 200);
+    assert.equal(refreshed.payload.value.posts.length, 5);
+    assert.equal(refreshed.payload.value.status, 'published');
+    assert.ok(refreshed.payload.html.includes('Listing 11'));
+  }
+  await checkAdminFrame();
+  await page.screenshot({ path: resolve(results, `posts-filter-${mode}-desktop.png`), fullPage: true, animations: 'disabled' });
+  await navigate(publicPage, '/admin/posts?status=published&page=2', 403);
+  await navigate(publicPage, '/posts/listing-01', 404);
+}
+
 try {
   await navigate(publicPage, "/admin/posts", 403);
   await navigate(publicPage, "/posts");
@@ -103,6 +170,11 @@ try {
   await page.getByRole("link", { name: "Manage posts", exact: true }).click();
   await page.getByText("No posts yet", { exact: true }).waitFor();
   assert.equal(await page.getByRole('table', { name: 'Your posts', exact: true }).count(), 0);
+  await navigate(page, '/admin/posts?status=published&page=2');
+  await page.getByText('No matching posts', { exact: true }).waitFor();
+  assert.equal(await page.getByRole('navigation', { name: 'Posts pages' }).textContent(), 'Page 1');
+  await page.getByRole('link', { name: 'Show all posts', exact: true }).click();
+  await page.getByText('No posts yet', { exact: true }).waitFor();
   await checkAdminFrame();
   await page.getByRole("link", { name: "New post", exact: true }).click();
   await checkAdminFrame();
@@ -196,8 +268,9 @@ try {
   await publicPage.getByText("Nothing published yet", { exact: true }).waitFor();
   await navigate(page, editPath, 404);
   await navigate(page, deletePath, 404);
+  await checkPostListing();
   assert.deepEqual(errors, [], "Unexpected browser errors");
-  console.log(`Legura posts browser passed (${mode}): create, validation retry, publish/unpublish, safe text, cancellation and confirmed deletion.`);
+  console.log(`Legura posts browser passed (${mode}): CRUD, authorization, filters, bounded server pagination and URL normalization.`);
 } finally {
   await reader.close();
   await context.close();
