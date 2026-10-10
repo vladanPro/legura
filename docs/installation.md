@@ -5,8 +5,8 @@ Docker packaging and production installation/upgrade remain planned. This is
 not an installable production CMS release.
 
 [Native Package V0](native-package-v0.md) is an experimental runtime-only
-directory for an already initialized compatible SQLite installation. Fresh
-database initialization without the CLI is not implemented in that package.
+directory for a new or restored compatible SQLite installation. Native DB init
+uses embedded migrations without the CLI; secret/configuration setup is manual.
 
 ## Prebuilt Native Package
 

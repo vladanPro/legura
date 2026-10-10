@@ -1,7 +1,7 @@
 # Native Package V0
 
-Experimental native runtime package for an already initialized compatible SQLite
-installation. Not a production release or a fresh-install wizard. Its generated
+Experimental native runtime package for a new or restored compatible SQLite
+installation. Not a production release or an automated installer. Its generated
 server uses Axum/Tokio and registry runtime/UI; source files are not needed at
 runtime. The executable must match the destination OS/architecture and system
 libraries. This pilot only packages the build machine's native platform.
@@ -37,6 +37,39 @@ On Unix use owner-only permissions for .env, database directories and backups;
 on Windows restrict ACLs. Process environment can override .env: clear conflicting
 AX_SECRET_* values before starting. Keep secrets out of public assets and Git.
 
+## Initialize A New Database
+
+Create a private data/ directory first (Unix: `mkdir -m 700 data`; Windows:
+create data/ and restrict its ACLs). From the package root:
+
+```sh
+./legura-maintenance init data/legura.db
+```
+
+Use .exe on Windows. This reserves only a NEW file and applies the migrations
+embedded in the executable through Axonyx's transactional migration executor.
+It refuses existing files (even empty ones), symlinks and orphaned SQLite
+sidecars. Parent directories must exist and be trusted/private. Failed SQL
+rolls back and removes only the newly created file. It never loads .env or
+process DB configuration, creates an administrator, upgrades or resets content.
+
+Create a private .env in the package root with:
+
+```dotenv
+AX_SECRET_DB_URL=sqlite://data/legura.db
+AX_SECRET_DB_DIALECT=sqlite
+AX_SECRET_SESSION_KEY=<independent random 32-byte hex value>
+AX_SECRET_SETUP_TOKEN=<another independent random 32-byte hex value>
+AX_SECRET_SESSION_COOKIE_SECURE=false
+```
+
+Replace placeholders with independently generated cryptographic random values,
+not words or example passwords. Configuration/secrets are still operator-managed;
+no setup script generates them in this package yet. The false cookie setting is
+for local HTTP only. Start the server, open /setup and supply the owner token to
+create the first administrator. Setup locks after success. Repeating init cannot
+reset the installation; this is not a migration/upgrade command.
+
 ## Run Without Cargo
 
 From the package directory:
@@ -45,7 +78,7 @@ From the package directory:
 pwsh -File start.ps1 -Port 3940
 ```
 
-Open http://127.0.0.1:3940/login (setup remains locked after a restored install).
+Open http://127.0.0.1:3940/setup for a new DB, or /login for an installed DB.
 Stop with Ctrl+C. The optional launcher does not invoke Cargo, Git, Node or the
 Axonyx CLI. PowerShell is not a runtime requirement of the native executable;
 an operator can start it directly from the package root:
@@ -86,7 +119,7 @@ pwsh -File scripts/package.ps1 -OutputDirectory ../legura-native-pilot
 ```
 
 Output directory must be new and its parent must exist. Partial output without
-package.json is not a completed package. Fresh empty-database initialization,
+package.json is not a completed package. Automatic secret/configuration setup,
 signed archives, supported platform matrix, service installers and upgrade
 acceptance remain subsequent gates. Do not advertise this as a finished CMS
 installer.
@@ -104,3 +137,6 @@ absent from PATH. HTTP checks prove readiness, login, restored published/private
 posts, private admin/data guards, setup lock, CSS and denied configuration/source
 paths. No developer database, secrets or server are used. Windows passed locally;
 Linux acceptance is a separate required CI gate, not assumed from that result.
+The gate also initializes a second empty DB with the packaged maintenance binary,
+refuses repeat init without changes, creates an administrator through browser
+setup, publishes a post and verifies logout/login, without Cargo in runtime PATH.

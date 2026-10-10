@@ -225,6 +225,52 @@ try {
       Request -Path $asset -Status 200 | Out-Null
       if ([IO.File]::ReadAllText($packageConfig) -cne $original.Replace($config.AX_SECRET_SESSION_KEY, $newKey)) { throw "Packaged startup modified secrets" }
       Write-Host "Native package passed: complete hashes, no source/secrets, relocated launcher, no developer tools, restored login/admin, private setup and CSS assets."
+      $process.Kill($true)
+      $process.WaitForExit()
+      $process.Dispose()
+      $process = $null
+      $freshPath = Join-Path $packageData 'fresh.db'
+      $pathBefore = $env:PATH
+      try {
+        $env:PATH = Join-Path $fixture 'no-toolchain-path'
+        & $maintenance init $freshPath
+        if ($LASTEXITCODE -ne 0) { throw "Native empty database initialization failed" }
+        $freshHash = (Get-FileHash -LiteralPath $freshPath).Hash
+        & $maintenance init $freshPath
+        if ($LASTEXITCODE -eq 0 -or (Get-FileHash -LiteralPath $freshPath).Hash -ne $freshHash) { throw "Native initialization overwrote an existing database" }
+        $freshKey = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+        $freshToken = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+        $freshConfig = $original.Replace('sqlite://data/legura.db', 'sqlite://data/fresh.db').Replace($config.AX_SECRET_SESSION_KEY, $freshKey).Replace($config.AX_SECRET_SETUP_TOKEN, $freshToken)
+        [IO.File]::WriteAllText($packageConfig, $freshConfig)
+        $process = Start-Process @options
+      } finally { $env:PATH = $pathBefore }
+      $ready = $false
+      for ($attempt = 0; $attempt -lt 120; $attempt++) {
+        if ($process.HasExited) { throw "Fresh packaged server exited before readiness" }
+        try { Request -Path '/__axonyx/ready' -Status 200 | Out-Null; $ready = $true; break } catch { Start-Sleep -Milliseconds 250 }
+      }
+      if (!$ready) { throw "Fresh packaged server was not ready" }
+      Request -Path '/admin' -Status 403 | Out-Null
+      Request -Path '/posts/package-published' -Status 404 | Out-Null
+      $setupPage = Request -Path '/setup' -Status 200
+      if ($setupPage.Contains($freshKey) -or $setupPage.Contains($freshToken)) { throw "Fresh setup exposed secrets" }
+      $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+      Request -Path '/__axonyx/action?path=%2Fsetup&name=Install' -Status 303 -Body "siteName=Native+installation&email=native%40example.com&password=$password&setupToken=$freshToken" -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
+      $admin = Request -Path '/admin' -Status 200
+      if (!$admin.Contains('native@example.com') -or !$admin.Contains('Start with your first draft')) { throw "Fresh setup did not reach its own empty admin overview" }
+      Request -Path '/setup' -Status 403 | Out-Null
+      $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+      $headers = @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof }
+      Request -Path '/__axonyx/action?path=%2Fadmin%2Fposts%2Fnew&name=CreatePost' -Status 303 -Body 'title=Native+first+post&slug=native-first&body=Native+published+content&status=published' -Headers $headers | Out-Null
+      $story = Request -Path '/posts/native-first' -Status 200
+      if (!$story.Contains('Native published content')) { throw "Fresh native installation could not publish" }
+      Request -Path '/__axonyx/action?path=%2Fadmin&name=SignOut' -Status 303 -Body 'submit=1' -Headers $headers | Out-Null
+      Request -Path '/admin' -Status 403 | Out-Null
+      $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+      Request -Path '/__axonyx/action?path=%2Flogin&name=SignIn' -Status 303 -Body "email=native%40example.com&password=$password" -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
+      Request -Path '/admin' -Status 200 | Out-Null
+      if ([IO.File]::ReadAllText($packageConfig) -cne $freshConfig) { throw "Fresh server modified configuration" }
+      Write-Host "Fresh native DB passed without CLI: embedded migrations, no-clobber repeat init, setup/admin, publication, logout and fresh login."
     }
     # The expected no-clobber failure must not become pwsh's final exit status.
     $global:LASTEXITCODE = 0
