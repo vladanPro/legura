@@ -1,6 +1,13 @@
 import { Card } from "@axonyx/ui/foundry/Card"
 import { Badge } from "@axonyx/ui/foundry/Badge"
 import { AdminFrame } from "@/components/AdminFrame"
+import { Table } from "@axonyx/ui/foundry/Table"
+import { TableCaption } from "@axonyx/ui/foundry/TableCaption"
+import { TableHead } from "@axonyx/ui/foundry/TableHead"
+import { TableBody } from "@axonyx/ui/foundry/TableBody"
+import { TableRow } from "@axonyx/ui/foundry/TableRow"
+import { TableHeaderCell } from "@axonyx/ui/foundry/TableHeaderCell"
+import { TableCell } from "@axonyx/ui/foundry/TableCell"
 
 page ManagePosts() {
   data posts: Post[] = loadAdminPosts()
@@ -12,15 +19,21 @@ page ManagePosts() {
         <a class="ax-button" data-variant="primary" href="/admin/posts/new">New post</a>
       </header>
       <If when={!posts}><Card title="No posts yet"><p>Create your first draft. It stays private until published.</p></Card></If>
-      <div class="legura-post-list">
-        <Each items={posts} as="post">
-          <article class="legura-post-row">
-            <div><h2><a href={"/admin/posts/" + post.id + "/edit"}>{post.title}</a></h2><p class="legura-hint">{post.slug}</p></div>
-            <Badge>{post.status}</Badge>
-            <a href={"/admin/posts/" + post.id + "/edit"}>Edit post</a>
-          </article>
-        </Each>
-      </div>
+      <If when={posts}>
+        <Table class="legura-posts-table" role="region" aria-label="Scrollable posts table" tabindex="0" zebra="true">
+          <TableCaption>Your posts</TableCaption>
+          <TableHead><TableRow><TableHeaderCell>Title and URL slug</TableHeaderCell><TableHeaderCell>Status</TableHeaderCell><TableHeaderCell>Actions</TableHeaderCell></TableRow></TableHead>
+          <TableBody>
+            <Each items={posts} as="post">
+              <TableRow>
+                <TableHeaderCell scope="row"><a class="legura-post-title" href={"/admin/posts/" + post.id + "/edit"}>{post.title}</a><p class="legura-hint">{post.slug}</p></TableHeaderCell>
+                <TableCell><Badge>{post.status}</Badge></TableCell>
+                <TableCell><a class="legura-post-edit" href={"/admin/posts/" + post.id + "/edit"} aria-label={"Edit post: " + post.title}>Edit post</a></TableCell>
+              </TableRow>
+            </Each>
+          </TableBody>
+        </Table>
+      </If>
     </section>
     </AdminFrame>
   }
