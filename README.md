@@ -94,6 +94,10 @@ readiness proof. Do not deploy this development pilot publicly.
 
 ## Development
 
+The [rich-text storage contract](docs/richtext-storage-v0.md) is an isolated Rust
+and SQLite prototype consuming the real editor package. It is not connected to
+the CMS forms or enabled in the active migrations yet; posts still use plain text.
+
 For a local SQLite trial, follow the [tested source preparation](docs/installation.md#local-sqlite-pilot).
 `pwsh -File scripts/local.ps1 -Task prepare` initializes/checks/builds;
 `pwsh -File scripts/local.ps1 -Task start` serves the setup screen on localhost.

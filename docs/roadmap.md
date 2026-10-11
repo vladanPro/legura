@@ -79,6 +79,12 @@ unsaved live preview or a shareable token. See posts-preview-v0.md.
 
 ## 2. Self-Hosted Release Gate
 
+Rich-text storage preparation now has a validated Rust content contract and an
+in-memory SQLite compatibility proof. See richtext-storage-v0.md. The current
+CMS remains plain text until a typed native-package bridge allows generated
+actions to validate documents and ASX to render them safely. Active migrations,
+asset lifecycle, JS/native recovery and backup compatibility remain gated.
+
 Native Package V0 adds a runtime-only directory (server, maintenance tool, assets
 and file inventory), with disposable relocated/no-toolchain acceptance. It is
 for a restored installation or a new SQLite DB using embedded migrations.

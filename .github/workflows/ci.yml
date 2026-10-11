@@ -30,6 +30,7 @@ jobs:
         run: |
           cargo fmt --all -- --check
           cargo test --locked --bin legura-maintenance
+          cargo test --locked --lib
       - name: Verify isolated compiled setup and identity
         shell: pwsh
         run: ./scripts/smoke-auth.ps1 -Port 3941 -Posts -BackupRestore
