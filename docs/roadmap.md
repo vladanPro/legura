@@ -38,6 +38,11 @@ the current pilot intentionally uses explicit 403 guards.
 
 ## 1. First End-to-End CMS
 
+Rich-text Migration V1 is in feature review: migration 003 preserves legacy
+plain rows, blocks destructive rich rollback, and supports old/new snapshots.
+See richtext-migration-v1.md. Post editor activation and public rich rendering
+remain separate work; no operator database is upgraded by these tests.
+
 Local operator acceptance now covers the maintenance wrapper, live SQLite backup,
 verified no-clobber recovery and unchanged running application/configuration.
 See operator-quickstart.md. Actual content/login recovery remains covered by

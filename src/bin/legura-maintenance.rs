@@ -33,6 +33,11 @@ const MIGRATIONS: &[(&str, &str, &str)] = &[
         include_str!("../../db/migrations/20261009000000_002_posts/up.sql"),
         include_str!("../../db/migrations/20261009000000_002_posts/down.sql"),
     ),
+    (
+        "20261012000000_003",
+        include_str!("../../db/migrations/20261012000000_003_richtext/up.sql"),
+        include_str!("../../db/migrations/20261012000000_003_richtext/down.sql"),
+    ),
 ];
 
 fn main() {
@@ -141,6 +146,7 @@ fn embedded_migrations() -> Vec<AxMigration> {
             name: match *version {
                 "20261008000000_001" => "identity",
                 "20261009000000_002" => "posts",
+                "20261012000000_003" => "richtext",
                 _ => unreachable!("embedded migration name is missing"),
             }
             .into(),
@@ -209,8 +215,12 @@ fn validate(connection: &Connection) -> Result<()> {
         connection.query_row("SELECT count(*) FROM _axonyx_migrations", [], |row| {
             row.get(0)
         })?;
-    ensure!(count == MIGRATIONS.len(), "unsupported migration history");
-    for (version, up, down) in MIGRATIONS {
+    // Both the pre-editor schema and its upgraded schema are valid backups.
+    ensure!(
+        (2..=MIGRATIONS.len()).contains(&count),
+        "unsupported migration history"
+    );
+    for (version, up, down) in MIGRATIONS.iter().take(count) {
         let checksum: String = connection.query_row(
             "SELECT checksum FROM _axonyx_migrations WHERE version = ?1",
             [version],
@@ -220,6 +230,18 @@ fn validate(connection: &Connection) -> Result<()> {
             checksum == migration_hash(up, down),
             "migration checksum does not match this maintenance build"
         );
+    }
+    if count >= 3 {
+        let mut statement =
+            connection.prepare("SELECT content_format,body,content_document FROM legura_posts")?;
+        let mut rows = statement.query([])?;
+        while let Some(row) = rows.next()? {
+            let format: String = row.get(0)?;
+            let body: String = row.get(1)?;
+            let document: Option<String> = row.get(2)?;
+            legura::content::PostContent::from_stored(&format, &body, document.as_deref())
+                .context("Stored post content is invalid; backup verification refused")?;
+        }
     }
     Ok(())
 }
@@ -395,7 +417,7 @@ mod tests {
                     )
                     .unwrap();
             }
-            connection.execute_batch("INSERT INTO legura_users VALUES ('owner','owner@example.test','admin'); INSERT INTO legura_credentials VALUES ('owner','owner@example.test','fixture-hash'); INSERT INTO legura_installation VALUES (1,'Fixture','owner'); INSERT INTO legura_posts VALUES ('post','Published','story','Before deletion','published'); INSERT INTO legura_posts VALUES ('draft','Draft','draft','Private','draft');").unwrap();
+            connection.execute_batch("INSERT INTO legura_users VALUES ('owner','owner@example.test','admin'); INSERT INTO legura_credentials VALUES ('owner','owner@example.test','fixture-hash'); INSERT INTO legura_installation VALUES (1,'Fixture','owner'); INSERT INTO legura_posts(id,title,slug,body,status) VALUES ('post','Published','story','Before deletion','published'); INSERT INTO legura_posts(id,title,slug,body,status) VALUES ('draft','Draft','draft','Private','draft');").unwrap();
             Self(path)
         }
         fn path(&self, name: &str) -> std::path::PathBuf {
@@ -471,6 +493,119 @@ mod tests {
             .unwrap();
         assert_eq!(history.0, "identity");
         assert!(!history.1.is_empty());
+    }
+
+    #[test]
+    fn legacy_upgrade_rich_restore_and_lossless_rollback() {
+        let fixture = Fixture::new();
+        let path = fixture.path("legacy.db");
+        let migrations = embedded_migrations();
+        initialize_with_migrations(&path, &migrations[..2]).unwrap();
+        let db = Connection::open(&path).unwrap();
+        let original = "<script>literal</script>\nExisting post";
+        db.execute("INSERT INTO legura_posts(id,title,slug,body,status) VALUES ('old','Old','old',?1,'published')", [original]).unwrap();
+        backup(&path, &fixture.path("old-backup")).unwrap();
+        let runtime = runtime_from_env(
+            AxEnv::new()
+                .with_secret("db_url", format!("sqlite:{}", path.to_str().unwrap()))
+                .with_secret("db_dialect", "sqlite"),
+        )
+        .unwrap();
+        assert_eq!(
+            AxMigrationExecutor::apply_migrations(&runtime, &migrations)
+                .unwrap()
+                .len(),
+            1
+        );
+        assert!(AxMigrationExecutor::apply_migrations(&runtime, &migrations)
+            .unwrap()
+            .is_empty());
+        let old: (String, String, Option<String>) = db
+            .query_row(
+                "SELECT body,content_format,content_document FROM legura_posts WHERE id='old'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(old, (original.into(), "plain-text".into(), None));
+        let document = serde_json::json!({"format":"legura-richtext","version":1,"blocks":[
+            {"type":"paragraph","children":[
+                {"text":"First","marks":["bold"],"link":"https://example.com/first"},
+                {"text":" Second","marks":[],"link":"https://example.com/second"}
+            ]}
+        ]})
+        .to_string();
+        let columns = legura::content::PostContent::rich(&document)
+            .unwrap()
+            .storage_columns()
+            .unwrap();
+        db.execute("INSERT INTO legura_posts(id,title,slug,body,status,content_format,content_document) VALUES ('rich','Rich','rich',?1,'draft',?2,?3)",
+            rusqlite::params![columns.body, columns.content_format, columns.content_document]).unwrap();
+        backup(&path, &fixture.path("rich-backup")).unwrap();
+        restore(
+            &fixture.path("rich-backup"),
+            &fixture.path("rich-restored.db"),
+        )
+        .unwrap();
+        let restored = open_readonly(&fixture.path("rich-restored.db")).unwrap();
+        validate(&restored).unwrap();
+        let saved: String = restored
+            .query_row(
+                "SELECT content_document FROM legura_posts WHERE id='rich'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(saved, columns.content_document.unwrap());
+        assert!(
+            AxMigrationExecutor::rollback_migration(&runtime, &migrations[2]).is_err(),
+            "Rollback must refuse to discard rich documents"
+        );
+        validate(&db).unwrap();
+        assert_eq!(
+            db.query_row(
+                "SELECT count(*) FROM sqlite_schema WHERE name='_legura_richtext_rollback_guard'",
+                [],
+                |row| row.get::<_, i64>(0)
+            )
+            .unwrap(),
+            0
+        );
+        db.execute("DELETE FROM legura_posts WHERE id='rich'", [])
+            .unwrap();
+        AxMigrationExecutor::rollback_migration(&runtime, &migrations[2]).unwrap();
+        validate(&db).unwrap();
+        assert_eq!(
+            db.query_row("SELECT body FROM legura_posts WHERE id='old'", [], |row| {
+                row.get::<_, String>(0)
+            })
+            .unwrap(),
+            original
+        );
+        restore(
+            &fixture.path("old-backup"),
+            &fixture.path("old-restored.db"),
+        )
+        .unwrap();
+        let legacy = open_readonly(&fixture.path("old-restored.db")).unwrap();
+        validate(&legacy).unwrap();
+        assert_eq!(
+            legacy
+                .query_row("SELECT count(*) FROM _axonyx_migrations", [], |row| row
+                    .get::<_, i64>(0))
+                .unwrap(),
+            2,
+            "Restore must not silently upgrade old snapshots"
+        );
+    }
+
+    #[test]
+    fn rich_backup_refuses_invalid_document() {
+        let fixture = Fixture::new();
+        let db = Connection::open(fixture.path("source.db")).unwrap();
+        db.execute("UPDATE legura_posts SET content_format='legura-richtext',content_document='{}' WHERE id='post'", []).unwrap();
+        assert!(backup(&fixture.path("source.db"), &fixture.path("invalid-rich")).is_err());
+        assert!(!fixture.path("invalid-rich/manifest.json").exists());
     }
 
     #[test]

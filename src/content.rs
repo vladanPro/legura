@@ -229,7 +229,7 @@ mod tests {
     }
 
     #[test]
-    fn sqlite_prototype_preserves_old_rows_and_round_trips_rich_json() {
+    fn sqlite_migration_preserves_old_rows_and_round_trips_rich_json() {
         let db = Connection::open_in_memory().unwrap();
         db.execute_batch(include_str!(
             "../db/migrations/20261009000000_002_posts/up.sql"
@@ -237,9 +237,10 @@ mod tests {
         .unwrap();
         let old = "<script>literal</script>\nExisting body";
         db.execute("INSERT INTO legura_posts(id,title,slug,body,status) VALUES ('old','Old','old',?1,'draft')", [old]).unwrap();
-        // Prototype only: deliberately not part of the active CMS migrations.
-        db.execute_batch(include_str!("../tests/fixtures/richtext-columns.sql"))
-            .unwrap();
+        db.execute_batch(include_str!(
+            "../db/migrations/20261012000000_003_richtext/up.sql"
+        ))
+        .unwrap();
         let columns: (String, String, Option<String>) = db
             .query_row(
                 "SELECT content_format,body,content_document FROM legura_posts WHERE id='old'",

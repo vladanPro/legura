@@ -3,7 +3,7 @@
   "driver": "sqlite",
   "transport": "direct",
   "url": "sqlite://data/legura.db",
-  "schema_hash": "sha256:0f41ea888a1d7f3c4e4323a2948a0337fb577905fea4d0f784ee0480db6f43dd",
+  "schema_hash": "sha256:4fa05fcdc0c1bbc937458ba85597fa24b602685278f7a5d80b2cde306bd8e8d6",
   "types_path": "app/generated/db.ax",
   "tables": [
     {
@@ -112,6 +112,22 @@
           "nullable": false,
           "primary_key": false,
           "default": "'draft'"
+        },
+        {
+          "name": "content_format",
+          "ty": "TEXT",
+          "ax_type": "String",
+          "nullable": false,
+          "primary_key": false,
+          "default": "'plain-text'"
+        },
+        {
+          "name": "content_document",
+          "ty": "TEXT",
+          "ax_type": "String",
+          "nullable": true,
+          "primary_key": false,
+          "default": null
         }
       ]
     },

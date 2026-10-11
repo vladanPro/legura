@@ -28,7 +28,10 @@ SQLite's online backup API captures a consistent snapshot, including committed
 WAL records. Do not substitute a raw copy of a live `.db` file. Under sustained
 writes or locks, the snapshot attempt can time out; retry in a quiet period.
 V1 validates SQLite integrity, foreign keys, required product columns and the
-exact two migration versions/checksums embedded in this maintenance build.
+known two-migration legacy prefix or three-migration upgraded history/checksums
+embedded in this maintenance build. Rich snapshots additionally validate their
+documents and body projections. Restore preserves the snapshot's schema version;
+it does not implicitly upgrade it. See richtext-migration-v1.md.
 
 A completed bundle contains `database.sqlite` and `manifest.json` (format,
 product/version, database SHA-256). The manifest is written last; an interrupted
