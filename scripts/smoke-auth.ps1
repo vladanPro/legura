@@ -1,6 +1,7 @@
 param(
   [string] $ToolManifest = "",
   [string] $RuntimeSource = "",
+  [string] $UiSource = "",
   [int] $Port = 3941,
   [ValidateSet("http", "javascript", "native")][string] $Mode = "http",
   [switch] $Posts,
@@ -12,6 +13,8 @@ param(
 $ErrorActionPreference = "Stop"
 if ($BackupRestore -and (!$Posts -or $Mode -ne "http")) { throw "BackupRestore requires Posts HTTP mode" }
 if ($ContentEditor) { $Content = $true }
+if ($ContentEditor -and !$UiSource) { throw "ContentEditor requires explicit UI source until its new icons are published" }
+if ($UiSource -and !$ContentEditor) { throw "UiSource is only for the isolated ContentEditor proof" }
 if ($Content -and (!$ToolManifest -or !$RuntimeSource -or ($Mode -ne "http" -and !$ContentEditor) -or $Posts -or $RefreshSchema)) { throw "Content requires explicit source tooling/runtime and no Posts/RefreshSchema" }
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $fixture = Join-Path ([IO.Path]::GetTempPath()) ("legura-auth-" + [Guid]::NewGuid().ToString("N"))
@@ -28,6 +31,10 @@ if ($ToolManifest) { $ToolManifest = [IO.Path]::GetFullPath($ToolManifest) }
 if ($RuntimeSource) {
   $RuntimeSource = [IO.Path]::GetFullPath($RuntimeSource)
   if (!(Test-Path -LiteralPath (Join-Path $RuntimeSource "Cargo.toml"))) { throw "Runtime source manifest is missing" }
+}
+if ($UiSource) {
+  $UiSource = [IO.Path]::GetFullPath($UiSource)
+  if (!(Test-Path -LiteralPath (Join-Path $UiSource "src/foundry/icons/LinkIcon.asx"))) { throw "UI source is missing editor icons" }
 }
 
 function Invoke-Ax {
@@ -125,6 +132,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Cannot activate fixture runtime source override" }
   }
   if ($ContentEditor) {
+    $path = $UiSource.Replace('\', '/') | ConvertTo-Json -Compress
+    [IO.File]::AppendAllText((Join-Path $fixture "Cargo.toml"), "axonyx-ui = { path = $path }`n")
+    & cargo update -p axonyx-ui
+    if ($LASTEXITCODE -ne 0) { throw "Cannot activate isolated UI source override" }
     $packages = & cargo metadata --locked --format-version 1 | ConvertFrom-Json
     if ($LASTEXITCODE -ne 0) { throw "Cannot locate pinned editor package" }
     $editorPackage = @($packages.packages | Where-Object name -eq "legura-editor")

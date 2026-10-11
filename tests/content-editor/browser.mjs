@@ -34,6 +34,10 @@ try {
     await page.keyboard.press('Control+a');
     await page.getByRole('button', { name: 'Bold', exact: true }).click();
     assert.equal(await surface.locator('strong').textContent(), 'Browser text');
+    await page.getByRole('button', { name: 'Insert link', exact: true }).click();
+    await page.getByRole('textbox', { name: 'Link address', exact: true }).fill('https://example.com/first');
+    await page.getByRole('button', { name: 'Apply link', exact: true }).click();
+    assert.equal(await surface.locator('a').getAttribute('href'), 'https://example.com/first');
     const before = await page.locator('[data-editor-document]').inputValue();
     const failed = page.waitForResponse(r => r.url().includes('/__axonyx/action?') && r.request().method() === 'POST');
     await page.getByRole('button', { name: 'Save content', exact: true }).click();
@@ -46,9 +50,14 @@ try {
     await page.waitForURL(editUrl);
     await page.waitForFunction(() => document.querySelector('[data-editor-preview]').contentEditable === 'true');
     assert.equal(await surface.locator('strong').textContent(), 'Browser text', 'Reload lost formatting');
+    assert.equal(await surface.locator('a').getAttribute('href'), 'https://example.com/first', 'Reload lost the link');
     await surface.click();
     await page.keyboard.press('Control+End');
     await page.keyboard.insertText(' updated');
+    for (let index = 0; index < 7; index++) await page.keyboard.press('Shift+ArrowLeft');
+    await page.getByRole('button', { name: 'Insert link', exact: true }).click();
+    await page.getByRole('textbox', { name: 'Link address', exact: true }).fill('https://example.com/second');
+    await page.getByRole('button', { name: 'Apply link', exact: true }).click();
     const updated = page.waitForResponse(r => r.url().includes('/__axonyx/action?') && r.request().method() === 'POST');
     const navigation = page.waitForNavigation({ waitUntil: 'load' });
     await page.getByRole('button', { name: 'Save content', exact: true }).click();
@@ -57,6 +66,8 @@ try {
     await page.reload();
     await page.waitForFunction(() => document.querySelector('[data-editor-preview]').contentEditable === 'true');
     assert.equal(await surface.textContent(), 'Browser text updated');
+    assert.deepEqual(await surface.locator('a').evaluateAll(nodes => nodes.map(node => node.getAttribute('href'))),
+      ['https://example.com/first', 'https://example.com/second'], 'Reload lost independent links');
     await page.evaluate(() => {
       const root = document.querySelector('[data-legura-editor]');
       window.detachedEditorProbe = root;
@@ -65,6 +76,7 @@ try {
     await page.waitForFunction(() => window.detachedEditorProbe.querySelector('[data-editor-document]').disabled
       && document.querySelector('[data-editor-preview]').contentEditable === 'true');
     assert.equal(await surface.textContent(), 'Browser text updated', 'Remount lost stored content');
+    assert.equal(await surface.locator('a').count(), 2, 'Remount lost links');
   } else {
     // Seed through the actual authenticated/CSRF-protected action, not direct SQL.
     const proof = await context.request.get(`${baseUrl}/__axonyx/csrf`, { headers: { Origin: baseUrl } });
@@ -86,7 +98,11 @@ try {
   assert.equal(result.status(), 200);
   const { html } = await result.json();
   assert.ok(html.includes('<strong>Browser text'), 'Stored rich formatting did not survive');
-  if (mode === 'javascript') assert.ok(html.includes('updated'), 'Update did not persist');
+  if (mode === 'javascript') {
+    assert.ok(html.includes('updated'), 'Update did not persist');
+    assert.ok(html.includes('href="https://example.com/first"'));
+    assert.ok(html.includes('href="https://example.com/second"'));
+  }
   const directory = resolve(tmpdir(), 'legura-content-editor-qa');
   await mkdir(directory, { recursive: true });
   for (const width of [1280, 390]) {
