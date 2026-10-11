@@ -9,6 +9,9 @@ metadata locates the one pinned editor package; its ASX, CSS and three JS module
 are staged without rewriting their source. Test-only create/edit pages and
 actions use native Rust preparation before parameterized SQLite writes. The
 regular published-package CMS path and the operator's environment/data stay intact.
+The editor pin now includes the joined Foundry toolbar and selection-aware link
+popover. Until the icons are published, ContentEditor requires an explicit
+UiSource checkout; its Cargo override is written only into the disposable fixture.
 
 The small host module manages mount/destroy, disabled save state, replacement
 roots and pagehide/pageshow lifecycle. Browser editing stays in the package.
@@ -17,9 +20,11 @@ explicit test application integration, not a shipped automatic asset installer.
 
 ```powershell
 pwsh -File scripts/smoke-auth.ps1 -ContentEditor -Mode javascript -Port 3946 `
+  -UiSource /path/to/axonyx-ui `
   -ToolManifest /path/to/framework/Cargo.toml `
   -RuntimeSource /path/to/runtime/crates/axonyx-runtime
 pwsh -File scripts/smoke-auth.ps1 -ContentEditor -Mode native -Port 3946 `
+  -UiSource /path/to/axonyx-ui `
   -ToolManifest /path/to/framework/Cargo.toml `
   -RuntimeSource /path/to/runtime/crates/axonyx-runtime
 ```
@@ -27,6 +32,9 @@ pwsh -File scripts/smoke-auth.ps1 -ContentEditor -Mode native -Port 3946 `
 Chromium acceptance exercises real setup, typing, selected bold, field-error 422
 without document loss, create/save redirect, server-loaded document import,
 update/save/reload, detached-root teardown/remount and safe stored HTML readback.
+Two independently linked text ranges survive SQLite persistence, reload and
+remount, alongside their formatting. The protected readback also verifies both
+addresses in Rust-rendered safe HTML.
 Desktop 1280px and mobile 390px checks assert no horizontal page overflow and
 save screenshots under the OS temp `legura-content-editor-qa` directory.
 
