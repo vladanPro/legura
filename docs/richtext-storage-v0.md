@@ -46,6 +46,12 @@ moving branch. The editor is still unpublished; no Cargo/npm release is implied.
 
 ## Remaining Integration Gate
 
+Content Preparation V0 now provides recoverable field errors and a typed
+native-registry proof in an isolated workspace. See
+[the preparation boundary](content-preparation-v0.md). The application startup
+bridge is merged in framework dev, but not a new published registry release.
+Active CMS action/HTTP integration and rich output rendering are still pending.
+
 The published Axonyx toolchain does not yet expose a proven way for `.ax`
 actions/queries to invoke this native validator, or for `.asx` to consume its
 validated rich output. Do not hand-edit generated backend Rust or interpolate
