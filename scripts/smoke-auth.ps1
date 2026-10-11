@@ -5,10 +5,12 @@ param(
   [ValidateSet("http", "javascript", "native")][string] $Mode = "http",
   [switch] $Posts,
   [switch] $BackupRestore,
-  [switch] $RefreshSchema
+  [switch] $RefreshSchema,
+  [switch] $Content
 )
 $ErrorActionPreference = "Stop"
 if ($BackupRestore -and (!$Posts -or $Mode -ne "http")) { throw "BackupRestore requires Posts HTTP mode" }
+if ($Content -and (!$ToolManifest -or !$RuntimeSource -or $Mode -ne "http" -or $Posts -or $RefreshSchema)) { throw "Content requires explicit source tooling/runtime, HTTP mode and no Posts/RefreshSchema" }
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $fixture = Join-Path ([IO.Path]::GetTempPath()) ("legura-auth-" + [Guid]::NewGuid().ToString("N"))
 $baseUrl = "http://127.0.0.1:$Port"
@@ -103,6 +105,16 @@ try {
     Copy-Item -LiteralPath (Join-Path $root $file) -Destination $target
   }
   Set-Location $fixture
+  if ($Content) {
+    $proofRoute = Join-Path $fixture "app/admin/content-proof"
+    New-Item -ItemType Directory -Path $proofRoute -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $root "tests/content-http/actions.ax") -Destination $proofRoute
+    Copy-Item -LiteralPath (Join-Path $root "tests/content-http/page.asx") -Destination $proofRoute
+    Copy-Item -LiteralPath (Join-Path $root "tests/content-http/loader.ax") -Destination $proofRoute
+    Copy-Item -LiteralPath (Join-Path $root "tests/content-http/native.rs") -Destination (Join-Path $fixture "src/native.rs")
+    New-Item -ItemType Directory -Path (Join-Path $fixture "routes/api") -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $root "tests/content-http/content-proof.ax") -Destination (Join-Path $fixture "routes/api/content-proof.ax")
+  }
   if ($RuntimeSource) {
     # Source overrides are confined to the disposable fixture, never the app manifest.
     $path = $RuntimeSource.Replace('\', '/') | ConvertTo-Json -Compress
@@ -123,6 +135,10 @@ try {
   $env:AXONYX_HOST = "127.0.0.1"
   $env:AXONYX_PORT = "$Port"
   Invoke-Ax -Arguments @("db", "migrate")
+  if ($Content) {
+    & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);d.executescript(open(sys.argv[2],encoding="utf-8").read());d.close()' $db (Join-Path $root "tests/fixtures/richtext-columns.sql")
+    if ($LASTEXITCODE -ne 0) { throw "Cannot activate isolated content columns" }
+  }
   Invoke-Ax -Arguments @("db", "pull")
   if ($RefreshSchema) {
     # Generate a portable contract from the isolated migrated database, not user data.
@@ -197,6 +213,7 @@ try {
   Start-Fixture
   Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } | Out-Null
   $sessionProof = Get-Proof -Cookie $cookie
+  if ($Content) { . (Join-Path $root "tests/content-http/proof.ps1") }
   if ($Posts) { . (Join-Path $root "tests/posts-http.ps1") }
   $logoutPath = "/__axonyx/action?path=%2Fadmin&name=SignOut"
   Invoke-Request -Path $logoutPath -Method POST -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null
@@ -224,6 +241,10 @@ try {
   & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);d.execute("delete from legura_credentials");d.execute("delete from legura_installation");d.execute("delete from legura_users");d.commit();d.close()' $db
   if ($LASTEXITCODE -ne 0) { throw "Cannot revoke fixture identity" }
   Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
+  if ($Content) {
+    Invoke-Request -Path $contentAction -Method POST -Body $contentForm -Headers $revokedProof -Status 403 | Out-Null
+    Assert-ContentCount -Expected 2
+  }
   if ($Posts) {
     Invoke-Request -Path "/admin/posts" -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
     Invoke-Request -Path "/__axonyx/action?path=%2Fadmin%2Fposts%2Fnew&name=CreatePost" -Method POST -Body "title=Revoked&slug=revoked&body=Denied&status=draft" -Headers $revokedProof -Status 403 | Out-Null
@@ -246,6 +267,7 @@ try {
   foreach ($key in $keys) { [Environment]::SetEnvironmentVariable($key, $environment[$key]) }
   Pop-Location
   $resolved = [IO.Path]::GetFullPath($fixture)
-  $temp = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
-  if ($resolved.StartsWith($temp) -and (Split-Path $resolved -Leaf) -like 'legura-auth-*') { Remove-Item -LiteralPath $resolved -Recurse -Force }
+  $temp = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+  if (!$resolved.StartsWith($temp, [StringComparison]::OrdinalIgnoreCase) -or (Split-Path $resolved -Leaf) -notmatch '^legura-auth-[a-f0-9]{32}$') { throw "Refusing cleanup outside generated auth fixture" }
+  if (Test-Path -LiteralPath $resolved) { Remove-Item -LiteralPath $resolved -Recurse -Force }
 }
