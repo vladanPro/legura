@@ -11,6 +11,27 @@ pub struct ContentInput {
     pub content_document: Option<String>,
 }
 
+/// Native forms send strings, not a JSON null for an omitted hidden document.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ContentFormInput {
+    pub content_format: String,
+    pub body: String,
+    pub content_document: String,
+}
+
+pub fn prepare_content_form(input: ContentFormInput) -> ContentPreparation {
+    prepare_content(ContentInput {
+        content_format: input.content_format,
+        body: input.body,
+        content_document: if input.content_document.is_empty() {
+            None
+        } else {
+            Some(input.content_document)
+        },
+    })
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct PreparedColumns {
@@ -116,6 +137,26 @@ mod tests {
             assert!(prepared.columns.is_none());
             assert_eq!(prepared.errors.len(), 1);
             assert!(!prepared.errors[field].contains("private"));
+        }
+    }
+
+    #[test]
+    fn form_adapter_normalizes_only_the_empty_document() {
+        let prepared = prepare_content_form(ContentFormInput {
+            content_format: "plain-text".into(),
+            body: "Hello".into(),
+            content_document: "".into(),
+        });
+        assert!(prepared.errors.is_empty());
+        assert!(prepared.columns.unwrap().content_document.is_none());
+        for document in [" ", "{}"] {
+            let prepared = prepare_content_form(ContentFormInput {
+                content_format: "plain-text".into(),
+                body: "Hello".into(),
+                content_document: document.into(),
+            });
+            assert!(prepared.columns.is_none());
+            assert!(prepared.errors.contains_key("content_document"));
         }
     }
 

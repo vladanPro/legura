@@ -806,6 +806,7 @@ dependencies = [
 name = "legura-native-content-proof"
 version = "0.0.0"
 dependencies = [
+ "axonyx-core 0.6.6 (git+https://github.com/vladanPro/axonyx-runtime?rev=85e6e1541a9e26d0956b768750cf0c61f70888f0)",
  "axonyx-runtime 0.6.6 (git+https://github.com/vladanPro/axonyx-runtime?rev=85e6e1541a9e26d0956b768750cf0c61f70888f0)",
  "legura",
  "serde_json",

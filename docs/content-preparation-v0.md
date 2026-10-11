@@ -39,3 +39,6 @@ no server listener or database connection and is not a compiled CMS HTTP test.
 Next: action-level field-error recovery through the compiled app registration,
 then migration/assets and typed public rendering. Do not hand-edit generated
 backend Rust or allow arbitrary HTML to skip these gates.
+
+The next proof now exists as [Content Action Validation V0](content-action-validation-v0.md):
+generated `.ax` action dispatch and preview guards, not a live HTTP or DB test.
