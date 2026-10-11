@@ -1,0 +1,15 @@
+export type EditorDocument {
+  slug: String
+  document: String
+  body: String
+}
+export query loadEditorDocument() -> EditorDocument {
+  require Auth.subject else forbidden()
+  data administrator = db.legura_users.where({id: Auth.subject}).first()
+  require administrator else forbidden()
+  require administrator["role"] == "admin" else forbidden()
+  data post = db.legura_posts.where({slug: query.slug}).first()
+  require post else notFound()
+  require post["content_format"] == "legura-richtext" else forbidden()
+  return {slug: post["slug"], document: post["content_document"], body: post["body"]}
+}

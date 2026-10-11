@@ -42,6 +42,19 @@ jobs:
           rustfmt --edition 2021 --check tests/content-http/native.rs
           if ($LASTEXITCODE -ne 0) { throw "Native fixture formatting failed" }
           ./scripts/smoke-auth.ps1 -Content -Port 3946 -ToolManifest .proof-tooling/framework/Cargo.toml -RuntimeSource .proof-tooling/framework/vendor/axonyx-runtime/crates/axonyx-runtime
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install test-only browser tooling
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Verify pinned editor create, retry, reload and read-only fallback
+        shell: pwsh
+        run: |
+          ./scripts/smoke-auth.ps1 -ContentEditor -Mode javascript -Port 3946 -ToolManifest .proof-tooling/framework/Cargo.toml -RuntimeSource .proof-tooling/framework/vendor/axonyx-runtime/crates/axonyx-runtime
+          ./scripts/smoke-auth.ps1 -ContentEditor -Mode native -Port 3946 -ToolManifest .proof-tooling/framework/Cargo.toml -RuntimeSource .proof-tooling/framework/vendor/axonyx-runtime/crates/axonyx-runtime
   compiled-auth:
     name: Registry Compiled Auth
     runs-on: ubuntu-latest
