@@ -10,3 +10,6 @@ publish = false
 legura = { path = "../.." }
 axonyx-runtime = { git = "https://github.com/vladanPro/axonyx-runtime", rev = "85e6e1541a9e26d0956b768750cf0c61f70888f0" }
 serde_json = "1"
+
+[build-dependencies]
+axonyx-core = { git = "https://github.com/vladanPro/axonyx-runtime", rev = "85e6e1541a9e26d0956b768750cf0c61f70888f0" }
