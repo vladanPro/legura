@@ -13,6 +13,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  native-content-http:
+    name: Isolated Native Content HTTP
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: vladanPro/axonyx-framework
+          ref: 7bc7c01056bb6590c352d185f27394e6dcee606b
+          path: .proof-tooling/framework
+      - uses: actions/checkout@v4
+        with:
+          repository: vladanPro/axonyx-runtime
+          ref: c537cbb9b908507120b8177bf23f2ab711b11ca1
+          path: .proof-tooling/framework/vendor/axonyx-runtime
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: .proof-tooling/framework -> target
+      - name: Verify compiled native content with disposable SQLite
+        shell: pwsh
+        run: |
+          rustfmt --edition 2021 --check tests/content-http/native.rs
+          if ($LASTEXITCODE -ne 0) { throw "Native fixture formatting failed" }
+          ./scripts/smoke-auth.ps1 -Content -Port 3946 -ToolManifest .proof-tooling/framework/Cargo.toml -RuntimeSource .proof-tooling/framework/vendor/axonyx-runtime/crates/axonyx-runtime
   compiled-auth:
     name: Registry Compiled Auth
     runs-on: ubuntu-latest

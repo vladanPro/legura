@@ -85,6 +85,12 @@ CMS remains plain text until a typed native-package bridge allows generated
 actions to validate documents and ASX to render them safely. Active migrations,
 asset lifecycle, JS/native recovery and backup compatibility remain gated.
 
+Native content now also has a source-pinned disposable compiled HTTP proof with
+real setup/session/administrator/CSRF checks, SQLite persistence, restart and
+safe stored-content rehydration. See content-http-proof-v0.md. Local Windows
+acceptance passes; Linux CI must pass before integration. This does not activate
+rich storage or the editor in the operator CMS.
+
 Native Package V0 adds a runtime-only directory (server, maintenance tool, assets
 and file inventory), with disposable relocated/no-toolchain acceptance. It is
 for a restored installation or a new SQLite DB using embedded migrations.

@@ -15,8 +15,8 @@ data prepared = Native.call("legura.content.prepare", {
 require prepared["columns"] != null else invalid(prepared["errors"])
 ```
 
-Native results currently use JSON indexing. Dot access to an untyped native
-result is a compiler gap, not the recommended final typed surface. Native form
+This original fixture uses JSON indexing. Native JSON dot-member access is now
+fixed on runtime dev (PR #246), but is not published yet. Native form
 input uses `content_document: String = ""`; the product `ContentFormInput`
 adapter converts exactly the empty string to no document. Nonempty whitespace
 and malformed JSON are not silently discarded.
@@ -50,5 +50,6 @@ not edited. The separate proof workspace uses pinned development compiler/runtim
 code while the CMS retains published dependencies. No active migration, user
 database, editor asset or running server is changed.
 
-Next: isolated compiled HTTP CMS acceptance with real authorization/CSRF and
-disposable persistence, before enabling the format migration and editor UI.
+The next gate has a source-pinned isolated compiled HTTP proof; see
+[Native Content HTTP Proof V0](content-http-proof-v0.md). The format migration
+and editor UI remain inactive until their separate acceptance gates pass.
