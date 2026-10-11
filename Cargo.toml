@@ -8,6 +8,7 @@ default-run = "legura"
 [workspace]
 
 [dependencies]
+legura-editor = { git = "https://github.com/vladanPro/legura-editor", rev = "1d42c5755282d99fbcd553e8038f9809e60b9124" }
 axonyx-runtime = { version = "0.6.6", features = ["axum"] }
 axonyx-ui = "0.0.85"
 serde_json = "1"
