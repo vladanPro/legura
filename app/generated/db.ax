@@ -40,6 +40,8 @@ export type LeguraPostsRow {
   slug: String
   body: String
   status: String
+  content_format: String
+  content_document: Optional<String>
 }
 
 export type LeguraPostsCreateInput {
@@ -48,6 +50,8 @@ export type LeguraPostsCreateInput {
   slug: String
   body: String
   status: Optional<String>
+  content_format: Optional<String>
+  content_document: Optional<String>
 }
 
 export type LeguraPostsUpdateInput {
@@ -56,6 +60,8 @@ export type LeguraPostsUpdateInput {
   slug: Optional<String>
   body: Optional<String>
   status: Optional<String>
+  content_format: Optional<String>
+  content_document: Optional<String>
 }
 
 export type LeguraUsersRow {

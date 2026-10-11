@@ -1,4 +1,3 @@
--- Isolated storage prototype. Not an active application migration.
 ALTER TABLE legura_posts ADD COLUMN content_format TEXT NOT NULL DEFAULT 'plain-text'
   CHECK (content_format IN ('plain-text', 'legura-richtext'));
 ALTER TABLE legura_posts ADD COLUMN content_document TEXT

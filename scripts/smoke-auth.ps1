@@ -164,10 +164,6 @@ try {
   $env:AXONYX_HOST = "127.0.0.1"
   $env:AXONYX_PORT = "$Port"
   Invoke-Ax -Arguments @("db", "migrate")
-  if ($Content) {
-    & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);d.executescript(open(sys.argv[2],encoding="utf-8").read());d.close()' $db (Join-Path $root "tests/fixtures/richtext-columns.sql")
-    if ($LASTEXITCODE -ne 0) { throw "Cannot activate isolated content columns" }
-  }
   Invoke-Ax -Arguments @("db", "pull")
   if ($RefreshSchema) {
     # Generate a portable contract from the isolated migrated database, not user data.

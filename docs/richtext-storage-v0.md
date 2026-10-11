@@ -2,7 +2,8 @@
 
 This is a Rust product contract and isolated SQLite prototype, not an enabled
 CMS editor integration. Current create/edit forms and public routes remain
-plain text. No operator database or active migration was changed.
+plain text. Migration 003 is now in the source application; no operator database
+was changed. See richtext-migration-v1.md for upgrade/backup/rollback boundaries.
 
 ## Explicit Formats
 
@@ -32,7 +33,7 @@ This contract alone is neither an authorization service nor a storage service.
 
 ## SQLite Proof
 
-`tests/fixtures/richtext-columns.sql` is intentionally outside `db/migrations`.
+`db/migrations/20261012000000_003_richtext/up.sql` replaces the prototype SQL.
 An in-memory test applies it over the real existing posts table, proves an old
 post is unchanged, persists/reloads canonical rich JSON, and checks basic
 format/document coupling. SQLite constraints do not replace Rust validation.
@@ -50,7 +51,8 @@ Content Preparation V0 now provides recoverable field errors and a typed
 native-registry proof in an isolated workspace. See
 [the preparation boundary](content-preparation-v0.md). The application startup
 bridge is merged in framework dev, but not a new published registry release.
-Active CMS action/HTTP integration and rich output rendering are still pending.
+Isolated compiled CMS action/browser integration passes on source tooling.
+Actual post form activation and public rich rendering are still pending.
 
 The published Axonyx toolchain does not yet expose a proven way for `.ax`
 actions/queries to invoke this native validator, or for `.asx` to consume its
@@ -58,7 +60,7 @@ validated rich output. Do not hand-edit generated backend Rust or interpolate
 a submitted HTML string to bypass that boundary.
 
 Next steps: implement a typed native-package bridge with preview/compiled parity;
-then add the active migration and schema regeneration, guarded create/update
+then activate guarded create/update
 handlers, packaged editor assets/lifecycle, and shared saved/public rendering.
 Test rejected JSON and forged formats, authorization/CSRF, native/JS retries,
 backup/restore and old plain-text posts in disposable apps before activation.
