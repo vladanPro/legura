@@ -6,11 +6,13 @@ param(
   [switch] $Posts,
   [switch] $BackupRestore,
   [switch] $RefreshSchema,
-  [switch] $Content
+  [switch] $Content,
+  [switch] $ContentEditor
 )
 $ErrorActionPreference = "Stop"
 if ($BackupRestore -and (!$Posts -or $Mode -ne "http")) { throw "BackupRestore requires Posts HTTP mode" }
-if ($Content -and (!$ToolManifest -or !$RuntimeSource -or $Mode -ne "http" -or $Posts -or $RefreshSchema)) { throw "Content requires explicit source tooling/runtime, HTTP mode and no Posts/RefreshSchema" }
+if ($ContentEditor) { $Content = $true }
+if ($Content -and (!$ToolManifest -or !$RuntimeSource -or ($Mode -ne "http" -and !$ContentEditor) -or $Posts -or $RefreshSchema)) { throw "Content requires explicit source tooling/runtime and no Posts/RefreshSchema" }
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $fixture = Join-Path ([IO.Path]::GetTempPath()) ("legura-auth-" + [Guid]::NewGuid().ToString("N"))
 $baseUrl = "http://127.0.0.1:$Port"
@@ -122,6 +124,22 @@ try {
     & cargo update -p axonyx-runtime
     if ($LASTEXITCODE -ne 0) { throw "Cannot activate fixture runtime source override" }
   }
+  if ($ContentEditor) {
+    $packages = & cargo metadata --locked --format-version 1 | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0) { throw "Cannot locate pinned editor package" }
+    $editorPackage = @($packages.packages | Where-Object name -eq "legura-editor")
+    if ($editorPackage.Count -ne 1) { throw "Expected one pinned editor package" }
+    $editorRoot = Split-Path $editorPackage[0].manifest_path
+    $editorAssets = Join-Path $fixture "public/content-editor"
+    New-Item -ItemType Directory -Path $editorAssets -Force | Out-Null
+    foreach ($asset in @("rich-text-editor.js", "formatting-editor.js", "paragraph-editor.js")) {
+      Copy-Item -LiteralPath (Join-Path $editorRoot "src/js/$asset") -Destination $editorAssets
+    }
+    Copy-Item -LiteralPath (Join-Path $editorRoot "src/css/editor.css") -Destination $editorAssets
+    Copy-Item -LiteralPath (Join-Path $editorRoot "src/components/RichTextEditor.asx") -Destination (Join-Path $fixture "app/components/RichTextEditor.asx")
+    Copy-Item -LiteralPath (Join-Path $root "tests/content-editor/host.js") -Destination $editorAssets
+    Copy-Item -Path (Join-Path $root "tests/content-editor/app/*") -Destination (Join-Path $fixture "app/admin") -Recurse
+  }
   foreach ($key in $keys) { [Environment]::SetEnvironmentVariable($key, $null) }
   New-Item -ItemType Directory -Path "data" | Out-Null
   $db = Join-Path $fixture "data/legura.db"
@@ -169,7 +187,7 @@ try {
   $client.Timeout = [TimeSpan]::FromSeconds(20)
   Start-Fixture
   if ($Mode -ne "http") {
-    $browserTest = if ($Posts) { "tests/posts-browser.mjs" } else { "tests/auth-browser.mjs" }
+    $browserTest = if ($ContentEditor) { "tests/content-editor/browser.mjs" } elseif ($Posts) { "tests/posts-browser.mjs" } else { "tests/auth-browser.mjs" }
     & node (Join-Path $root $browserTest) $baseUrl $Mode
     if ($LASTEXITCODE -ne 0) { throw "Browser auth acceptance failed ($Mode)" }
     return
