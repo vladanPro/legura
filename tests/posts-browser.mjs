@@ -49,8 +49,10 @@ async function fillPost(title, slug, body, status) {
 
 async function checkAdminFrame() {
   const nav = page.getByRole('navigation', { name: 'Administration', exact: true });
+  await nav.locator('a[href="/admin/posts"][data-active="true"]').waitFor({ state: 'visible' });
   const active = nav.locator('[data-active="true"]');
-  assert.equal(await active.count(), 1, 'Exactly one admin section must be active');
+  const links = await nav.locator('a').evaluateAll(nodes => nodes.map(node => ({ href: node.getAttribute('href'), active: node.getAttribute('data-active'), current: node.getAttribute('aria-current') })));
+  assert.equal(await active.count(), 1, `Exactly one admin section must be active: ${JSON.stringify(links)}`);
   assert.equal(await active.getAttribute('href'), '/admin/posts');
   assert.equal(await active.getAttribute('aria-current'), 'true');
   assert.equal(await page.getByRole('main').count(), 1);

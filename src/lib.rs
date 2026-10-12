@@ -1,3 +1,4 @@
-//! Product contracts; generated Axonyx handlers do not call these yet.
+//! Product contracts and explicitly registered native helpers.
 pub mod content;
 pub mod content_preparation;
+pub mod pagination;
