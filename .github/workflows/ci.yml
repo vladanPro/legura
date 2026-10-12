@@ -60,6 +60,11 @@ jobs:
         run: |
           ./scripts/smoke-auth.ps1 -ContentEditor -Mode javascript -Port 3946 -UiSource .proof-tooling/ui -ToolManifest .proof-tooling/framework/Cargo.toml -RuntimeSource .proof-tooling/framework/vendor/axonyx-runtime/crates/axonyx-runtime
           ./scripts/smoke-auth.ps1 -ContentEditor -Mode native -Port 3946 -UiSource .proof-tooling/ui -ToolManifest .proof-tooling/framework/Cargo.toml -RuntimeSource .proof-tooling/framework/vendor/axonyx-runtime/crates/axonyx-runtime
+      - name: Verify normal post forms with rich and plain content
+        shell: pwsh
+        run: |
+          ./scripts/smoke-auth.ps1 -PostEditor -Mode javascript -Port 3946 -UiSource .proof-tooling/ui -ToolManifest .proof-tooling/framework/Cargo.toml -RuntimeSource .proof-tooling/framework/vendor/axonyx-runtime/crates/axonyx-runtime
+          ./scripts/smoke-auth.ps1 -PostEditor -Mode native -Port 3946 -UiSource .proof-tooling/ui -ToolManifest .proof-tooling/framework/Cargo.toml -RuntimeSource .proof-tooling/framework/vendor/axonyx-runtime/crates/axonyx-runtime
   compiled-auth:
     name: Registry Compiled Auth
     runs-on: ubuntu-latest

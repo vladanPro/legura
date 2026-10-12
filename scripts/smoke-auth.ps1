@@ -8,10 +8,13 @@ param(
   [switch] $BackupRestore,
   [switch] $RefreshSchema,
   [switch] $Content,
-  [switch] $ContentEditor
+  [switch] $ContentEditor,
+  [switch] $PostEditor
 )
 $ErrorActionPreference = "Stop"
 if ($BackupRestore -and (!$Posts -or $Mode -ne "http")) { throw "BackupRestore requires Posts HTTP mode" }
+if ($PostEditor) { $ContentEditor = $true }
+if ($PostEditor -and $Mode -eq "http") { throw "PostEditor requires javascript or native browser mode" }
 if ($ContentEditor) { $Content = $true }
 if ($ContentEditor -and !$UiSource) { throw "ContentEditor requires explicit UI source until its new icons are published" }
 if ($UiSource -and !$ContentEditor) { throw "UiSource is only for the isolated ContentEditor proof" }
@@ -150,6 +153,17 @@ try {
     Copy-Item -LiteralPath (Join-Path $editorRoot "src/components/RichTextEditor.asx") -Destination (Join-Path $fixture "app/components/RichTextEditor.asx")
     Copy-Item -LiteralPath (Join-Path $root "tests/content-editor/host.js") -Destination $editorAssets
     Copy-Item -Path (Join-Path $root "tests/content-editor/app/*") -Destination (Join-Path $fixture "app/admin") -Recurse
+    if ($PostEditor) {
+      Copy-Item -LiteralPath (Join-Path $root "tests/post-editor/PostFields.asx") -Destination (Join-Path $fixture "app/components/PostFields.asx")
+      foreach ($file in @("page.asx", "actions.ax")) {
+        Copy-Item -LiteralPath (Join-Path $root "tests/post-editor/new/$file") -Destination (Join-Path $fixture "app/admin/posts/new/$file")
+      }
+      Copy-Item -LiteralPath (Join-Path $root "tests/post-editor/new/loader.ax") -Destination (Join-Path $fixture "app/admin/posts/new/editor-loader.ax")
+      foreach ($file in @("page.asx", "actions.ax")) {
+        Copy-Item -LiteralPath (Join-Path $root "tests/post-editor/edit/$file") -Destination (Join-Path $fixture "app/admin/posts/[id]/edit/$file")
+      }
+      Copy-Item -LiteralPath (Join-Path $root "tests/post-editor/edit/loader.ax") -Destination (Join-Path $fixture "app/admin/posts/[id]/edit/editor-loader.ax")
+    }
   }
   foreach ($key in $keys) { [Environment]::SetEnvironmentVariable($key, $null) }
   New-Item -ItemType Directory -Path "data" | Out-Null
@@ -194,7 +208,7 @@ try {
   $client.Timeout = [TimeSpan]::FromSeconds(20)
   Start-Fixture
   if ($Mode -ne "http") {
-    $browserTest = if ($ContentEditor) { "tests/content-editor/browser.mjs" } elseif ($Posts) { "tests/posts-browser.mjs" } else { "tests/auth-browser.mjs" }
+    $browserTest = if ($PostEditor) { "tests/post-editor/browser.mjs" } elseif ($ContentEditor) { "tests/content-editor/browser.mjs" } elseif ($Posts) { "tests/posts-browser.mjs" } else { "tests/auth-browser.mjs" }
     & node (Join-Path $root $browserTest) $baseUrl $Mode
     if ($LASTEXITCODE -ne 0) { throw "Browser auth acceptance failed ($Mode)" }
     return

@@ -1,0 +1,18 @@
+export type PostForEditor {
+  id: String
+  title: String
+  slug: String
+  body: String
+  status: String
+  content_format: String
+  content_document: String?
+}
+export query loadPostForEditor(id: String) -> PostForEditor {
+  require Auth.subject else forbidden()
+  data administrator = db.legura_users.where({ id: Auth.subject }).first()
+  require administrator else forbidden()
+  require administrator["role"] == "admin" else forbidden()
+  data post = db.legura_posts.where({ id: input.id }).first()
+  require post else notFound()
+  return post
+}

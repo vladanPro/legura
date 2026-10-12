@@ -1,0 +1,22 @@
+import { Card } from "@axonyx/ui/foundry/Card"
+import { AdminFrame } from "@/components/AdminFrame"
+import { PostFields } from "@/components/PostFields"
+
+page EditPost() {
+  data post: PostForEditor = loadPostForEditor(params.id)
+  return ASX {
+    <Head>
+      <Link rel="stylesheet" href="/content-editor/editor.css" />
+      <Script src="/content-editor/host.js" type="module" />
+    </Head>
+    <AdminFrame section="posts">
+      <Card title="Edit post">
+        <form method="post" action={action UpdatePost} data-content-editor-form="true" class="legura-form">
+          <input type="hidden" name="id" value={post.id} />
+          <PostFields title={post.title} slug={post.slug} body={post.body} status={post.status} format={post.content_format} document={post.content_document ?? ""} />
+          <button type="submit" class="ax-button" data-variant="primary" data-editor-save="true" disabled={post.content_format == "legura-richtext"}>Save changes</button>
+        </form>
+      </Card>
+    </AdminFrame>
+  }
+}
