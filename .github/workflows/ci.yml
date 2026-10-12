@@ -22,17 +22,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: vladanPro/axonyx-framework
-          ref: 7bc7c01056bb6590c352d185f27394e6dcee606b
+          ref: 4c4de724e23733201106e320b5f608d2af2c772a
           path: .proof-tooling/framework
       - uses: actions/checkout@v4
         with:
           repository: vladanPro/axonyx-runtime
-          ref: c537cbb9b908507120b8177bf23f2ab711b11ca1
+          ref: a2b7ccf11352a5b4b36c18ef8780a7408a68cdad
           path: .proof-tooling/framework/vendor/axonyx-runtime
       - uses: actions/checkout@v4
         with:
           repository: vladanPro/axonyx-ui
-          ref: 5b2d2ecdd87f11ff9c43083cd8a14903f4b6f87d
+          ref: d76a1029a6d47dcb736ec91a8d645d4ecbc29e23
           path: .proof-tooling/ui
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
@@ -77,7 +77,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published Axonyx CLI
-        run: cargo install cargo-axonyx --version 0.6.10 --locked --debug
+        run: cargo install cargo-axonyx --version 0.6.12 --locked --debug
       - name: Verify SQLite maintenance safety
         run: |
           cargo fmt --all -- --check

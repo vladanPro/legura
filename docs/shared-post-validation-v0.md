@@ -8,10 +8,10 @@ Actions keep authorization, missing-post handling, database uniqueness checks,
 mutations and redirects. Database constraints still protect concurrent writes.
 General pagination utilities belong in a shared module, not post validation.
 
-The feature branch now imports one `validatePost` from both actions. It needs
-the unreleased compiler fix on runtime `fix/domain-function-validation`.
-Published packages alone are not sufficient yet. Operator checkout/DB/server
-are unchanged; do not merge/deploy this feature before the registry release gate.
+The feature branch imports one `validatePost` from both actions. Core/runtime
+0.6.8 and CLI 0.6.12 are published and the registry-only acceptance below passed.
+Operator checkout/DB/server remain unchanged. Remote Legura CI must pass before
+merging this feature into dev; this is not an operator activation or CMS release.
 Rich documents retain their independent Rust preparation boundary.
 
 ## Reproduction (2026-10-12)
@@ -34,7 +34,7 @@ that data is another code-generation boundary, not proven by this fixture.
 Multiline backend object literals and ternary expressions were not accepted
 by the tested parser; they are deliberately absent from the reproduction.
 
-The runtime feature fixes these failures with internal fallible helper ABI,
+The runtime release fixes these failures with internal fallible helper ABI,
 checked record conversion and compiler-owned String argument cloning. The
 compiled native consumer tests nested calls and valid/invalid action behavior
 against preview. No generated Rust was edited manually.
@@ -44,8 +44,11 @@ against preview. No generated Rust was edited manually.
 `tests/posts-http.ps1` adds empty/oversized field checks for both mutations,
 invalid status, preserved content after rejected updates, and accepted exact
 maximum lengths. Existing tests cover authorization, uniqueness, persistence,
-escaping and deletion. The isolated compiled Posts HTTP proof passed with
-the shared helper and explicit source tooling/runtime overrides. Run through
-`scripts/smoke-auth.ps1 -Posts` using an isolated fixture.
+escaping and deletion. The isolated compiled Posts HTTP and backup/restore
+proof passed with registry core/runtime 0.6.8, UI 0.0.86 and CLI 0.6.12 installed
+with --locked in an isolated root. No ToolManifest/RuntimeSource/UiSource
+overrides were passed. Both Cargo locks now use registry runtime/core, including
+the native-content fixture. The editor retains its independent pinned Git package.
+Native-content preparation, 9 library and 12 maintenance tests also passed.
 
 Admin listing SQL/pagination and experimental rich-editor proofs are unchanged.

@@ -9,8 +9,8 @@ default-run = "legura"
 
 [dependencies]
 legura-editor = { git = "https://github.com/vladanPro/legura-editor", rev = "4ef469567523edaff93ab0a2bb2ee8ee978c6c5c" }
-axonyx-runtime = { version = "0.6.6", features = ["axum"] }
-axonyx-ui = "0.0.85"
+axonyx-runtime = { version = "0.6.8", features = ["axum"] }
+axonyx-ui = "0.0.86"
 serde_json = "1"
 anyhow = "1"
 rusqlite = { version = "0.37", features = ["backup", "bundled"] }
