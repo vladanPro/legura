@@ -26,7 +26,7 @@ is integrated into dev.
 Posts V0 adds private create/edit, draft/published status, public published pages
 and plain-text rendering. Its typed not-found framework fixes are published in
 core 0.6.6/runtime 0.6.5/CLI 0.6.9/scaffold 0.6.7 after green release CI.
-This branch uses registry runtime 0.6.6 and CI CLI 0.6.10; required acceptance now
+This branch uses registry runtime 0.6.8 and CI CLI 0.6.12; required acceptance now
 includes HTTP posts and both browser modes alongside the original auth tests.
 The Posts acceptance/integration gate is recorded in docs/posts-v0.md.
 
@@ -87,6 +87,11 @@ The [administration overview](docs/admin-overview-v0.md) documents database-back
 post counts, filtered-list shortcuts and the first-draft prompt.
 The [private saved preview](docs/posts-preview-v0.md) lets an administrator
 review a post without publishing it or losing unsaved editor text.
+
+Create/update share pure post validation through `app/domain/posts.ax`.
+The [shared validation proof](docs/shared-post-validation-v0.md) records the
+published compiler fix and registry-only HTTP/backup acceptance. The editor
+package remains pinned to Git; operator activation is separate.
 
 The [setup/auth pilot](docs/setup-auth-v0.md) documents local initialization and
 the acceptance gate. HTTP acceptance is not a security audit or production
