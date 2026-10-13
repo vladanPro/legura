@@ -2,5 +2,6 @@
 use axonyx_runtime::native::{AxNativeError, AxNativeRegistry};
 
 pub fn register(registry: &mut AxNativeRegistry) -> Result<(), AxNativeError> {
-    legura::pagination::register(registry)
+    legura::pagination::register(registry)?;
+    legura::content_rendering::register(registry)
 }

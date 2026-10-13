@@ -40,8 +40,10 @@ the current pilot intentionally uses explicit 403 guards.
 
 Rich-text Migration V1 is integrated into dev: migration 003 preserves legacy
 plain rows, blocks destructive rich rollback, and supports old/new snapshots.
-See richtext-migration-v1.md. Post editor activation and public rich rendering
-remain separate work; no operator database is upgraded by these tests.
+See richtext-migration-v1.md. Public rich rendering now has a compiled validated
+storage-to-ASX proof; see public-richtext-rendering-v0.md. Required CI gates its
+integration. Operator editor activation and private rich preview remain separate
+work; no operator database is upgraded by these tests.
 
 Local operator acceptance now covers the maintenance wrapper, live SQLite backup,
 verified no-clobber recovery and unchanged running application/configuration.

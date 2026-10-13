@@ -1,5 +1,11 @@
-export query loadPublishedPost(slug: String) -> Post {
+export type PublishedStory {
+  title: String
+  body: String
+  html: String
+}
+export query loadPublishedPost(slug: String) -> PublishedStory {
   data post = db.legura_posts.where({ slug: input.slug, status: "published" }).first()
   require post else notFound()
-  return post
+  data rendered = Native.call("legura.content.render", { content_format: post["content_format"], body: post["body"], content_document: post["content_document"] })
+  return { title: post["title"], body: post["body"], html: rendered.html }
 }
