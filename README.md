@@ -93,6 +93,10 @@ The [shared validation proof](docs/shared-post-validation-v0.md) records the
 published compiler fix and registry-only HTTP/backup acceptance. The editor
 package remains pinned to Git; operator activation is separate.
 
+The isolated rich-text proofs now use published CLI 0.6.12, runtime 0.6.8 and
+UI 0.0.86 without source overrides. See [post editor acceptance](docs/post-editor-forms-v0.md).
+This is not editor publication or activation in the operator installation.
+
 The [setup/auth pilot](docs/setup-auth-v0.md) documents local initialization and
 the acceptance gate. HTTP acceptance is not a security audit or production
 readiness proof. Do not deploy this development pilot publicly.

@@ -16,9 +16,8 @@ if ($BackupRestore -and (!$Posts -or $Mode -ne "http")) { throw "BackupRestore r
 if ($PostEditor) { $ContentEditor = $true }
 if ($PostEditor -and $Mode -eq "http") { throw "PostEditor requires javascript or native browser mode" }
 if ($ContentEditor) { $Content = $true }
-if ($ContentEditor -and !$UiSource) { throw "ContentEditor requires explicit UI source until its new icons are published" }
 if ($UiSource -and !$ContentEditor) { throw "UiSource is only for the isolated ContentEditor proof" }
-if ($Content -and (!$ToolManifest -or !$RuntimeSource -or ($Mode -ne "http" -and !$ContentEditor) -or $Posts -or $RefreshSchema)) { throw "Content requires explicit source tooling/runtime and no Posts/RefreshSchema" }
+if ($Content -and (($Mode -ne "http" -and !$ContentEditor) -or $Posts -or $RefreshSchema)) { throw "Content requires HTTP or ContentEditor mode and no Posts/RefreshSchema" }
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $fixture = Join-Path ([IO.Path]::GetTempPath()) ("legura-auth-" + [Guid]::NewGuid().ToString("N"))
 $baseUrl = "http://127.0.0.1:$Port"
@@ -134,11 +133,16 @@ try {
     & cargo update -p axonyx-runtime
     if ($LASTEXITCODE -ne 0) { throw "Cannot activate fixture runtime source override" }
   }
-  if ($ContentEditor) {
+  if ($UiSource) {
+    if (!$RuntimeSource) {
+      [IO.File]::AppendAllText((Join-Path $fixture "Cargo.toml"), "`n[patch.crates-io]`n")
+    }
     $path = $UiSource.Replace('\', '/') | ConvertTo-Json -Compress
     [IO.File]::AppendAllText((Join-Path $fixture "Cargo.toml"), "axonyx-ui = { path = $path }`n")
     & cargo update -p axonyx-ui
     if ($LASTEXITCODE -ne 0) { throw "Cannot activate isolated UI source override" }
+  }
+  if ($ContentEditor) {
     $packages = & cargo metadata --locked --format-version 1 | ConvertFrom-Json
     if ($LASTEXITCODE -ne 0) { throw "Cannot locate pinned editor package" }
     $editorPackage = @($packages.packages | Where-Object name -eq "legura-editor")

@@ -38,7 +38,7 @@ the current pilot intentionally uses explicit 403 guards.
 
 ## 1. First End-to-End CMS
 
-Rich-text Migration V1 is in feature review: migration 003 preserves legacy
+Rich-text Migration V1 is integrated into dev: migration 003 preserves legacy
 plain rows, blocks destructive rich rollback, and supports old/new snapshots.
 See richtext-migration-v1.md. Post editor activation and public rich rendering
 remain separate work; no operator database is upgraded by these tests.
@@ -90,10 +90,10 @@ CMS remains plain text until a typed native-package bridge allows generated
 actions to validate documents and ASX to render them safely. Active migrations,
 asset lifecycle, JS/native recovery and backup compatibility remain gated.
 
-Native content now also has a source-pinned disposable compiled HTTP proof with
+Native content now also has a disposable compiled HTTP proof with
 real setup/session/administrator/CSRF checks, SQLite persistence, restart and
 safe stored-content rehydration. See content-http-proof-v0.md. Local Windows
-acceptance passes; Linux CI must pass before integration. This does not activate
+acceptance passes; the registry-only editor gate still requires Linux CI. This does not activate
 rich storage or the editor in the operator CMS.
 
 The next isolated browser slice imports the pinned RichTextEditor component/assets
