@@ -19,34 +19,19 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: vladanPro/axonyx-framework
-          ref: 4c4de724e23733201106e320b5f608d2af2c772a
-          path: .proof-tooling/framework
-      - uses: actions/checkout@v4
-        with:
-          repository: vladanPro/axonyx-runtime
-          ref: a2b7ccf11352a5b4b36c18ef8780a7408a68cdad
-          path: .proof-tooling/framework/vendor/axonyx-runtime
-      - uses: actions/checkout@v4
-        with:
-          repository: vladanPro/axonyx-ui
-          ref: d76a1029a6d47dcb736ec91a8d645d4ecbc29e23
-          path: .proof-tooling/ui
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: .proof-tooling/framework -> target
+      - name: Install published Axonyx CLI
+        run: cargo install cargo-axonyx --version 0.6.12 --locked --debug
       - name: Verify compiled native content with disposable SQLite
         shell: pwsh
         run: |
           rustfmt --edition 2021 --check tests/content-http/native.rs
           if ($LASTEXITCODE -ne 0) { throw "Native fixture formatting failed" }
-          ./scripts/smoke-auth.ps1 -Content -Port 3946 -ToolManifest .proof-tooling/framework/Cargo.toml -RuntimeSource .proof-tooling/framework/vendor/axonyx-runtime/crates/axonyx-runtime
+          ./scripts/smoke-auth.ps1 -Content -Port 3946
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -58,13 +43,13 @@ jobs:
       - name: Verify pinned editor create, retry, reload and read-only fallback
         shell: pwsh
         run: |
-          ./scripts/smoke-auth.ps1 -ContentEditor -Mode javascript -Port 3946 -UiSource .proof-tooling/ui -ToolManifest .proof-tooling/framework/Cargo.toml -RuntimeSource .proof-tooling/framework/vendor/axonyx-runtime/crates/axonyx-runtime
-          ./scripts/smoke-auth.ps1 -ContentEditor -Mode native -Port 3946 -UiSource .proof-tooling/ui -ToolManifest .proof-tooling/framework/Cargo.toml -RuntimeSource .proof-tooling/framework/vendor/axonyx-runtime/crates/axonyx-runtime
+          ./scripts/smoke-auth.ps1 -ContentEditor -Mode javascript -Port 3946
+          ./scripts/smoke-auth.ps1 -ContentEditor -Mode native -Port 3946
       - name: Verify normal post forms with rich and plain content
         shell: pwsh
         run: |
-          ./scripts/smoke-auth.ps1 -PostEditor -Mode javascript -Port 3946 -UiSource .proof-tooling/ui -ToolManifest .proof-tooling/framework/Cargo.toml -RuntimeSource .proof-tooling/framework/vendor/axonyx-runtime/crates/axonyx-runtime
-          ./scripts/smoke-auth.ps1 -PostEditor -Mode native -Port 3946 -UiSource .proof-tooling/ui -ToolManifest .proof-tooling/framework/Cargo.toml -RuntimeSource .proof-tooling/framework/vendor/axonyx-runtime/crates/axonyx-runtime
+          ./scripts/smoke-auth.ps1 -PostEditor -Mode javascript -Port 3946
+          ./scripts/smoke-auth.ps1 -PostEditor -Mode native -Port 3946
   compiled-auth:
     name: Registry Compiled Auth
     runs-on: ubuntu-latest

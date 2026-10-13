@@ -8,16 +8,14 @@ route. The real compiled application handles requests on loopback port 3946.
 Operator environment values are restored and the child server is stopped before
 the generated directory is removed. The operator's database is never copied.
 
-Source tooling is explicit because application native registration and native
-member lowering are not published yet. CI pins framework revision
-`7bc7c01056bb6590c352d185f27394e6dcee606b` and runtime revision
-`c537cbb9b908507120b8177bf23f2ab711b11ca1`. The normal CMS manifest stays on
-published dependencies; the source override applies only inside the fixture.
+Application native registration and member lowering are now published. CI uses
+CLI 0.6.12 and runtime 0.6.8 from crates.io without source overrides. The editor
+remains a pinned Git dependency. Optional source overrides apply only inside
+the fixture, never to the operator application.
 
 ```powershell
-pwsh -File scripts/smoke-auth.ps1 -Content -Port 3946 `
-  -ToolManifest /path/to/framework/Cargo.toml `
-  -RuntimeSource /path/to/runtime/crates/axonyx-runtime
+cargo install cargo-axonyx --version 0.6.12 --locked
+pwsh -File scripts/smoke-auth.ps1 -Content -Port 3946
 ```
 
 The fixture uses the existing CMS setup, password hashing, signed sessions,

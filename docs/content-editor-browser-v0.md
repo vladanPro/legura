@@ -10,8 +10,9 @@ are staged without rewriting their source. Test-only create/edit pages and
 actions use native Rust preparation before parameterized SQLite writes. The
 regular published-package CMS path and the operator's environment/data stay intact.
 The editor pin now includes the joined Foundry toolbar and selection-aware link
-popover. Until the icons are published, ContentEditor requires an explicit
-UiSource checkout; its Cargo override is written only into the disposable fixture.
+popover. Published UI 0.0.86 provides the native icons; runtime 0.6.8 and CLI
+0.6.12 provide compiled native registration. No source override is required.
+Optional UiSource/RuntimeSource overrides remain confined to disposable fixtures.
 
 The small host module manages mount/destroy, disabled save state, replacement
 roots and pagehide/pageshow lifecycle. Browser editing stays in the package.
@@ -19,14 +20,9 @@ The observer does not serialize DOM HTML or bypass server validation. This is
 explicit test application integration, not a shipped automatic asset installer.
 
 ```powershell
-pwsh -File scripts/smoke-auth.ps1 -ContentEditor -Mode javascript -Port 3946 `
-  -UiSource /path/to/axonyx-ui `
-  -ToolManifest /path/to/framework/Cargo.toml `
-  -RuntimeSource /path/to/runtime/crates/axonyx-runtime
-pwsh -File scripts/smoke-auth.ps1 -ContentEditor -Mode native -Port 3946 `
-  -UiSource /path/to/axonyx-ui `
-  -ToolManifest /path/to/framework/Cargo.toml `
-  -RuntimeSource /path/to/runtime/crates/axonyx-runtime
+cargo install cargo-axonyx --version 0.6.12 --locked
+pwsh -File scripts/smoke-auth.ps1 -ContentEditor -Mode javascript -Port 3946
+pwsh -File scripts/smoke-auth.ps1 -ContentEditor -Mode native -Port 3946
 ```
 
 Chromium acceptance exercises real setup, typing, selected bold, field-error 422
