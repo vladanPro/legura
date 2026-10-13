@@ -82,7 +82,7 @@ See [the roadmap](docs/roadmap.md), [product boundary](docs/product.md), and
 [installation model](docs/installation.md).
 The [Posts V0 contract](docs/posts-v0.md) records implemented scope and remaining gates.
 The [posts listing pilot](docs/posts-listing-v0.md) documents filtering,
-pagination, title search and its cargo-axonyx 0.6.10 tooling requirement.
+pagination, title search and its compiled cargo-axonyx 0.6.12 tooling requirement.
 The [administration overview](docs/admin-overview-v0.md) documents database-backed
 post counts, filtered-list shortcuts and the first-draft prompt.
 The [private saved preview](docs/posts-preview-v0.md) lets an administrator

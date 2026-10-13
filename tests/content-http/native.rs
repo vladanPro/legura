@@ -8,6 +8,7 @@ struct RenderedContent {
 }
 
 pub fn register(registry: &mut AxNativeRegistry) -> Result<(), AxNativeError> {
+    legura::pagination::register(registry)?;
     registry.register("legura.content.prepare", |input: ContentFormInput| {
         Ok::<_, ()>(prepare_content_form(input))
     })?;
