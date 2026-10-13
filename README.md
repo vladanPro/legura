@@ -97,6 +97,10 @@ The isolated rich-text proofs now use published CLI 0.6.12, runtime 0.6.8 and
 UI 0.0.86 without source overrides. See [post editor acceptance](docs/post-editor-forms-v0.md).
 This is not editor publication or activation in the operator installation.
 
+Public published-post rendering now validates stored content through Rust before
+passing fixed rich markup into ASX. See [the rendering boundary](docs/public-richtext-rendering-v0.md).
+Private preview and active operator editing remain separate integration gates.
+
 The [setup/auth pilot](docs/setup-auth-v0.md) documents local initialization and
 the acceptance gate. HTTP acceptance is not a security audit or production
 readiness proof. Do not deploy this development pilot publicly.

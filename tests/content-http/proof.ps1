@@ -53,4 +53,36 @@ Stop-Fixture
 Start-Fixture
 Invoke-Request -Path "/admin/content-proof" -Headers @{ Cookie = $cookie } | Out-Null
 Assert-StoredContent
+Invoke-Request -Path "/posts/rich-proof" -Status 404 | Out-Null
+Invoke-Request -Path "/posts/plain-proof" -Status 404 | Out-Null
+& $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);d.execute("update legura_posts set status=?",("published",));d.commit();d.close()' $db
+if ($LASTEXITCODE -ne 0) { throw "Cannot publish isolated content fixtures" }
+$publicRich = Invoke-Request -Path "/posts/rich-proof"
+if (!$publicRich.Body.Contains("<strong>Rich proof</strong>") -or $publicRich.Body.Contains("&lt;strong&gt;")) { throw "Public rich content was flattened or double escaped" }
+$publicPlain = Invoke-Request -Path "/posts/plain-proof"
+if (!$publicPlain.Body.Contains("&lt;script&gt;literal&lt;/script&gt;") -or $publicPlain.Body.Contains("&amp;lt;script&amp;gt;")) { throw "Public plain content was unescaped or double escaped" }
+# Deliberately corrupt only the disposable DB, then restore the original record.
+try {
+  $formatted = '{"format":"legura-richtext","version":1,"blocks":[{"type":"heading","level":2,"children":[{"text":"<Title>","marks":["bold"]}]},{"type":"list-item","list":"unordered","children":[{"text":"List one","marks":["italic"],"link":"https://example.com/?a=1&b=2"}]},{"type":"list-item","list":"ordered","children":[{"text":"List two","marks":[]}]},{"type":"paragraph","children":[{"text":"<svg onload=alert(1)>","marks":[]}]}]}'
+  & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);d.execute("update legura_posts set body=?,content_document=? where slug=?",("<Title>\nList one\nList two\n<svg onload=alert(1)>",sys.argv[2],"rich-proof"));d.commit();d.close()' $db $formatted
+  if ($LASTEXITCODE -ne 0) { throw "Cannot seed isolated formatted storage" }
+  $formattedPage = Invoke-Request -Path "/posts/rich-proof"
+  foreach ($markup in @('<h2><strong>&lt;Title&gt;</strong></h2>', '<ul><li>', '<ol><li>', '<em>List one</em>', 'href="https://example.com/?a=1&amp;b=2"', '&lt;svg onload=alert(1)&gt;')) {
+    if (!$formattedPage.Body.Contains($markup)) { throw "Public formatted markup missing: $markup" }
+  }
+  if ($formattedPage.Body.Contains('<svg onload=alert(1)>')) { throw "Public renderer trusted text as markup" }
+  foreach ($corrupt in @('{}', '{"format":"legura-richtext","version":1,"blocks":[{"type":"paragraph","children":[{"text":"private-marker","marks":[],"link":"javascript:alert(1)"}]}]}')) {
+    & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);d.execute("update legura_posts set content_document=? where slug=?",(sys.argv[2],"rich-proof"));d.commit();d.close()' $db $corrupt
+    if ($LASTEXITCODE -ne 0) { throw "Cannot inject isolated invalid document" }
+    $failed = Invoke-Request -Path "/posts/rich-proof" -Status 500
+    if ($failed.Body -match 'private-marker|javascript:alert|legura_posts|SELECT ') { throw "Invalid public document leaked storage or executable content" }
+  }
+  & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);d.execute("update legura_posts set body=?,content_document=? where slug=?",("mismatched",sys.argv[2],"rich-proof"));d.commit();d.close()' $db $document
+  if ($LASTEXITCODE -ne 0) { throw "Cannot inject isolated projection mismatch" }
+  Invoke-Request -Path "/posts/rich-proof" -Status 500 | Out-Null
+} finally {
+  & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);d.execute("update legura_posts set body=?,content_document=? where slug=?",("Rich proof",sys.argv[2],"rich-proof"));d.execute("update legura_posts set status=?",("draft",));d.commit();d.close()' $db $document
+  if ($LASTEXITCODE -ne 0) { throw "Cannot restore isolated content fixture" }
+}
+Assert-StoredContent
 Write-Host "Isolated native content HTTP proof passed: administrator/session, CSRF/origin, 422 errors, derived SQLite storage and restart persistence."

@@ -48,7 +48,9 @@ try {
     await page.waitForFunction(() => document.querySelector('[data-editor-preview]').contentEditable === 'true');
     assert.equal(await surface.locator('a strong').textContent(), 'Real post');
     assert.equal(await surface.locator('a').getAttribute('href'), 'https://example.com/post');
+    assert.equal((await context.request.get(baseUrl + '/posts/rich-post')).status(), 404, 'Draft must stay private');
     await page.getByLabel('Title', { exact: true }).fill('Updated rich post');
+    await page.getByLabel('Status', { exact: true }).selectOption('published');
     const navigation = page.waitForNavigation({ waitUntil: 'load' });
     await page.getByRole('button', { name: 'Save changes', exact: true }).click();
     await navigation;
@@ -56,6 +58,25 @@ try {
     await page.waitForFunction(() => document.querySelector('[data-editor-preview]').contentEditable === 'true');
     assert.equal(await page.getByLabel('Title', { exact: true }).inputValue(), 'Updated rich post');
     assert.equal(await surface.locator('a strong').textContent(), 'Real post');
+    const readerContext = await browser.newContext({ javaScriptEnabled: false });
+    try {
+      const reader = await readerContext.newPage();
+      const response = await reader.goto(baseUrl + '/posts/rich-post');
+      assert.equal(response.status(), 200);
+      assert.equal(await reader.locator('.legura-story h1').textContent(), 'Updated rich post');
+      assert.equal(await reader.locator('.legura-story__body a strong').textContent(), 'Real post');
+      assert.equal(await reader.locator('.legura-story__body a').getAttribute('href'), 'https://example.com/post');
+      assert.equal(await reader.locator('script[src*="content-editor"]').count(), 0);
+      for (const width of [1280, 390]) {
+        await reader.setViewportSize({ width, height: 900 });
+        assert.ok(await reader.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+        const directory = resolve(tmpdir(), 'legura-public-richtext-qa');
+        await mkdir(directory, { recursive: true });
+        await reader.screenshot({ path: resolve(directory, 'public-' + width + '.png'), fullPage: true });
+      }
+    } finally {
+      await readerContext.close();
+    }
   } else {
     assert.equal(await page.getByRole('button', { name: 'Create post', exact: true }).isDisabled(), true);
     assert.equal(await page.locator('[data-editor-document]').isDisabled(), true);

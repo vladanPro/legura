@@ -102,7 +102,7 @@ impl PostContent {
         })
     }
 
-    /// Server-generated escaped markup only. ASX integration still needs a typed bridge.
+    /// Fixed server markup, consumed by the public loader after storage validation.
     pub fn render_html(&self) -> String {
         if let Some(document) = &self.document {
             return document.render_html();
