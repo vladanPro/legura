@@ -213,7 +213,7 @@ try {
   Start-Fixture
   if ($Mode -ne "http") {
     $browserTest = if ($PostEditor) { "tests/post-editor/browser.mjs" } elseif ($ContentEditor) { "tests/content-editor/browser.mjs" } elseif ($Posts) { "tests/posts-browser.mjs" } else { "tests/auth-browser.mjs" }
-    & node (Join-Path $root $browserTest) $baseUrl $Mode
+    & node (Join-Path $root $browserTest) $baseUrl $Mode $db
     if ($LASTEXITCODE -ne 0) { throw "Browser auth acceptance failed ($Mode)" }
     return
   }

@@ -4,8 +4,9 @@ import { mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright';
+import { assertStoredEditorBoundary, assertLegacyPlainEditor } from '../editor-storage-fixture.mjs';
 
-const [baseUrl, mode] = process.argv.slice(2);
+const [baseUrl, mode, fixtureDb] = process.argv.slice(2);
 assert.ok(['127.0.0.1', 'localhost'].includes(new URL(baseUrl).hostname));
 assert.ok(['javascript', 'native'].includes(mode));
 const browser = await chromium.launch();
@@ -129,7 +130,9 @@ try {
     assert.equal(await fallback.getByRole('button', { name: 'Save changes', exact: true }).isDisabled(), true);
     assert.equal(await fallback.locator('[data-editor-document]').isDisabled(), true);
     await noJs.close();
+    await assertStoredEditorBoundary(page, fixtureDb, 'rich-post', baseUrl + '/admin/posts/' + richId + '/edit');
   }
+  await assertLegacyPlainEditor(page, fixtureDb, 'plain-post', baseUrl + '/admin/posts/' + plainId + '/edit');
   for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 900 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));

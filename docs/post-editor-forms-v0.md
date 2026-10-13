@@ -10,6 +10,8 @@ stored format. UpdatePost refuses implicit plain-to-rich or rich-to-plain
 conversion before preparing/writing content. Rich body is derived on the server
 from validated JSON, never trusted from a hidden field or editable browser HTML.
 Title/slug/status validation, identity, CSRF and parameterized SQL remain in place.
+The editor loader revalidates stored content through Rust before returning its
+document to ASX; see editor-storage-validation-v0.md. Corrupt rows fail before mount.
 
 Without JavaScript, plain-text authoring stays available. Rich editing is
 read-only and its Save/document controls remain disabled to avoid flattening.

@@ -19,6 +19,10 @@ roots and pagehide/pageshow lifecycle. Browser editing stays in the package.
 The observer does not serialize DOM HTML or bypass server validation. This is
 explicit test application integration, not a shipped automatic asset installer.
 
+The edit loader revalidates stored document/body consistency before ASX emits
+editor fields. See editor-storage-validation-v0.md for the read-only boundary
+and corruption tests; normalization never rewrites the stored row.
+
 ```powershell
 cargo install cargo-axonyx --version 0.6.12 --locked
 pwsh -File scripts/smoke-auth.ps1 -ContentEditor -Mode javascript -Port 3946

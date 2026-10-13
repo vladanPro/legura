@@ -4,8 +4,9 @@ import { mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright';
+import { assertStoredEditorBoundary } from '../editor-storage-fixture.mjs';
 
-const [baseUrl, mode] = process.argv.slice(2);
+const [baseUrl, mode, fixtureDb] = process.argv.slice(2);
 assert.ok(['127.0.0.1', 'localhost'].includes(new URL(baseUrl).hostname));
 assert.ok(['javascript', 'native'].includes(mode));
 assert.ok(process.env.AX_SECRET_SETUP_TOKEN);
@@ -103,6 +104,7 @@ try {
     assert.ok(html.includes('href="https://example.com/first"'));
     assert.ok(html.includes('href="https://example.com/second"'));
   }
+  await assertStoredEditorBoundary(page, fixtureDb, 'editor-proof', editUrl);
   const directory = resolve(tmpdir(), 'legura-content-editor-qa');
   await mkdir(directory, { recursive: true });
   for (const width of [1280, 390]) {
