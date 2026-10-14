@@ -13,6 +13,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  native-editor-retry:
+    name: Native Editor Retry
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: vladanPro/axonyx-runtime
+          ref: 9cb24b4d31e0ab3a05f67627aeb68f7eaadfc8f0
+          path: .proof-runtime
+      - uses: actions/checkout@v4
+        with:
+          repository: vladanPro/legura-editor
+          ref: ee78a27fab3ad223bfaf82ba1cf857901adc7952
+          path: .proof-editor
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: Swatinem/rust-cache@v2
+      - name: Install published Axonyx CLI
+        run: cargo install cargo-axonyx --version 0.6.12 --locked --debug
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install test-only browser tooling
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Verify native 422 recovery with pinned source candidates
+        shell: pwsh
+        run: |
+          ./scripts/smoke-auth.ps1 -PostEditor -NativeRetry -Mode javascript -Port 3948 -RuntimeSource .proof-runtime/crates/axonyx-runtime -EditorSource .proof-editor
+          ./scripts/smoke-auth.ps1 -PostEditor -Mode native -Port 3948 -RuntimeSource .proof-runtime/crates/axonyx-runtime -EditorSource .proof-editor
   native-content-http:
     name: Isolated Native Content HTTP
     runs-on: ubuntu-latest

@@ -39,6 +39,10 @@ Required Linux CI precedes merging; operator DB, .env and server3940 are untouch
 Public rich ASX rendering, explicit conversion UX, native full-page 422 recovery,
 concurrent edits and broad CMS cross-engine coverage remain separate gates.
 
+Public rich rendering is now integrated into dev. Native full-page 422 recovery
+has a separate source-only candidate/proof; see editor-native-retry-v0.md. Do not
+assume registry runtime/editor pins already provide it.
+
 Registry acceptance on Windows (2026-10-13) passed all five fixture modes:
 Content HTTP, ContentEditor javascript/native and PostEditor javascript/native.
 The CLI was installed in an isolated temporary root, leaving global tooling

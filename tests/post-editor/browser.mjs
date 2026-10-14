@@ -6,7 +6,20 @@ import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { assertStoredEditorBoundary, assertLegacyPlainEditor } from '../editor-storage-fixture.mjs';
 
-const [baseUrl, mode, fixtureDb] = process.argv.slice(2);
+const [baseUrl, mode, fixtureDb, retryMode = 'standard'] = process.argv.slice(2);
+assert.ok(['standard', 'native-retry'].includes(retryMode));
+const nativeRetry = retryMode === 'native-retry';
+async function submitNative422(expectedDocument) {
+  const navigation = page.waitForNavigation({ waitUntil: 'load' });
+  await page.locator('[data-content-editor-form]').evaluate(form => HTMLFormElement.prototype.submit.call(form));
+  const response = await navigation;
+  assert.equal(response.status(), 422);
+  assert.ok((await response.text()).includes('data-ax-retained="true"'), 'Server did not explicitly mark the replay');
+  await page.waitForFunction(() => document.querySelector('[data-editor-preview]').contentEditable === 'true');
+  assert.equal(await page.locator('[data-editor-document]').inputValue(), expectedDocument, 'Native retry lost the unsaved document');
+  assert.equal(await page.getByLabel('URL slug', { exact: true }).inputValue(), 'rich-post');
+  await page.locator('[data-ax-field-error="title"]').getByText('Enter a title of at most 160 characters.', { exact: true }).waitFor();
+}
 assert.ok(['127.0.0.1', 'localhost'].includes(new URL(baseUrl).hostname));
 assert.ok(['javascript', 'native'].includes(mode));
 const browser = await chromium.launch();
@@ -40,6 +53,10 @@ try {
     await page.getByRole('button', { name: 'Create post', exact: true }).click();
     assert.equal((await invalid).status(), 422);
     assert.equal(await page.locator('[data-editor-document]').inputValue(), doc, '422 lost rich content');
+    if (nativeRetry) {
+      await submitNative422(doc);
+      assert.equal((await context.request.get(baseUrl + '/api/content-proof?slug=rich-post')).status(), 404, 'Rejected create wrote a post');
+    }
     await page.getByLabel('Title', { exact: true }).fill('Rich post');
     await page.getByRole('button', { name: 'Create post', exact: true }).click();
     await page.waitForURL(baseUrl + '/admin/posts');
@@ -50,6 +67,16 @@ try {
     assert.equal(await surface.locator('a strong').textContent(), 'Real post');
     assert.equal(await surface.locator('a').getAttribute('href'), 'https://example.com/post');
     assert.equal((await context.request.get(baseUrl + '/posts/rich-post')).status(), 404, 'Draft must stay private');
+    if (nativeRetry) {
+      const saved = await (await context.request.get(baseUrl + '/api/content-proof?slug=rich-post')).json();
+      await surface.click();
+      await page.keyboard.press('Control+End');
+      await page.keyboard.press('Enter');
+      await page.keyboard.insertText('Unsaved retry 🙂');
+      await page.getByLabel('Title', { exact: true }).fill('');
+      await submitNative422(await page.locator('[data-editor-document]').inputValue());
+      assert.deepEqual(await (await context.request.get(baseUrl + '/api/content-proof?slug=rich-post')).json(), saved, 'Rejected update changed stored content');
+    }
     await page.getByLabel('Title', { exact: true }).fill('Updated rich post');
     await page.getByLabel('Status', { exact: true }).selectOption('published');
     const navigation = page.waitForNavigation({ waitUntil: 'load' });
@@ -126,7 +153,7 @@ try {
     const noJs = await browser.newContext({ javaScriptEnabled: false, storageState: await context.storageState() });
     const fallback = await noJs.newPage();
     await fallback.goto(baseUrl + '/admin/posts/' + richId + '/edit');
-    assert.equal(await fallback.locator('[data-editor-input]').inputValue(), 'Real post');
+    assert.equal(await fallback.locator('[data-editor-input]').inputValue(), nativeRetry ? 'Real post\nUnsaved retry 🙂' : 'Real post');
     assert.equal(await fallback.getByRole('button', { name: 'Save changes', exact: true }).isDisabled(), true);
     assert.equal(await fallback.locator('[data-editor-document]').isDisabled(), true);
     await noJs.close();
