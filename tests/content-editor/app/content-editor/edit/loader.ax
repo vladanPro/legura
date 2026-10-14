@@ -11,5 +11,6 @@ export query loadEditorDocument() -> EditorDocument {
   data post = db.legura_posts.where({slug: query.slug}).first()
   require post else notFound()
   require post["content_format"] == "legura-richtext" else forbidden()
-  return {slug: post["slug"], document: post["content_document"], body: post["body"]}
+  data content = Native.call("legura.content.load", {content_format: post["content_format"], body: post["body"], content_document: post["content_document"]})
+  return {slug: post["slug"], document: content.content_document, body: content.body}
 }

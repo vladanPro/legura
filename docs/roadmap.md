@@ -45,6 +45,11 @@ storage-to-ASX proof; see public-richtext-rendering-v0.md. Required CI gates its
 integration. Operator editor activation and private rich preview remain separate
 work; no operator database is upgraded by these tests.
 
+Editor Storage Validation V0 adds read-only server revalidation in the isolated
+edit loaders before mounting a document. See editor-storage-validation-v0.md.
+This does not activate the editor in the operator installation or provide a
+full-page validation-retry recovery screen; required CI gates its integration.
+
 Local operator acceptance now covers the maintenance wrapper, live SQLite backup,
 verified no-clobber recovery and unchanged running application/configuration.
 See operator-quickstart.md. Actual content/login recovery remains covered by
