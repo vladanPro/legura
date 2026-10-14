@@ -40,15 +40,17 @@ the current pilot intentionally uses explicit 403 guards.
 
 Rich-text Migration V1 is integrated into dev: migration 003 preserves legacy
 plain rows, blocks destructive rich rollback, and supports old/new snapshots.
-See richtext-migration-v1.md. Public rich rendering now has a compiled validated
-storage-to-ASX proof; see public-richtext-rendering-v0.md. Required CI gates its
-integration. Operator editor activation and private rich preview remain separate
+See richtext-migration-v1.md. Public rich rendering is integrated into dev;
+see public-richtext-rendering-v0.md. Private rich preview now reuses that renderer
+under administrator guards; see posts-preview-v0.md. Operator editor activation remains separate
 work; no operator database is upgraded by these tests.
 
 Editor Storage Validation V0 adds read-only server revalidation in the isolated
 edit loaders before mounting a document. See editor-storage-validation-v0.md.
 This does not activate the editor in the operator installation or provide a
-full-page validation-retry recovery screen; required CI gates its integration.
+damaged-document repair screen. Storage validation is integrated into
+dev; the native retry source proof is also integrated (editor-native-retry-v0.md),
+but still needs a runtime release/editor pin update before registry activation.
 
 Local operator acceptance now covers the maintenance wrapper, live SQLite backup,
 verified no-clobber recovery and unchanged running application/configuration.

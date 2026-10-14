@@ -16,6 +16,10 @@ page EditPost() {
           <PostFields title={post.title} slug={post.slug} body={post.body} status={post.status} format={post.content_format} document={post.content_document ?? ""} />
           <button type="submit" class="ax-button" data-variant="primary" data-editor-save="true" disabled={post.content_format == "legura-richtext"}>Save changes</button>
         </form>
+        <nav class="legura-links" aria-label="Post management">
+          <a href={"/admin/posts/" + post.id + "/preview"} target="_blank" rel="noopener" aria-describedby="preview-hint">Preview saved post</a>
+        </nav>
+        <p id="preview-hint" class="legura-hint">Preview opens in a new tab. Save changes first to include them.</p>
       </Card>
     </AdminFrame>
   }

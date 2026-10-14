@@ -20,6 +20,71 @@ async function submitNative422(expectedDocument) {
   assert.equal(await page.getByLabel('URL slug', { exact: true }).inputValue(), 'rich-post');
   await page.locator('[data-ax-field-error="title"]').getByText('Enter a title of at most 160 characters.', { exact: true }).waitFor();
 }
+async function checkRichSavedPreview(id) {
+  const editUrl = page.url();
+  const previewPath = '/admin/posts/' + id + '/preview';
+  await page.getByLabel('Title', { exact: true }).fill('Unsaved preview title');
+  const surface = page.locator('[data-editor-preview]');
+  await surface.click();
+  await page.keyboard.press('Control+End');
+  await page.keyboard.press('Enter');
+  await page.keyboard.insertText('Not saved preview 🙂');
+  const unsavedDocument = await page.locator('[data-editor-document]').inputValue();
+  const before = await (await context.request.get(baseUrl + '/api/content-proof?slug=rich-post')).json();
+  const actions = [];
+  const track = request => { if (request.method() === 'POST') actions.push(request.url()); };
+  context.on('request', track);
+  let preview;
+  try {
+    const link = page.getByRole('link', { name: 'Preview saved post', exact: true });
+    assert.equal(await link.getAttribute('href'), previewPath);
+    assert.equal(await link.getAttribute('target'), '_blank');
+    assert.match(await link.getAttribute('rel'), /noopener/);
+    const opened = context.waitForEvent('page');
+    await link.click();
+    preview = await opened;
+    preview.on('pageerror', error => errors.push(error.message));
+    await preview.getByRole('heading', { name: 'Rich post', exact: true }).waitFor();
+    assert.equal(preview.url(), baseUrl + previewPath);
+    assert.equal(await preview.locator('.legura-story__body a strong').textContent(), 'Real post');
+    assert.equal(await preview.locator('.legura-story__body a').getAttribute('href'), 'https://example.com/post');
+    assert.ok(!(await preview.locator('.legura-story__body').textContent()).includes('Not saved preview'));
+    assert.equal(await preview.getByRole('region', { name: 'Private saved preview' }).locator('.ax-badge').textContent(), 'draft');
+    assert.equal(await preview.evaluate(() => window.opener), null);
+    assert.equal(await preview.locator('script[src*="content-editor"]').count(), 0);
+    for (const width of [1280, 390]) {
+      await preview.setViewportSize({ width, height: 900 });
+      assert.ok(await preview.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      const directory = resolve(tmpdir(), 'legura-rich-preview-qa');
+      await mkdir(directory, { recursive: true });
+      await preview.screenshot({ path: resolve(directory, 'draft-' + width + '.png'), fullPage: true });
+    }
+    const response = await context.request.get(baseUrl + previewPath);
+    assert.equal(response.status(), 200);
+    assert.match(response.headers()['cache-control'] || '', /no-store/);
+    const anonymous = await browser.newContext({ javaScriptEnabled: false });
+    const noJs = await browser.newContext({ javaScriptEnabled: false, storageState: await context.storageState() });
+    try {
+      assert.equal((await anonymous.request.get(baseUrl + previewPath)).status(), 403);
+      assert.equal((await anonymous.request.get(baseUrl + '/__axonyx/data?path=' + encodeURIComponent(previewPath) + '&name=post')).status(), 403);
+      const reader = await noJs.newPage();
+      assert.equal((await reader.goto(baseUrl + previewPath)).status(), 200);
+      assert.equal(await reader.locator('.legura-story__body a strong').textContent(), 'Real post');
+    } finally {
+      await anonymous.close();
+      await noJs.close();
+    }
+    assert.deepEqual(actions, [], 'Preview must not issue mutations');
+    assert.deepEqual(await (await context.request.get(baseUrl + '/api/content-proof?slug=rich-post')).json(), before);
+    assert.equal((await context.request.get(baseUrl + '/posts/rich-post')).status(), 404, 'Preview published the draft');
+  } finally {
+    context.off('request', track);
+    if (preview) await preview.close();
+  }
+  assert.equal(page.url(), editUrl);
+  assert.equal(await page.getByLabel('Title', { exact: true }).inputValue(), 'Unsaved preview title');
+  assert.equal(await page.locator('[data-editor-document]').inputValue(), unsavedDocument);
+}
 assert.ok(['127.0.0.1', 'localhost'].includes(new URL(baseUrl).hostname));
 assert.ok(['javascript', 'native'].includes(mode));
 const browser = await chromium.launch();
@@ -67,6 +132,7 @@ try {
     assert.equal(await surface.locator('a strong').textContent(), 'Real post');
     assert.equal(await surface.locator('a').getAttribute('href'), 'https://example.com/post');
     assert.equal((await context.request.get(baseUrl + '/posts/rich-post')).status(), 404, 'Draft must stay private');
+    await checkRichSavedPreview(richId);
     if (nativeRetry) {
       const saved = await (await context.request.get(baseUrl + '/api/content-proof?slug=rich-post')).json();
       await surface.click();
@@ -153,7 +219,7 @@ try {
     const noJs = await browser.newContext({ javaScriptEnabled: false, storageState: await context.storageState() });
     const fallback = await noJs.newPage();
     await fallback.goto(baseUrl + '/admin/posts/' + richId + '/edit');
-    assert.equal(await fallback.locator('[data-editor-input]').inputValue(), nativeRetry ? 'Real post\nUnsaved retry 🙂' : 'Real post');
+    assert.equal(await fallback.locator('[data-editor-input]').inputValue(), 'Real post\nNot saved preview 🙂' + (nativeRetry ? '\nUnsaved retry 🙂' : ''));
     assert.equal(await fallback.getByRole('button', { name: 'Save changes', exact: true }).isDisabled(), true);
     assert.equal(await fallback.locator('[data-editor-document]').isDisabled(), true);
     await noJs.close();
