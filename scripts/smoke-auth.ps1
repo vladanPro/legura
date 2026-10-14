@@ -2,6 +2,7 @@ param(
   [string] $ToolManifest = "",
   [string] $RuntimeSource = "",
   [string] $UiSource = "",
+  [string] $EditorSource = "",
   [int] $Port = 3941,
   [ValidateSet("http", "javascript", "native")][string] $Mode = "http",
   [switch] $Posts,
@@ -9,14 +10,17 @@ param(
   [switch] $RefreshSchema,
   [switch] $Content,
   [switch] $ContentEditor,
-  [switch] $PostEditor
+  [switch] $PostEditor,
+  [switch] $NativeRetry
 )
 $ErrorActionPreference = "Stop"
+if ($NativeRetry -and (!$PostEditor -or $Mode -ne "javascript" -or !$RuntimeSource -or !$EditorSource)) { throw "NativeRetry requires PostEditor javascript mode with explicit RuntimeSource and EditorSource" }
 if ($BackupRestore -and (!$Posts -or $Mode -ne "http")) { throw "BackupRestore requires Posts HTTP mode" }
 if ($PostEditor) { $ContentEditor = $true }
 if ($PostEditor -and $Mode -eq "http") { throw "PostEditor requires javascript or native browser mode" }
 if ($ContentEditor) { $Content = $true }
 if ($UiSource -and !$ContentEditor) { throw "UiSource is only for the isolated ContentEditor proof" }
+if ($EditorSource -and !$ContentEditor) { throw "EditorSource is only for the isolated ContentEditor proof" }
 if ($Content -and (($Mode -ne "http" -and !$ContentEditor) -or $Posts -or $RefreshSchema)) { throw "Content requires HTTP or ContentEditor mode and no Posts/RefreshSchema" }
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $fixture = Join-Path ([IO.Path]::GetTempPath()) ("legura-auth-" + [Guid]::NewGuid().ToString("N"))
@@ -37,6 +41,10 @@ if ($RuntimeSource) {
 if ($UiSource) {
   $UiSource = [IO.Path]::GetFullPath($UiSource)
   if (!(Test-Path -LiteralPath (Join-Path $UiSource "src/foundry/icons/LinkIcon.asx"))) { throw "UI source is missing editor icons" }
+}
+if ($EditorSource) {
+  $EditorSource = [IO.Path]::GetFullPath($EditorSource)
+  if (!(Test-Path -LiteralPath (Join-Path $EditorSource "Cargo.toml"))) { throw "Editor source manifest is missing" }
 }
 
 function Invoke-Ax {
@@ -142,6 +150,12 @@ try {
     & cargo update -p axonyx-ui
     if ($LASTEXITCODE -ne 0) { throw "Cannot activate isolated UI source override" }
   }
+  if ($EditorSource) {
+    $path = $EditorSource.Replace('\', '/') | ConvertTo-Json -Compress
+    [IO.File]::AppendAllText((Join-Path $fixture "Cargo.toml"), "`n[patch.`"https://github.com/vladanPro/legura-editor`"]`nlegura-editor = { path = $path }`n")
+    & cargo update -p legura-editor
+    if ($LASTEXITCODE -ne 0) { throw "Cannot activate isolated editor source override" }
+  }
   if ($ContentEditor) {
     $packages = & cargo metadata --locked --format-version 1 | ConvertFrom-Json
     if ($LASTEXITCODE -ne 0) { throw "Cannot locate pinned editor package" }
@@ -213,7 +227,8 @@ try {
   Start-Fixture
   if ($Mode -ne "http") {
     $browserTest = if ($PostEditor) { "tests/post-editor/browser.mjs" } elseif ($ContentEditor) { "tests/content-editor/browser.mjs" } elseif ($Posts) { "tests/posts-browser.mjs" } else { "tests/auth-browser.mjs" }
-    & node (Join-Path $root $browserTest) $baseUrl $Mode $db
+    $retryMode = if ($NativeRetry) { "native-retry" } else { "standard" }
+    & node (Join-Path $root $browserTest) $baseUrl $Mode $db $retryMode
     if ($LASTEXITCODE -ne 0) { throw "Browser auth acceptance failed ($Mode)" }
     return
   }
