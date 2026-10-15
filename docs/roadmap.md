@@ -115,6 +115,11 @@ checks and refusal of local asset/receipt conflicts. The disposable browser proo
 uses the reported component/CSS/module paths. See editor-managed-install-v0.md.
 Activation, interrupted-install recovery and the broader upgrade gate remain open.
 
+Editor Content Check V0 adds a local read-only compatibility scan of all stored
+post formats/documents, with count-only output and failure on invalid content.
+See editor-content-check-v0.md. It is one pre-activation check, not activation or
+a substitute for tested backups, runtime compatibility and recovery.
+
 Native Package V0 adds a runtime-only directory (server, maintenance tool, assets
 and file inventory), with disposable relocated/no-toolchain acceptance. It is
 for a restored installation or a new SQLite DB using embedded migrations.

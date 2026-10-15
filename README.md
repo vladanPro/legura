@@ -114,6 +114,10 @@ The [side-by-side installation helper](docs/editor-managed-install-v0.md) instal
 content-addressed editor generations and refuses local changes. Activation stays
 explicit; there is no overwrite or automatic cleanup of old generations.
 
+Before activation, [content-check](docs/editor-content-check-v0.md) can audit a
+specified SQLite database read-only and report content compatibility counts,
+without printing post content or repairing rows.
+
 The [setup/auth pilot](docs/setup-auth-v0.md) documents local initialization and
 the acceptance gate. HTTP acceptance is not a security audit or production
 readiness proof. Do not deploy this development pilot publicly.
