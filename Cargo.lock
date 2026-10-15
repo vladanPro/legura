@@ -740,7 +740,7 @@ dependencies = [
 [[package]]
 name = "legura-editor"
 version = "0.0.1"
-source = "git+https://github.com/vladanPro/legura-editor?rev=4ef469567523edaff93ab0a2bb2ee8ee978c6c5c#4ef469567523edaff93ab0a2bb2ee8ee978c6c5c"
+source = "git+https://github.com/vladanPro/legura-editor?rev=abf1be74fbd8ce41bfe30fe418357d00262aa007#abf1be74fbd8ce41bfe30fe418357d00262aa007"
 dependencies = [
  "serde",
  "serde_json",

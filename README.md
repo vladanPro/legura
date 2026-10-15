@@ -106,6 +106,10 @@ Isolated editor loaders also revalidate stored documents on the server before
 mounting them, without repairing or rewriting the database. See
 [the editor read boundary](docs/editor-storage-validation-v0.md).
 
+Build tooling can export the pinned editor's embedded ASX/CSS/JS bundle to a new
+directory with a hash inventory. See [package assets](docs/editor-package-assets-v0.md).
+This does not activate rich editing or update an existing installation.
+
 The [setup/auth pilot](docs/setup-auth-v0.md) documents local initialization and
 the acceptance gate. HTTP acceptance is not a security audit or production
 readiness proof. Do not deploy this development pilot publicly.

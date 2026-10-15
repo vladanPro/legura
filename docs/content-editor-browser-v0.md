@@ -4,15 +4,18 @@ This proof connects the real `RichTextEditor.asx` component and browser assets
 from the pinned `legura-editor` Cargo dependency to an isolated compiled CMS.
 It does not activate rich storage or replace the operator's current post editor.
 
-`-ContentEditor` extends the disposable `-Content` setup/auth fixture. Cargo
-metadata locates the one pinned editor package; its ASX, CSS and three JS modules
-are staged without rewriting their source. Test-only create/edit pages and
+`-ContentEditor` extends the disposable `-Content` setup/auth fixture. The Rust
+bundle exporter reads embedded ASX, CSS and three JS modules from the pinned
+editor package, without reading checkout internals or rewriting source. These
+assets are staged in the disposable application. Test-only create/edit pages and
 actions use native Rust preparation before parameterized SQLite writes. The
 regular published-package CMS path and the operator's environment/data stay intact.
 The editor pin now includes the joined Foundry toolbar and selection-aware link
 popover. Published UI 0.0.86 provides the native icons; runtime 0.6.8 and CLI
 0.6.12 provide compiled native registration. No source override is required.
 Optional UiSource/RuntimeSource overrides remain confined to disposable fixtures.
+EditorSource can override the package only inside that fixture. See
+editor-package-assets-v0.md for the bundle inventory and no-clobber boundary.
 
 The small host module manages mount/destroy, disabled save state, replacement
 roots and pagehide/pageshow lifecycle. Browser editing stays in the package.
