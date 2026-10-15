@@ -14,7 +14,8 @@ param(
   [switch] $NativeRetry
 )
 $ErrorActionPreference = "Stop"
-if ($NativeRetry -and (!$PostEditor -or $Mode -ne "javascript" -or !$RuntimeSource -or !$EditorSource)) { throw "NativeRetry requires PostEditor javascript mode with explicit RuntimeSource and EditorSource" }
+if ($NativeRetry -and (!$PostEditor -or $Mode -ne "javascript")) { throw "NativeRetry requires PostEditor javascript mode" }
+if ($NativeRetry -and ([bool]$RuntimeSource -ne [bool]$EditorSource)) { throw "NativeRetry source proof requires both RuntimeSource and EditorSource, or neither for registry acceptance" }
 if ($BackupRestore -and (!$Posts -or $Mode -ne "http")) { throw "BackupRestore requires Posts HTTP mode" }
 if ($PostEditor) { $ContentEditor = $true }
 if ($PostEditor -and $Mode -eq "http") { throw "PostEditor requires javascript or native browser mode" }
