@@ -258,6 +258,9 @@ try {
   }
   assert.deepEqual(errors, []);
   console.log('Regular Post editor proof passed (' + mode + '): create/edit/reload, 422 recovery, plain/rich boundaries, no-JS safety and safe stored content.');
+} catch (error) {
+  console.error('Post editor failed at ' + page.url() + ':\n' + (await page.locator('body').innerText()).slice(0, 8000));
+  throw error;
 } finally {
   await context.close();
   await browser.close();

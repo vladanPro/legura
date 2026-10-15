@@ -177,7 +177,7 @@ try {
       foreach ($file in @("page.asx", "actions.ax")) {
         Copy-Item -LiteralPath (Join-Path $root "tests/post-editor/new/$file") -Destination (Join-Path $fixture "app/admin/posts/new/$file")
       }
-      Copy-Item -LiteralPath (Join-Path $root "tests/post-editor/new/loader.ax") -Destination (Join-Path $fixture "app/admin/posts/new/loader.ax")
+      Copy-Item -LiteralPath (Join-Path $root "tests/post-editor/new/loader.ax") -Destination (Join-Path $fixture "app/admin/posts/new/editor-loader.ax")
       foreach ($file in @("page.asx", "actions.ax")) {
         Copy-Item -LiteralPath (Join-Path $root "tests/post-editor/edit/$file") -Destination (Join-Path $fixture "app/admin/posts/[id]/edit/$file")
       }
