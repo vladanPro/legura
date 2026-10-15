@@ -99,7 +99,8 @@ This is not editor publication or activation in the operator installation.
 
 Public published-post rendering now validates stored content through Rust before
 passing fixed rich markup into ASX. See [the rendering boundary](docs/public-richtext-rendering-v0.md).
-Private preview and active operator editing remain separate integration gates.
+Private saved preview uses the same validated rich renderer under administrator
+guards. Active operator editing remains a separate integration gate.
 
 Isolated editor loaders also revalidate stored documents on the server before
 mounting them, without repairing or rewriting the database. See
