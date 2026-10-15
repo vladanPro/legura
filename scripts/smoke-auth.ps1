@@ -157,14 +157,12 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Cannot activate isolated editor source override" }
   }
   if ($ContentEditor) {
-    $editorBundle = Join-Path $fixture ".editor-package"
-    & cargo run --locked --bin legura-editor-assets -- $editorBundle
-    if ($LASTEXITCODE -ne 0) { throw "Cannot export pinned editor bundle" }
+    $editorInstall = & cargo run --locked --bin legura-editor-assets -- install $fixture --json | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0 -or !$editorInstall.installed) { throw "Cannot install pinned editor generation" }
     $editorAssets = Join-Path $fixture "public/content-editor"
-    New-Item -ItemType Directory -Path $editorAssets -Force | Out-Null
-    Copy-Item -Path (Join-Path $editorBundle "public/*") -Destination $editorAssets
-    Copy-Item -LiteralPath (Join-Path $editorBundle "components/RichTextEditor.asx") -Destination (Join-Path $fixture "app/components/RichTextEditor.asx")
-    Copy-Item -LiteralPath (Join-Path $root "tests/content-editor/host.js") -Destination $editorAssets
+    $hostModule = [IO.File]::ReadAllText((Join-Path $root "tests/content-editor/host.js"))
+    $hostModule = $hostModule.Replace("'./rich-text-editor.js'", "'$($editorInstall.module)'")
+    [IO.File]::WriteAllText((Join-Path $editorAssets "host.js"), $hostModule)
     Copy-Item -Path (Join-Path $root "tests/content-editor/app/*") -Destination (Join-Path $fixture "app/admin") -Recurse
     if ($PostEditor) {
       Copy-Item -LiteralPath (Join-Path $root "tests/post-editor/PostFields.asx") -Destination (Join-Path $fixture "app/components/PostFields.asx")
@@ -177,6 +175,17 @@ try {
       }
       Copy-Item -LiteralPath (Join-Path $root "tests/post-editor/edit/loader.ax") -Destination (Join-Path $fixture "app/admin/posts/[id]/edit/editor-loader.ax")
     }
+    $editorPages = @("app/admin/content-editor/page.asx", "app/admin/content-editor/edit/page.asx")
+    if ($PostEditor) { $editorPages += @("app/components/PostFields.asx", "app/admin/posts/new/page.asx", "app/admin/posts/[id]/edit/page.asx") }
+    foreach ($relative in $editorPages) {
+      $pagePath = Join-Path $fixture $relative
+      $pageSource = [IO.File]::ReadAllText($pagePath)
+      $componentImport = "@/" + $editorInstall.component.Substring(4).Replace(".asx", "")
+      $pageSource = $pageSource.Replace("@/components/RichTextEditor", $componentImport).Replace("/content-editor/editor.css", $editorInstall.stylesheet)
+      [IO.File]::WriteAllText($pagePath, $pageSource)
+    }
+    & cargo run --locked --bin legura-editor-assets -- check $fixture
+    if ($LASTEXITCODE -ne 0) { throw "Installed editor generation verification failed" }
   }
   foreach ($key in $keys) { [Environment]::SetEnvironmentVariable($key, $null) }
   New-Item -ItemType Directory -Path "data" | Out-Null

@@ -105,10 +105,15 @@ safe stored-content rehydration. See content-http-proof-v0.md. Local Windows
 acceptance passes; the registry-only editor gate still requires Linux CI. This does not activate
 rich storage or the editor in the operator CMS.
 
-The next isolated browser slice imports the pinned RichTextEditor component/assets
-through Cargo metadata, with test-only create/edit forms and native content actions.
+The isolated browser slice imports the pinned RichTextEditor component/assets
+through the embedded package bundle, with test-only create/edit forms and native content actions.
 See content-editor-browser-v0.md for Chromium save/reload/422/lifecycle and no-JS
 read-only acceptance. This still does not activate the operator editor/migration.
+
+Editor Managed Installation V0 adds explicit side-by-side generations, read-only
+checks and refusal of local asset/receipt conflicts. The disposable browser proof
+uses the reported component/CSS/module paths. See editor-managed-install-v0.md.
+Activation, interrupted-install recovery and the broader upgrade gate remain open.
 
 Native Package V0 adds a runtime-only directory (server, maintenance tool, assets
 and file inventory), with disposable relocated/no-toolchain acceptance. It is
