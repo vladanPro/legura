@@ -9,8 +9,8 @@ function Assert-PostValidation {
     @{ field = "title"; value = ("t" * 161); message = "Enter a title of at most 160 characters." },
     @{ field = "slug"; value = ""; message = "Enter a URL slug of at most 120 characters." },
     @{ field = "slug"; value = ("s" * 121); message = "Enter a URL slug of at most 120 characters." },
-    @{ field = "body"; value = ""; message = "Enter plain text of at most 20000 characters." },
-    @{ field = "body"; value = ("b" * 20001); message = "Enter plain text of at most 20000 characters." },
+    @{ field = "body"; value = ""; message = "Content requires nonblank text of at most 20000 characters" },
+    @{ field = "body"; value = ("b" * 20001); message = "Content requires nonblank text of at most 20000 characters" },
     @{ field = "status"; value = "unknown"; message = "Choose draft or published." }
   )
   foreach ($case in $cases) {

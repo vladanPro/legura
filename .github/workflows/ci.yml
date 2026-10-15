@@ -35,7 +35,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published Axonyx CLI
-        run: cargo install cargo-axonyx --version 0.6.12 --locked --debug
+        run: cargo install cargo-axonyx --version 0.6.13 --locked --debug
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -61,7 +61,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published Axonyx CLI
-        run: cargo install cargo-axonyx --version 0.6.12 --locked --debug
+        run: cargo install cargo-axonyx --version 0.6.13 --locked --debug
       - name: Verify compiled native content with disposable SQLite
         shell: pwsh
         run: |
@@ -84,8 +84,8 @@ jobs:
       - name: Verify normal post forms with rich and plain content
         shell: pwsh
         run: |
-          ./scripts/smoke-auth.ps1 -PostEditor -NativeRetry -Mode javascript -Port 3946
-          ./scripts/smoke-auth.ps1 -PostEditor -Mode native -Port 3946
+          ./scripts/smoke-auth.ps1 -ActiveEditor -NativeRetry -Mode javascript -Port 3946
+          ./scripts/smoke-auth.ps1 -ActiveEditor -Mode native -Port 3946
   compiled-auth:
     name: Registry Compiled Auth
     runs-on: ubuntu-latest
@@ -98,7 +98,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published Axonyx CLI
-        run: cargo install cargo-axonyx --version 0.6.12 --locked --debug
+        run: cargo install cargo-axonyx --version 0.6.13 --locked --debug
       - name: Verify SQLite maintenance safety
         run: |
           cargo fmt --all -- --check

@@ -1,18 +1,15 @@
 export type PostValidation {
   title: Bool
   slug: Bool
-  body: Bool
   status: Bool
   titleError: String
   slugError: String
-  bodyError: String
   statusError: String
 }
 
-export fn validatePost(title: String, slug: String, body: String, status: String) -> PostValidation {
+export fn validatePost(title: String, slug: String, status: String) -> PostValidation {
   data titleValid = title != "" && title.length <= 160
   data slugValid = slug != "" && slug.length <= 120
-  data bodyValid = body != "" && body.length <= 20000
   data statusValid = status == "draft" || status == "published"
-  return { title: titleValid, slug: slugValid, body: bodyValid, status: statusValid, titleError: "Enter a title of at most 160 characters.", slugError: "Enter a URL slug of at most 120 characters.", bodyError: "Enter plain text of at most 20000 characters.", statusError: "Choose draft or published." }
+  return { title: titleValid, slug: slugValid, status: statusValid, titleError: "Enter a title of at most 160 characters.", slugError: "Enter a URL slug of at most 120 characters.", statusError: "Choose draft or published." }
 }

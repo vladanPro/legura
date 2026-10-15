@@ -1,5 +1,10 @@
 # Regular Post Editor Proof V0
 
+Historical fixture proof. The real-form integration and its registry-only
+ActiveEditor gate are documented in [Active Post Editor V0](active-editor-v0.md).
+Its plain creation route is `/admin/posts/new/plain`; the query-based example
+below belongs only to the older substituted fixture.
+
 PostEditor mode substitutes the actual /admin/posts/new and
 /admin/posts/:id/edit routes in a disposable compiled CMS, reusing AdminFrame,
 Foundry form primitives, the pinned editor, native preparation and migration003.

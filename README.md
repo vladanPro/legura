@@ -26,7 +26,7 @@ is integrated into dev.
 Posts V0 adds private create/edit, draft/published status, public published pages
 and plain-text rendering. Its typed not-found framework fixes are published in
 core 0.6.6/runtime 0.6.5/CLI 0.6.9/scaffold 0.6.7 after green release CI.
-This branch uses registry runtime 0.6.9 and CI CLI 0.6.12; required acceptance now
+This branch uses registry runtime 0.6.9 and CI CLI 0.6.13; required acceptance now
 includes HTTP posts and both browser modes alongside the original auth tests.
 The Posts acceptance/integration gate is recorded in docs/posts-v0.md.
 
@@ -93,14 +93,16 @@ The [shared validation proof](docs/shared-post-validation-v0.md) records the
 published compiler fix and registry-only HTTP/backup acceptance. The editor
 package remains pinned to Git; operator activation is separate.
 
-The isolated rich-text proofs now use published CLI 0.6.12, runtime 0.6.9 and
+The rich-text proofs now use published CLI 0.6.13, runtime 0.6.9 and
 UI 0.0.86 without source overrides. See [post editor acceptance](docs/post-editor-forms-v0.md).
 This is not editor publication or activation in the operator installation.
 
 Public published-post rendering now validates stored content through Rust before
 passing fixed rich markup into ASX. See [the rendering boundary](docs/public-richtext-rendering-v0.md).
 Private saved preview uses the same validated rich renderer under administrator
-guards. Active operator editing remains a separate integration gate.
+guards. [Active form integration](docs/active-editor-v0.md) connects the real
+create/edit forms; applying it to an existing operator installation remains a
+separate, backup-first step.
 
 Isolated editor loaders also revalidate stored documents on the server before
 mounting them, without repairing or rewriting the database. See
@@ -108,7 +110,8 @@ mounting them, without repairing or rewriting the database. See
 
 Build tooling can export the pinned editor's embedded ASX/CSS/JS bundle to a new
 directory with a hash inventory. See [package assets](docs/editor-package-assets-v0.md).
-This does not activate rich editing or update an existing installation.
+Source prepare/build installs and verifies the pinned generation; it does not
+upgrade an existing operator checkout automatically.
 
 The [side-by-side installation helper](docs/editor-managed-install-v0.md) installs
 content-addressed editor generations and refuses local changes. Activation stays
@@ -124,9 +127,11 @@ readiness proof. Do not deploy this development pilot publicly.
 
 ## Development
 
-The [rich-text storage contract](docs/richtext-storage-v0.md) is an isolated Rust
-and SQLite prototype consuming the real editor package. It is not connected to
-the CMS forms or enabled in the active migrations yet; posts still use plain text.
+The [rich-text storage contract](docs/richtext-storage-v0.md) now backs real CMS
+forms through the pinned editor package and native Rust validation. New posts
+default to rich text, with explicit plain-text creation at `/admin/posts/new/plain`.
+Existing plain posts retain their format; rich editing requires JavaScript.
+No public CMS release, automatic conversion or operator upgrade is implied.
 
 For a local SQLite trial, follow the [tested source preparation](docs/installation.md#local-sqlite-pilot).
 `pwsh -File scripts/local.ps1 -Task prepare` initializes/checks/builds;

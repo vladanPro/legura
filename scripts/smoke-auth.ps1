@@ -11,9 +11,14 @@ param(
   [switch] $Content,
   [switch] $ContentEditor,
   [switch] $PostEditor,
+  [switch] $ActiveEditor,
   [switch] $NativeRetry
 )
 $ErrorActionPreference = "Stop"
+if ($ActiveEditor) {
+  $PostEditor = $true
+  if ($RuntimeSource -or $EditorSource -or $UiSource) { throw "ActiveEditor must prove the pinned product dependencies without source overrides" }
+}
 if ($NativeRetry -and (!$PostEditor -or $Mode -ne "javascript")) { throw "NativeRetry requires PostEditor javascript mode" }
 if ($NativeRetry -and ([bool]$RuntimeSource -ne [bool]$EditorSource)) { throw "NativeRetry source proof requires both RuntimeSource and EditorSource, or neither for registry acceptance" }
 if ($BackupRestore -and (!$Posts -or $Mode -ne "http")) { throw "BackupRestore requires Posts HTTP mode" }
@@ -125,13 +130,15 @@ try {
     Copy-Item -LiteralPath (Join-Path $root $file) -Destination $target
   }
   Set-Location $fixture
+  & ./scripts/editor-assets.ps1 -Task install
+  if ($LASTEXITCODE -ne 0) { throw "Cannot prepare product editor assets" }
   if ($Content) {
     $proofRoute = Join-Path $fixture "app/admin/content-proof"
     New-Item -ItemType Directory -Path $proofRoute -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $root "tests/content-http/actions.ax") -Destination $proofRoute
     Copy-Item -LiteralPath (Join-Path $root "tests/content-http/page.asx") -Destination $proofRoute
     Copy-Item -LiteralPath (Join-Path $root "tests/content-http/loader.ax") -Destination $proofRoute
-    Copy-Item -LiteralPath (Join-Path $root "tests/content-http/native.rs") -Destination (Join-Path $fixture "src/native.rs")
+    if (!$ActiveEditor) { Copy-Item -LiteralPath (Join-Path $root "tests/content-http/native.rs") -Destination (Join-Path $fixture "src/native.rs") }
     New-Item -ItemType Directory -Path (Join-Path $fixture "routes/api") -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $root "tests/content-http/content-proof.ax") -Destination (Join-Path $fixture "routes/api/content-proof.ax")
   }
@@ -163,9 +170,9 @@ try {
     $editorAssets = Join-Path $fixture "public/content-editor"
     $hostModule = [IO.File]::ReadAllText((Join-Path $root "tests/content-editor/host.js"))
     $hostModule = $hostModule.Replace("'./rich-text-editor.js'", "'$($editorInstall.module)'")
-    [IO.File]::WriteAllText((Join-Path $editorAssets "host.js"), $hostModule)
+    if (!$ActiveEditor) { [IO.File]::WriteAllText((Join-Path $editorAssets "host.js"), $hostModule) }
     Copy-Item -Path (Join-Path $root "tests/content-editor/app/*") -Destination (Join-Path $fixture "app/admin") -Recurse
-    if ($PostEditor) {
+    if ($PostEditor -and !$ActiveEditor) {
       Copy-Item -LiteralPath (Join-Path $root "tests/post-editor/PostFields.asx") -Destination (Join-Path $fixture "app/components/PostFields.asx")
       foreach ($file in @("page.asx", "actions.ax")) {
         Copy-Item -LiteralPath (Join-Path $root "tests/post-editor/new/$file") -Destination (Join-Path $fixture "app/admin/posts/new/$file")
@@ -174,10 +181,10 @@ try {
       foreach ($file in @("page.asx", "actions.ax")) {
         Copy-Item -LiteralPath (Join-Path $root "tests/post-editor/edit/$file") -Destination (Join-Path $fixture "app/admin/posts/[id]/edit/$file")
       }
-      Copy-Item -LiteralPath (Join-Path $root "tests/post-editor/edit/loader.ax") -Destination (Join-Path $fixture "app/admin/posts/[id]/edit/editor-loader.ax")
+      Copy-Item -LiteralPath (Join-Path $root "tests/post-editor/edit/loader.ax") -Destination (Join-Path $fixture "app/admin/posts/[id]/edit/loader.ax")
     }
     $editorPages = @("app/admin/content-editor/page.asx", "app/admin/content-editor/edit/page.asx")
-    if ($PostEditor) { $editorPages += @("app/components/PostFields.asx", "app/admin/posts/new/page.asx", "app/admin/posts/[id]/edit/page.asx") }
+    if ($PostEditor -and !$ActiveEditor) { $editorPages += @("app/components/PostFields.asx", "app/admin/posts/new/page.asx", "app/admin/posts/[id]/edit/page.asx") }
     foreach ($relative in $editorPages) {
       $pagePath = Join-Path $fixture $relative
       $pageSource = [IO.File]::ReadAllText($pagePath)
@@ -233,7 +240,8 @@ try {
   if ($Mode -ne "http") {
     $browserTest = if ($PostEditor) { "tests/post-editor/browser.mjs" } elseif ($ContentEditor) { "tests/content-editor/browser.mjs" } elseif ($Posts) { "tests/posts-browser.mjs" } else { "tests/auth-browser.mjs" }
     $retryMode = if ($NativeRetry) { "native-retry" } else { "standard" }
-    & node (Join-Path $root $browserTest) $baseUrl $Mode $db $retryMode
+    $editorMode = if ($ActiveEditor) { 'active' } else { 'fixture' }
+    & node (Join-Path $root $browserTest) $baseUrl $Mode $db $retryMode $editorMode
     if ($LASTEXITCODE -ne 0) { throw "Browser auth acceptance failed ($Mode)" }
     return
   }

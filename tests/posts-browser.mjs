@@ -180,7 +180,7 @@ async function checkSavedPreview(editPath, title, body, status) {
 
 async function checkPostListing() {
   for (let index = 1; index <= 11; index += 1) {
-    await navigate(page, '/admin/posts/new');
+    await navigate(page, '/admin/posts/new/plain');
     const suffix = String(index).padStart(2, '0');
     const title = index === 11 ? `Listing ${suffix} & + % _ " Č` : `Listing ${suffix}`;
     await fillPost(title, `listing-${suffix}`, 'Pagination fixture.', index <= 6 ? 'draft' : 'published');
@@ -342,6 +342,7 @@ try {
   await page.getByText('No posts yet', { exact: true }).waitFor();
   await checkAdminFrame();
   await page.getByRole("link", { name: "New post", exact: true }).click();
+  await page.getByRole('link', { name: 'Plain text', exact: true }).click();
   await checkAdminFrame();
   await fillPost("Private browser draft", "browser-draft", "Only the administrator should see this.", "draft");
   await submit("Create post", "/admin/posts");
@@ -361,7 +362,7 @@ try {
   await navigate(page, editPath);
 
   const longText = `${"Editor text ".repeat(1000)}\nČuvanje </textarea><script>unsafe</script>`;
-  await navigate(page, "/admin/posts/new");
+  await navigate(page, "/admin/posts/new/plain");
   await fillPost("Duplicate draft", "browser-draft", longText, "draft");
   const duplicateResponse = page.waitForResponse((response) => response.url().includes("/__axonyx/action?") && response.request().method() === "POST");
   await page.getByRole("button", { name: "Create post", exact: true }).click();
@@ -392,7 +393,7 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "Mobile editor overflow");
   await page.screenshot({ path: resolve(results, `editor-${mode}-mobile.png`), fullPage: true });
-  await submit("Save changes", "/admin/posts");
+  await submit("Save changes", editPath);
   await checkOverview(1, 0, 1);
   await navigate(page, '/admin/posts');
   await navigate(publicPage, "/posts");
@@ -406,7 +407,7 @@ try {
   assert.equal(await page.getByLabel("Status", { exact: true }).inputValue(), "published");
   await checkSavedPreview(editPath, 'Published browser story', content, 'published');
   await page.getByLabel("Status", { exact: true }).selectOption("draft");
-  await submit("Save changes", "/admin/posts");
+  await submit("Save changes", editPath);
   await checkOverview(1, 1, 0);
   await navigate(page, '/admin/posts');
   await navigate(publicPage, "/posts/browser-story", 404);
@@ -422,7 +423,7 @@ try {
   await page.waitForURL(`${baseUrl}${editPath}`);
   assert.equal(await page.getByLabel("Content", { exact: true }).inputValue(), content);
   await page.getByLabel("Status", { exact: true }).selectOption("published");
-  await submit("Save changes", "/admin/posts");
+  await submit("Save changes", editPath);
   await navigate(publicPage, "/posts/browser-story");
   await navigate(page, deletePath);
   await navigate(publicPage, deletePath, 403);
