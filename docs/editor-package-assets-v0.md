@@ -17,8 +17,8 @@ Files use create_new; Unix bundle roots are private to the user. Incomplete
 exports remain incomplete rather than claiming success or overwriting a retry.
 There is no --force, deletion, managed upgrade or modification of app/public/data.
 
-The integration proof exports into a new disposable directory and stages that
-bundle under its own app/components and public/content-editor paths. The lifecycle
+The integration proof now uses the side-by-side installer described in
+editor-managed-install-v0.md under app/components and public/content-editor. The lifecycle
 host remains application-owned, not part of the editing engine. The bundle hash
 inventory describes exact exported bytes, not an authenticity signature or a
 cross-platform newline-independent hash. Cargo.lock selects the immutable Git pin.
@@ -35,7 +35,7 @@ changing inventory/unknown files, and reject unsafe paths. The editor crate's
 packaged archive was built and verified with all five embedded assets. Existing
 license/repository metadata warnings are intentional unresolved publication gates.
 
-PostEditor JS/no-JS proofs use exported assets rather than checkout file copies.
+PostEditor JS/no-JS proofs use installed assets rather than checkout file copies.
 The native-retry source proof remains separate from registry acceptance. The
 operator DB, environment, source checkout and server are untouched. This is a
 safe export/build integration step, not automatic installation into an existing

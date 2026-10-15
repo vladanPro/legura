@@ -32,7 +32,7 @@ fn portable_path(path: &str) -> bool {
             .all(|part| matches!(part, Component::Normal(_)))
 }
 
-pub fn export_bundle(destination: &Path) -> io::Result<BundleManifest> {
+pub(crate) fn manifest() -> io::Result<BundleManifest> {
     let assets = legura_editor::assets::assets();
     let mut paths = BTreeSet::new();
     if legura_editor::assets::BUNDLE_VERSION != 1
@@ -47,6 +47,23 @@ pub fn export_bundle(destination: &Path) -> io::Result<BundleManifest> {
             "Unsupported editor bundle layout",
         ));
     }
+    Ok(BundleManifest {
+        format_version: legura_editor::assets::BUNDLE_VERSION,
+        package: "legura-editor",
+        package_version: legura_editor::assets::PACKAGE_VERSION,
+        assets: assets
+            .iter()
+            .map(|asset| AssetEntry {
+                path: asset.path,
+                bytes: asset.content.len(),
+                sha256: format!("{:x}", Sha256::digest(asset.content.as_bytes())),
+            })
+            .collect(),
+    })
+}
+
+pub fn export_bundle(destination: &Path) -> io::Result<BundleManifest> {
+    let manifest = manifest()?;
     #[cfg(unix)]
     let mut directory = fs::DirBuilder::new();
     #[cfg(not(unix))]
@@ -57,8 +74,7 @@ pub fn export_bundle(destination: &Path) -> io::Result<BundleManifest> {
         directory.mode(0o700);
     }
     directory.create(destination)?;
-    let mut entries = Vec::new();
-    for asset in assets {
+    for asset in legura_editor::assets::assets() {
         let target = destination.join(asset.path);
         fs::create_dir_all(target.parent().expect("bundle asset parent"))?;
         OpenOptions::new()
@@ -66,18 +82,7 @@ pub fn export_bundle(destination: &Path) -> io::Result<BundleManifest> {
             .create_new(true)
             .open(target)?
             .write_all(asset.content.as_bytes())?;
-        entries.push(AssetEntry {
-            path: asset.path,
-            bytes: asset.content.len(),
-            sha256: format!("{:x}", Sha256::digest(asset.content.as_bytes())),
-        });
     }
-    let manifest = BundleManifest {
-        format_version: legura_editor::assets::BUNDLE_VERSION,
-        package: "legura-editor",
-        package_version: legura_editor::assets::PACKAGE_VERSION,
-        assets: entries,
-    };
     // Written last: failed exports remain incomplete and are never called installed.
     let bytes = serde_json::to_vec_pretty(&manifest).map_err(io::Error::other)?;
     OpenOptions::new()

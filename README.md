@@ -110,6 +110,10 @@ Build tooling can export the pinned editor's embedded ASX/CSS/JS bundle to a new
 directory with a hash inventory. See [package assets](docs/editor-package-assets-v0.md).
 This does not activate rich editing or update an existing installation.
 
+The [side-by-side installation helper](docs/editor-managed-install-v0.md) installs
+content-addressed editor generations and refuses local changes. Activation stays
+explicit; there is no overwrite or automatic cleanup of old generations.
+
 The [setup/auth pilot](docs/setup-auth-v0.md) documents local initialization and
 the acceptance gate. HTTP acceptance is not a security audit or production
 readiness proof. Do not deploy this development pilot publicly.
