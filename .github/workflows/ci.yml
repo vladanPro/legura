@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: vladanPro/legura-editor
-          ref: ee78a27fab3ad223bfaf82ba1cf857901adc7952
+          ref: abf1be74fbd8ce41bfe30fe418357d00262aa007
           path: .proof-editor
       - uses: dtolnay/rust-toolchain@stable
       - uses: actions/setup-python@v5

@@ -34,7 +34,7 @@ includes an unsaved paragraph and Unicode alongside existing marks/link.
 The separate Native Editor Retry CI job pins both candidate commits, applies
 Cargo patches only to disposable fixtures, and keeps registry-only acceptance
 jobs unchanged. EditorSource overrides the actual Cargo package before locating
-its assets through metadata; no hand-edited generated backend is used.
+its embedded asset bundle; no hand-edited generated backend is used.
 
 Windows acceptance passed native retry plus JavaScript-disabled fallback with
 source candidates, runtime 270 unit tests, editor 15 Rust tests and Chromium/

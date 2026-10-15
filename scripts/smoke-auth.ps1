@@ -157,18 +157,13 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Cannot activate isolated editor source override" }
   }
   if ($ContentEditor) {
-    $packages = & cargo metadata --locked --format-version 1 | ConvertFrom-Json
-    if ($LASTEXITCODE -ne 0) { throw "Cannot locate pinned editor package" }
-    $editorPackage = @($packages.packages | Where-Object name -eq "legura-editor")
-    if ($editorPackage.Count -ne 1) { throw "Expected one pinned editor package" }
-    $editorRoot = Split-Path $editorPackage[0].manifest_path
+    $editorBundle = Join-Path $fixture ".editor-package"
+    & cargo run --locked --bin legura-editor-assets -- $editorBundle
+    if ($LASTEXITCODE -ne 0) { throw "Cannot export pinned editor bundle" }
     $editorAssets = Join-Path $fixture "public/content-editor"
     New-Item -ItemType Directory -Path $editorAssets -Force | Out-Null
-    foreach ($asset in @("rich-text-editor.js", "formatting-editor.js", "paragraph-editor.js")) {
-      Copy-Item -LiteralPath (Join-Path $editorRoot "src/js/$asset") -Destination $editorAssets
-    }
-    Copy-Item -LiteralPath (Join-Path $editorRoot "src/css/editor.css") -Destination $editorAssets
-    Copy-Item -LiteralPath (Join-Path $editorRoot "src/components/RichTextEditor.asx") -Destination (Join-Path $fixture "app/components/RichTextEditor.asx")
+    Copy-Item -Path (Join-Path $editorBundle "public/*") -Destination $editorAssets
+    Copy-Item -LiteralPath (Join-Path $editorBundle "components/RichTextEditor.asx") -Destination (Join-Path $fixture "app/components/RichTextEditor.asx")
     Copy-Item -LiteralPath (Join-Path $root "tests/content-editor/host.js") -Destination $editorAssets
     Copy-Item -Path (Join-Path $root "tests/content-editor/app/*") -Destination (Join-Path $fixture "app/admin") -Recurse
     if ($PostEditor) {
