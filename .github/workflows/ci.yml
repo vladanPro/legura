@@ -104,6 +104,7 @@ jobs:
           cargo fmt --all -- --check
           cargo test --locked --bin legura-maintenance
           cargo test --locked --lib
+          cargo test --locked --test content-check
       - name: Verify isolated native content preparation
         run: |
           cargo fmt --manifest-path tests/native-content/Cargo.toml -- --check

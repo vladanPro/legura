@@ -66,13 +66,25 @@ fn run() -> Result<()> {
             verify(Path::new(bundle))?;
             println!("Backup integrity and migration compatibility verified.");
         }
+        [command, source] if command == "content-check" => {
+            let report = content_check(Path::new(source))?;
+            println!("{}", serde_json::to_string(&report)?);
+            ensure!(report.invalid == 0, "Stored content is incompatible; no rows were repaired or changed");
+        }
         [command, bundle, destination] if command == "restore" => {
             restore(Path::new(bundle), Path::new(destination))?;
             println!("Restored to a NEW database. Stop the CMS before switching its database configuration; rotate the session key.");
         }
-        _ => bail!("usage: legura-maintenance config-local <package-directory> | init <new-database-file> | backup <database-file> <new-backup-directory> | verify <backup-directory> | restore <backup-directory> <new-database-file>"),
+        _ => bail!("usage: legura-maintenance config-local <package-directory> | init <new-database-file> | backup <database-file> <new-backup-directory> | verify <backup-directory> | restore <backup-directory> <new-database-file> | content-check <database-file>"),
     }
     Ok(())
+}
+
+fn content_check(path: &Path) -> Result<legura::content_audit::ContentAudit> {
+    let connection = open_readonly(path)?;
+    validate_structure(&connection)?;
+    legura::content_audit::audit(&connection)
+        .context("Cannot audit content storage; verify compatible content migrations first")
 }
 
 fn random_secret() -> Result<String> {
@@ -192,7 +204,7 @@ fn initialize_with_migrations(path: &Path, migrations: &[AxMigration]) -> Result
     result
 }
 
-fn validate(connection: &Connection) -> Result<()> {
+fn validate_structure(connection: &Connection) -> Result<usize> {
     let integrity: String = connection.query_row("PRAGMA integrity_check", [], |row| row.get(0))?;
     ensure!(integrity == "ok", "SQLite integrity check failed");
     ensure!(
@@ -231,17 +243,15 @@ fn validate(connection: &Connection) -> Result<()> {
             "migration checksum does not match this maintenance build"
         );
     }
-    if count >= 3 {
-        let mut statement =
-            connection.prepare("SELECT content_format,body,content_document FROM legura_posts")?;
-        let mut rows = statement.query([])?;
-        while let Some(row) = rows.next()? {
-            let format: String = row.get(0)?;
-            let body: String = row.get(1)?;
-            let document: Option<String> = row.get(2)?;
-            legura::content::PostContent::from_stored(&format, &body, document.as_deref())
-                .context("Stored post content is invalid; backup verification refused")?;
-        }
+    Ok(count)
+}
+
+fn validate(connection: &Connection) -> Result<()> {
+    if validate_structure(connection)? >= 3 {
+        ensure!(
+            legura::content_audit::audit(connection)?.invalid == 0,
+            "Stored post content is invalid; backup verification refused"
+        );
     }
     Ok(())
 }
