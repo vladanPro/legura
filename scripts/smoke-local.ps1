@@ -219,6 +219,13 @@ try {
       if (!$admin.Contains('bootstrap@example.com')) { throw "Packaged login/admin identity failed" }
       $posts = Request -Path '/admin/posts' -Status 200
       if (!$posts.Contains('Package published') -or !$posts.Contains('Package draft')) { throw "Packaged private content was not recovered" }
+      $editor = Request -Path '/admin/posts/new' -Status 200
+      if (!$editor.Contains('data-legura-editor="richtext"')) { throw "Packaged rich form is missing" }
+      $plainEditor = Request -Path '/admin/posts/new/plain' -Status 200
+      if (!$plainEditor.Contains('name="body"') -or $plainEditor.Contains('data-legura-editor="richtext"')) { throw "Packaged plain form is invalid" }
+      $editorFiles = @($manifest.files | Where-Object { $_.path -like 'dist/content-editor/*' })
+      if ($editorFiles.Count -lt 5) { throw "Packaged editor assets are incomplete" }
+      foreach ($entry in $editorFiles) { Request -Path $entry.path.Substring(4) -Status 200 | Out-Null }
       Request -Path '/setup' -Status 403 | Out-Null
       $asset = [regex]::Match($login, 'href="([^"]+\.css)"').Groups[1].Value
       if (!$asset.StartsWith('/')) { throw "Packaged CSS reference missing" }

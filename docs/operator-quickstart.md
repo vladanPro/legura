@@ -2,7 +2,7 @@
 
 This is the SQLite development pilot, not a production installation guide.
 Run commands from the Legura repository. PowerShell 7.4+, Rust/Cargo and
-Axonyx CLI 0.6.10 are required. Git Bash can run the same `pwsh` commands.
+Axonyx CLI 0.6.13 are required. Git Bash can run the same `pwsh` commands.
 
 ## First Start
 
@@ -19,6 +19,12 @@ Leave the start terminal open. Stop it with Ctrl+C. On subsequent starts, run
 only `-Task start`; prepare is needed when source/build output changes.
 If the executable is locked during build, stop your own server before preparing.
 Do not delete data/ or .env to resolve a build error.
+
+Prepare/build also installs the editor assets from the locked Git package into
+a content-addressed generation. It refuses edited or incomplete generations,
+instead of replacing local files. See [active editor integration](active-editor-v0.md).
+For an existing installation, verify a backup and rehearse against a copy before
+updating source or running migrations. These commands are not a production updater.
 
 ## Make And Verify A Backup
 

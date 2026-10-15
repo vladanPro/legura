@@ -8,6 +8,7 @@ if (!(Test-Path -LiteralPath (Split-Path $output) -PathType Container)) { throw 
 if ($env:CARGO_BUILD_TARGET) { throw "Cross-target packaging is not supported by this pilot" }
 Push-Location $root
 try {
+  & ./scripts/editor-assets.ps1 -Task install
   & cargo ax check
   if ($LASTEXITCODE -ne 0) { throw "Source check failed" }
   & cargo ax build --clean --compiled

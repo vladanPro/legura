@@ -93,11 +93,11 @@ unsaved live preview or a shareable token. See posts-preview-v0.md.
 
 ## 2. Self-Hosted Release Gate
 
-Rich-text storage preparation now has a validated Rust content contract and an
-in-memory SQLite compatibility proof. See richtext-storage-v0.md. The current
-CMS remains plain text until a typed native-package bridge allows generated
-actions to validate documents and ASX to render them safely. Active migrations,
-asset lifecycle, JS/native recovery and backup compatibility remain gated.
+Rich-text storage has a validated Rust content contract, SQLite compatibility
+proof and native package bridge. Real create/edit forms now use the locked
+editor generation; see active-editor-v0.md. Plain/rich conversion is explicit
+future work, not automatic. Applying changes to an existing operator installation
+still requires backup/recovery rehearsal; there is no production updater.
 
 Native content now also has a disposable compiled HTTP proof with
 real setup/session/administrator/CSRF checks, SQLite persistence, restart and

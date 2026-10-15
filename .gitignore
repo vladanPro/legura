@@ -10,6 +10,9 @@
 /uploads/
 /backups/
 /src/generated/
+/.legura/editor-assets/
+/app/components/legura-editor/
+/public/content-editor/*/
 *.db
 *.db-shm
 *.db-wal

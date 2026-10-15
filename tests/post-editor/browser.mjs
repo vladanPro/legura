@@ -6,7 +6,8 @@ import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { assertStoredEditorBoundary, assertLegacyPlainEditor } from '../editor-storage-fixture.mjs';
 
-const [baseUrl, mode, fixtureDb, retryMode = 'standard'] = process.argv.slice(2);
+const [baseUrl, mode, fixtureDb, retryMode = 'standard', editorMode = 'fixture'] = process.argv.slice(2);
+assert.ok(['active', 'fixture'].includes(editorMode));
 assert.ok(['standard', 'native-retry'].includes(retryMode));
 const nativeRetry = retryMode === 'native-retry';
 async function submitNative422(expectedDocument) {
@@ -84,6 +85,13 @@ async function checkRichSavedPreview(id) {
   assert.equal(page.url(), editUrl);
   assert.equal(await page.getByLabel('Title', { exact: true }).inputValue(), 'Unsaved preview title');
   assert.equal(await page.locator('[data-editor-document]').inputValue(), unsavedDocument);
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Rich editor overflows the page');
+    const directory = resolve(tmpdir(), 'legura-active-editor-qa');
+    await mkdir(directory, { recursive: true });
+    await page.screenshot({ path: resolve(directory, editorMode + '-' + width + '.png'), fullPage: true });
+  }
 }
 assert.ok(['127.0.0.1', 'localhost'].includes(new URL(baseUrl).hostname));
 assert.ok(['javascript', 'native'].includes(mode));
@@ -114,6 +122,8 @@ try {
     await page.getByRole('button', { name: 'Apply link', exact: true }).click();
     await page.getByLabel('URL slug', { exact: true }).fill('rich-post');
     const doc = await page.locator('[data-editor-document]').inputValue();
+    // Product forms retain browser validation; bypass it only for the server retry proof.
+    await page.locator('[data-content-editor-form]').evaluate(form => { form.noValidate = true; });
     const invalid = page.waitForResponse(r => r.url().includes('/__axonyx/action?') && r.request().method() === 'POST');
     await page.getByRole('button', { name: 'Create post', exact: true }).click();
     assert.equal((await invalid).status(), 422);
@@ -177,10 +187,23 @@ try {
   }
 
   // Normal plain-text authoring remains available in both browser modes.
-  await page.goto(baseUrl + '/admin/posts/new?format=plain-text');
+  await page.goto(baseUrl + (editorMode === 'active' ? '/admin/posts/new/plain' : '/admin/posts/new?format=plain-text'));
   await page.getByLabel('Title', { exact: true }).fill('Plain post');
   await page.getByLabel('URL slug', { exact: true }).fill('plain-post');
   await page.getByLabel('Content', { exact: true }).fill('<script>literal</script>');
+  if (editorMode === 'active') {
+    await page.getByLabel('Title', { exact: true }).fill('');
+    const plainRetry = page.waitForResponse(response => response.url().includes('/__axonyx/action?') && response.request().method() === 'POST');
+    await page.locator('[data-content-editor-form]').evaluate(form => {
+      form.noValidate = true;
+      HTMLFormElement.prototype.submit.call(form);
+    });
+    assert.equal((await plainRetry).status(), 422);
+    await page.locator('[data-ax-field-error="title"]').getByText('Enter a title of at most 160 characters.', { exact: true }).waitFor();
+    assert.equal(await page.locator('[name="content_format"]').inputValue(), 'plain-text', 'Native retry changed the creation format');
+    assert.equal(await page.getByLabel('Content', { exact: true }).inputValue(), '<script>literal</script>', 'Native retry lost plain content');
+    await page.getByLabel('Title', { exact: true }).fill('Plain post');
+  }
   await page.getByRole('button', { name: 'Create post', exact: true }).click();
   await page.waitForURL(baseUrl + '/admin/posts');
   await page.locator('tr').filter({ hasText: 'Plain post' }).locator('a[href$="/edit"]').first().click();

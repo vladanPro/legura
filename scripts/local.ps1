@@ -87,13 +87,14 @@ try {
     "init" { Initialize-Local }
     "prepare" {
       Initialize-Local
+      & ./scripts/editor-assets.ps1 -Task install
       Invoke-Ax -Arguments @("check")
       Invoke-Ax -Arguments @("build", "--clean", "--compiled")
       Write-Host "Prepared. Next: pwsh -File scripts/local.ps1 -Task start -Port $Port"
       Write-Host "First-run setup: http://127.0.0.1:$Port/setup"
     }
-    "check" { Assert-LocalConfiguration; Invoke-Ax -Arguments @("check") }
-    "build" { Assert-LocalConfiguration; Invoke-Ax -Arguments @("build", "--clean", "--compiled") }
+    "check" { Assert-LocalConfiguration; & ./scripts/editor-assets.ps1 -Task check; Invoke-Ax -Arguments @("check") }
+    "build" { Assert-LocalConfiguration; & ./scripts/editor-assets.ps1 -Task install; Invoke-Ax -Arguments @("build", "--clean", "--compiled") }
     "start" { Assert-LocalConfiguration; Invoke-Ax -Arguments @("run", "start", "--compiled", "--host", "127.0.0.1", "--port", "$Port") }
   }
 } finally { Pop-Location }
