@@ -24,8 +24,7 @@ inventory describes exact exported bytes, not an authenticity signature or a
 cross-platform newline-independent hash. Cargo.lock selects the immutable Git pin.
 
 The editor is still Git-pinned and publish=false; no Cargo/npm release occurred.
-Basic JS editing uses registry runtime 0.6.8. Native full-page 422 recovery still
-requires the source runtime candidate until its next release. Native Retry CI
+JS editing and native full-page 422 recovery use registry runtime 0.6.9. Native Retry CI
 uses the matching editor source commit, not an older package without the asset API.
 
 ## Gates

@@ -55,7 +55,7 @@ unknown files, incomplete generations, changed receipts and Unix symlink refusal
 The disposable CMS browser fixture explicitly binds the reported component/CSS/JS
 paths and then verifies the installed generation before building.
 
-Operator activation, configuration compatibility, native 422 runtime release,
+Operator activation, configuration compatibility, registry native 422 acceptance,
 editor licensing/publication and a recoverable upgrade/deployment procedure are
 still separate gates. This is not a production CMS installer.
 

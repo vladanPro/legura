@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: vladanPro/axonyx-runtime
-          ref: 9cb24b4d31e0ab3a05f67627aeb68f7eaadfc8f0
+          ref: 8bdf7d144af0ecc59d1b24dd91f8065b89ae080b
           path: .proof-runtime
       - uses: actions/checkout@v4
         with:
@@ -84,7 +84,7 @@ jobs:
       - name: Verify normal post forms with rich and plain content
         shell: pwsh
         run: |
-          ./scripts/smoke-auth.ps1 -PostEditor -Mode javascript -Port 3946
+          ./scripts/smoke-auth.ps1 -PostEditor -NativeRetry -Mode javascript -Port 3946
           ./scripts/smoke-auth.ps1 -PostEditor -Mode native -Port 3946
   compiled-auth:
     name: Registry Compiled Auth

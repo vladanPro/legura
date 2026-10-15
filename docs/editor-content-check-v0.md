@@ -51,5 +51,5 @@ Linux CI remains required before integration.
 
 A green audit alone does not enable the editor. Installed assets, compatible
 generated routes/actions and native helpers, backup/recovery procedure and the
-native full-page 422 runtime release remain separate activation requirements.
+registry native full-page 422 acceptance remain separate activation requirements.
 The editor is still Git-pinned and unpublished; licensing remains unresolved.

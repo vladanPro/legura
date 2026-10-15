@@ -13,7 +13,7 @@ application-owned lifecycle host imports the reported JS module. Test-only creat
 actions use native Rust preparation before parameterized SQLite writes. The
 regular published-package CMS path and the operator's environment/data stay intact.
 The editor pin now includes the joined Foundry toolbar and selection-aware link
-popover. Published UI 0.0.86 provides the native icons; runtime 0.6.8 and CLI
+popover. Published UI 0.0.86 provides the native icons; runtime 0.6.9 and CLI
 0.6.12 provide compiled native registration. No source override is required.
 Optional UiSource/RuntimeSource overrides remain confined to disposable fixtures.
 EditorSource can override the package only inside that fixture. See
