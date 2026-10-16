@@ -8,7 +8,9 @@ component AdminFrame(section = "overview") {
   return ASX {
     <AppShell class="legura-admin-shell" mode="embedded" railWidth="sm">
       <Sidebar slot="sidebar" label="Administration navigation" collapsible="true" open="true">
-        <SidebarHeader slot="header"><strong>Workspace</strong></SidebarHeader>
+        <SidebarHeader slot="header">
+          <strong>Workspace</strong>
+        </SidebarHeader>
         <nav aria-label="Administration">
           <SidebarSection title="Content">
             <SidebarItem href="/admin" active={section == "overview"}>Overview</SidebarItem>
@@ -19,7 +21,9 @@ component AdminFrame(section = "overview") {
           </SidebarSection>
         </nav>
       </Sidebar>
-      <div class="ax-layout-main legura-admin-content"><Slot /></div>
+      <div class="ax-layout-main legura-admin-content">
+        <Slot />
+      </div>
     </AppShell>
   }
 }

@@ -7,10 +7,28 @@ component NewPostForm(title = "New post", format = "legura-richtext", submitActi
     <AdminFrame section="posts">
       <Card title={title}>
         <p>A draft is visible only to the administrator.</p>
-        <nav class="legura-links" aria-label="Content editor"><a href="/admin/posts/new">Rich text</a><a href="/admin/posts/new/plain">Plain text</a></nav>
-        <form method="post" action={submitAction} data-content-editor-form="true" data-ax-retain-fields="title,slug,body,status,content_document" class="legura-form">
+        <nav class="legura-links" aria-label="Content editor">
+          <a href="/admin/posts/new">Rich text</a>
+          <a href="/admin/posts/new/plain">Plain text</a>
+        </nav>
+        <form
+          method="post"
+          action={submitAction}
+          data-content-editor-form="true"
+          data-ax-retain-fields="title,slug,body,status,content_document"
+          class="legura-form"
+        >
           <PostFields format={format} />
-          <div class="legura-form-actions"><button type="submit" class="ax-button" data-variant="primary" data-editor-save="true" disabled={format == "legura-richtext"}>Create post</button><a href="/admin/posts">Cancel</a></div>
+          <div class="legura-form-actions">
+            <button
+              type="submit"
+              class="ax-button"
+              data-variant="primary"
+              data-editor-save="true"
+              disabled={format == "legura-richtext"}
+            >Create post</button>
+            <a href="/admin/posts">Cancel</a>
+          </div>
         </form>
       </Card>
     </AdminFrame>

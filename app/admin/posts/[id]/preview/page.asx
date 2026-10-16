@@ -10,7 +10,13 @@ page PreviewPost() {
         <p><strong>Private preview</strong> <Badge>{post.status}</Badge></p>
         <p>This shows the last saved version, not unsaved changes in the editor. Viewing it does not publish the post.</p>
       </section>
-      <PostStory title={post.title} body={post.body} contentHtml={post.html} backHref={"/admin/posts/" + post.id + "/edit"} backLabel="Back to editor" />
+      <PostStory
+        title={post.title}
+        body={post.body}
+        contentHtml={post.html}
+        backHref={"/admin/posts/" + post.id + "/edit"}
+        backLabel="Back to editor"
+      />
     </AdminFrame>
   }
 }
