@@ -3,8 +3,12 @@ component PostStory(title = "", body = "", contentHtml = "", backHref = "/posts"
     <article class="legura-story">
       <a href={backHref}>{backLabel}</a>
       <h1>{title}</h1>
-      <If when={contentHtml != ""}><Html class="legura-story__body" content={contentHtml} /></If>
-      <If when={contentHtml == ""}><div class="legura-story__body">{body}</div></If>
+      <If when={contentHtml != ""}>
+        <Html class="legura-story__body" content={contentHtml} />
+      </If>
+      <If when={contentHtml == ""}>
+        <div class="legura-story__body">{body}</div>
+      </If>
     </article>
   }
 }

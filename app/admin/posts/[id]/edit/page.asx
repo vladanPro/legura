@@ -6,22 +6,52 @@ page EditPost() {
   data post: PostForEditor = loadEditablePost(params.id)
   return ASX {
     <Head>
-      <Link rel="stylesheet" href="/content-editor/60e28caa76c3edae1e513847b9530f4f0fb17f987a88b422132fbb521600e5fc/editor.css" />
+      <Link
+        rel="stylesheet"
+        href="/content-editor/60e28caa76c3edae1e513847b9530f4f0fb17f987a88b422132fbb521600e5fc/editor.css"
+      />
       <Script src="/content-editor/host.js" type="module" />
     </Head>
     <AdminFrame section="posts">
-    <Card title="Edit post">
-      <form method="post" action={action UpdatePost} data-content-editor-form="true" data-ax-retain-fields="title,slug,body,status,content_document" class="legura-form">
-        <input type="hidden" name="id" value={post.id} />
-        <PostFields title={post.title} slug={post.slug} body={post.body} status={post.status} format={post.content_format} document={post.content_document ?? ""} />
-        <div class="legura-form-actions"><button type="submit" class="ax-button" data-variant="primary" data-editor-save="true" disabled={post.content_format == "legura-richtext"}>Save changes</button><a href="/admin/posts">Cancel</a></div>
-      </form>
-      <nav class="legura-links" aria-label="Post management">
-        <a href={"/admin/posts/" + post.id + "/preview"} target="_blank" rel="noopener" aria-describedby="preview-hint">Preview saved post</a>
-        <a href={"/admin/posts/" + post.id + "/delete"}>Delete post</a>
-      </nav>
-      <p id="preview-hint" class="legura-hint">Preview opens in a new tab. Save changes first to include them.</p>
-    </Card>
+      <Card title="Edit post">
+        <form
+          method="post"
+          action={action UpdatePost}
+          data-content-editor-form="true"
+          data-ax-retain-fields="title,slug,body,status,content_document"
+          class="legura-form"
+        >
+          <input type="hidden" name="id" value={post.id} />
+          <PostFields
+            title={post.title}
+            slug={post.slug}
+            body={post.body}
+            status={post.status}
+            format={post.content_format}
+            document={post.content_document ?? ""}
+          />
+          <div class="legura-form-actions">
+            <button
+              type="submit"
+              class="ax-button"
+              data-variant="primary"
+              data-editor-save="true"
+              disabled={post.content_format == "legura-richtext"}
+            >Save changes</button>
+            <a href="/admin/posts">Cancel</a>
+          </div>
+        </form>
+        <nav class="legura-links" aria-label="Post management">
+          <a
+            href={"/admin/posts/" + post.id + "/preview"}
+            target="_blank"
+            rel="noopener"
+            aria-describedby="preview-hint"
+          >Preview saved post</a>
+          <a href={"/admin/posts/" + post.id + "/delete"}>Delete post</a>
+        </nav>
+        <p id="preview-hint" class="legura-hint">Preview opens in a new tab. Save changes first to include them.</p>
+      </Card>
     </AdminFrame>
   }
 }
