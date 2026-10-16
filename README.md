@@ -2,6 +2,9 @@
 
 A self-hosted content management system built on Axonyx.
 
+For source formatting, format-on-save and the optional staged-content guard,
+see [Source formatting](docs/source-formatting-v1.md).
+
 Legura takes its name from the Serbian word for alloy: distinct elements forming
 one useful whole. Content, design, and application behavior belong together,
 without forcing the user to learn the framework underneath.

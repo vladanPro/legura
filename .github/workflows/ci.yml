@@ -13,6 +13,18 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  source-format:
+    name: Axonyx Source Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install cargo-axonyx --git https://github.com/vladanPro/axonyx-framework --rev 79c58a2968307b4fd4301c33b31b751d6e94b823 --force
+      - run: bash scripts/format-sources.sh --check
+      - name: Check staged-source hook safety
+        shell: pwsh
+        run: ./scripts/test-format-hook.ps1 -FormatterPath (Get-Command cargo-ax).Source
   native-editor-retry:
     name: Native Editor Retry
     runs-on: ubuntu-latest
