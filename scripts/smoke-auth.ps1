@@ -14,9 +14,11 @@ param(
   [switch] $PostEditor,
   [switch] $ActiveEditor,
   [switch] $NativeRetry,
-  [switch] $Media
+  [switch] $Media,
+  [switch] $MediaBrowser
 )
 $ErrorActionPreference = "Stop"
+if ($MediaBrowser -and !$Media) { throw "MediaBrowser requires the isolated Media fixture" }
 if ($Media -and ($Mode -ne "http" -or $Posts -or $Content -or $ContentEditor -or $PostEditor -or $ActiveEditor -or $RefreshSchema)) { throw "Media requires isolated HTTP mode without other content/browser switches" }
 if ($ToolPath -and $ToolManifest) { throw "Choose ToolPath or ToolManifest, not both" }
 if ($ActiveEditor) {
@@ -350,7 +352,8 @@ try {
   if ($Media) {
     Send-Media -Bytes $validImage -Headers $revokedProof -Status 403 | Out-Null
     Invoke-Request -Path "/admin/media-proof" -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
-    Assert-MediaCounts -Rows 2 -Files 3
+    Send-Media -Bytes $validImage -Headers $revokedProof -Status 403 -Native | Out-Null
+    Assert-MediaCounts -Rows $mediaExpectedRows -Files $mediaExpectedFiles
   }
   if ($Posts) {
     Invoke-Request -Path "/admin/posts" -Headers @{ Cookie = $cookie } -Status 403 | Out-Null

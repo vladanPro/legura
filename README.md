@@ -70,6 +70,12 @@ adoption and why search and pagination remain server-owned.
 The inactive [media storage foundation](docs/media-storage-v0.md) defines local
 object storage; upload routes, a media library and post images are not added yet.
 
+An isolated protected-upload proof is merged in `dev` (PR #48), after all seven
+CI gates passed. Its startup hook is on framework `dev` (PR #357), not yet in a
+published CLI. The [library view pilot](docs/media-library-view-v0.md) stays
+isolated until product opt-in, versioned migration and media-aware recovery are
+ready. Existing operator installations still have no active media library.
+
 ## Product
 
 - Own your server, content, files, and database.

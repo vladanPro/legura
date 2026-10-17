@@ -6,11 +6,21 @@ export type MediaProofItem {
   height: Number
 }
 
-export query loadMediaProof() -> MediaProofItem[] {
+export type MediaProofPage {
+  items: MediaProofItem[]
+  total: Number
+  page: Number
+  total_pages: Number
+}
+
+export query loadMediaProof(page: String = "1") -> MediaProofPage {
   require Auth.subject else forbidden()
   data administrator = db.legura_users.where({ id: Auth.subject }).first()
   require administrator else forbidden()
   require administrator["role"] == "admin" else forbidden()
-  data items = db.query("SELECT id, content_type, byte_size, width, height FROM legura_media ORDER BY id LIMIT 50")
-  return items
+  data requested = Native.call("legura.pagination.request", { page: input.page })
+  data counts = db.query("SELECT COUNT(*) AS total FROM legura_media")
+  data pagination = Native.call("legura.pagination", { total: counts[0]["total"], requested_page: requested.requested_page, page_size: 10 })
+  data items = db.query("SELECT id, content_type, byte_size, width, height FROM legura_media ORDER BY id LIMIT ? OFFSET ?", pagination.page_size, pagination.offset)
+  return { items: items, total: counts[0]["total"], page: pagination.page, total_pages: pagination.total_pages }
 }

@@ -167,6 +167,11 @@ Backup / Restore V1 passed those gates and PR #6 is integrated into dev.
 
 ## 4. Product Expansion
 
+Media Library View V0 builds on the isolated upload proof with Foundry admin
+navigation, empty state, processed metadata, bounded pagination and a native
+upload-to-redirect flow. See media-library-view-v0.md. Product activation and
+media-aware recovery remain separate gates; no public object serving is enabled.
+
 An isolated Media Upload HTTP source pilot exercises the current administrator,
 CSRF, canonical image storage and SQLite metadata through the generated server;
 see media-upload-http-v0.md. Its migration/route/startup hook are fixture-only.

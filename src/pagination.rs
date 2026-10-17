@@ -33,8 +33,17 @@ pub fn normalize_post_filters(input: PostFilterInput) -> PostFilters {
         .chars()
         .take(200)
         .collect();
-    let page = input.page.split('\0').next().unwrap_or_default();
-    let requested_page = if !page.is_empty() && page.bytes().all(|byte| byte.is_ascii_digit()) {
+    let requested_page = normalize_page(&input.page);
+    PostFilters {
+        status,
+        search,
+        requested_page,
+    }
+}
+
+fn normalize_page(page: &str) -> i64 {
+    let page = page.split('\0').next().unwrap_or_default();
+    if !page.is_empty() && page.bytes().all(|byte| byte.is_ascii_digit()) {
         page.bytes()
             .fold(0_i64, |value, digit| {
                 value
@@ -44,11 +53,24 @@ pub fn normalize_post_filters(input: PostFilterInput) -> PostFilters {
             .max(1)
     } else {
         1
-    };
-    PostFilters {
-        status,
-        search,
-        requested_page,
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PageRequestInput {
+    pub page: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct PageRequest {
+    pub requested_page: i64,
+}
+
+pub fn normalize_page_request(input: PageRequestInput) -> PageRequest {
+    PageRequest {
+        requested_page: normalize_page(&input.page),
     }
 }
 
@@ -85,6 +107,9 @@ pub fn paginate(input: PaginationInput) -> Result<Pagination, &'static str> {
 }
 
 pub fn register(registry: &mut AxNativeRegistry) -> Result<(), AxNativeError> {
+    registry.register("legura.pagination.request", |input: PageRequestInput| {
+        Ok::<_, ()>(normalize_page_request(input))
+    })?;
     registry.register("legura.posts.filters", |input: PostFilterInput| {
         Ok::<_, ()>(normalize_post_filters(input))
     })?;
@@ -237,6 +262,29 @@ mod tests {
         let mut registry = AxNativeRegistry::default();
         register(&mut registry).unwrap();
         assert!(register(&mut registry).is_err());
+        for payload in [
+            serde_json::json!({"page": 2}),
+            serde_json::json!({"page": "2", "extra": true}),
+            serde_json::json!({}),
+        ] {
+            assert!(registry.call("legura.pagination.request", payload).is_err());
+        }
+        for (page, expected) in [
+            ("", 1),
+            ("-1", 1),
+            ("0012", 12),
+            ("999999999999999999999", i64::MAX),
+        ] {
+            assert_eq!(
+                registry
+                    .call(
+                        "legura.pagination.request",
+                        serde_json::json!({"page": page})
+                    )
+                    .unwrap(),
+                serde_json::json!({"requested_page": expected})
+            );
+        }
         for payload in [
             serde_json::json!({"total": "11", "requested_page": 1, "page_size": 10}),
             serde_json::json!({"total": 11, "requested_page": 1, "page_size": 10, "extra": true}),
