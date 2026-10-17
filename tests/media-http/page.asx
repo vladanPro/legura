@@ -1,0 +1,18 @@
+page MediaProof() {
+  data images: MediaProofItem[] = loadMediaProof()
+  return ASX {
+    <section>
+      <h1>Isolated media library</h1>
+      <form method="post" enctype="multipart/form-data" action={action UploadLibraryImage}>
+        <label for="proof-image">Image</label>
+        <input type="file" id="proof-image" name="image" accept="image/jpeg,image/png,image/webp" />
+        <button type="submit">Upload image</button>
+      </form>
+      <ul>
+        <Each items={images} as="image">
+          <li>{image.id}: {image.content_type}, {image.width} x {image.height}</li>
+        </Each>
+      </ul>
+    </section>
+  }
+}

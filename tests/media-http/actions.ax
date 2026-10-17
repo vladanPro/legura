@@ -1,0 +1,5 @@
+action UploadLibraryImage(image: File) {
+  data administrator = loadAdministrator()
+  data saved = Storage.save("legura-media", input.image)
+  return json(saved)
+}

@@ -1,5 +1,6 @@
 param(
   [string] $ToolManifest = "",
+  [string] $ToolPath = "",
   [string] $RuntimeSource = "",
   [string] $UiSource = "",
   [string] $EditorSource = "",
@@ -12,9 +13,12 @@ param(
   [switch] $ContentEditor,
   [switch] $PostEditor,
   [switch] $ActiveEditor,
-  [switch] $NativeRetry
+  [switch] $NativeRetry,
+  [switch] $Media
 )
 $ErrorActionPreference = "Stop"
+if ($Media -and ($Mode -ne "http" -or $Posts -or $Content -or $ContentEditor -or $PostEditor -or $ActiveEditor -or $RefreshSchema)) { throw "Media requires isolated HTTP mode without other content/browser switches" }
+if ($ToolPath -and $ToolManifest) { throw "Choose ToolPath or ToolManifest, not both" }
 if ($ActiveEditor) {
   $PostEditor = $true
   if ($RuntimeSource -or $EditorSource -or $UiSource) { throw "ActiveEditor must prove the pinned product dependencies without source overrides" }
@@ -37,9 +41,15 @@ $client = $null
 $handler = $null
 $environment = @{}
 $keys = @("AX_SECRET_DB_URL", "AX_SECRET_DB_DIALECT", "AX_SECRET_SESSION_KEY", "AX_SECRET_SETUP_TOKEN", "AX_SECRET_SESSION_COOKIE_SECURE", "AXONYX_HOST", "AXONYX_PORT")
+$keys += @("AX_TEST_MEDIA_ROOT", "AX_TEST_MEDIA_DB")
+if ($Media) { $keys += "CARGO_TARGET_DIR" }
 $keys = @($keys + @(Get-ChildItem Env: | Where-Object Name -Match '^(AX_SECRET_|AX_PUBLIC_|DB_|DATABASE_|DATA_|SESSION_|SETUP_TOKEN$)' | Select-Object -ExpandProperty Name) | Select-Object -Unique)
 foreach ($key in $keys) { $environment[$key] = [Environment]::GetEnvironmentVariable($key) }
 if ($ToolManifest) { $ToolManifest = [IO.Path]::GetFullPath($ToolManifest) }
+if ($ToolPath) {
+  $ToolPath = [IO.Path]::GetFullPath($ToolPath)
+  if (!(Test-Path -LiteralPath $ToolPath -PathType Leaf)) { throw "ToolPath must be an existing CLI binary" }
+}
 if ($RuntimeSource) {
   $RuntimeSource = [IO.Path]::GetFullPath($RuntimeSource)
   if (!(Test-Path -LiteralPath (Join-Path $RuntimeSource "Cargo.toml"))) { throw "Runtime source manifest is missing" }
@@ -55,7 +65,8 @@ if ($EditorSource) {
 
 function Invoke-Ax {
   param([string[]] $Arguments)
-  if ($ToolManifest) { & cargo run --manifest-path $ToolManifest -p cargo-axonyx --bin cargo-axonyx -- @Arguments }
+  if ($ToolPath) { & $ToolPath @Arguments }
+  elseif ($ToolManifest) { & cargo run --manifest-path $ToolManifest -p cargo-axonyx --bin cargo-axonyx -- @Arguments }
   else { & cargo ax @Arguments }
   if ($LASTEXITCODE -ne 0) { throw "Fixture Axonyx command failed" }
 }
@@ -130,6 +141,21 @@ try {
     Copy-Item -LiteralPath (Join-Path $root $file) -Destination $target
   }
   Set-Location $fixture
+  if ($Media) {
+    $mediaRoute = Join-Path $fixture "app/admin/media-proof"
+    New-Item -ItemType Directory -Path $mediaRoute -Force | Out-Null
+    foreach ($name in @("actions.ax", "loader.ax", "page.asx")) { Copy-Item -LiteralPath (Join-Path $root "tests/media-http/$name") -Destination $mediaRoute }
+    Copy-Item -LiteralPath (Join-Path $root "tests/media-http/native_storage.rs") -Destination (Join-Path $fixture "src/native_storage.rs")
+    $mediaMigration = Join-Path $fixture "db/migrations/20261017000000_004_media_proof"
+    New-Item -ItemType Directory -Path $mediaMigration | Out-Null
+    Copy-Item -LiteralPath (Join-Path $root "tests/media-http/schema.sql") -Destination (Join-Path $mediaMigration "up.sql")
+    Copy-Item -LiteralPath (Join-Path $root "tests/media-http/down.sql") -Destination (Join-Path $mediaMigration "down.sql")
+    # Raise only this fixture's transport budget; the product's 64 KiB setting stays.
+    $configPath = Join-Path $fixture "Axonyx.toml"
+    [IO.File]::WriteAllText($configPath, ([IO.File]::ReadAllText($configPath)).Replace('max_body_bytes = "64kb"', 'max_body_bytes = "9mb"'))
+    $mediaRoot = Join-Path $fixture "private-media"
+    New-Item -ItemType Directory -Path $mediaRoot | Out-Null
+  }
   & ./scripts/editor-assets.ps1 -Task install
   if ($LASTEXITCODE -ne 0) { throw "Cannot prepare product editor assets" }
   if ($Content) {
@@ -207,6 +233,10 @@ try {
   $env:AX_SECRET_SESSION_COOKIE_SECURE = "false"
   $env:AXONYX_HOST = "127.0.0.1"
   $env:AXONYX_PORT = "$Port"
+  if ($Media) {
+    $env:AX_TEST_MEDIA_DB = $db; $env:AX_TEST_MEDIA_ROOT = $mediaRoot
+    $env:CARGO_TARGET_DIR = Join-Path $fixture 'target'
+  }
   Invoke-Ax -Arguments @("db", "migrate")
   Invoke-Ax -Arguments @("db", "pull")
   if ($RefreshSchema) {
@@ -285,6 +315,7 @@ try {
   Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } | Out-Null
   $sessionProof = Get-Proof -Cookie $cookie
   if ($Content) { . (Join-Path $root "tests/content-http/proof.ps1") }
+  if ($Media) { . (Join-Path $root "tests/media-http/proof.ps1") }
   if ($Posts) { . (Join-Path $root "tests/posts-http.ps1") }
   $logoutPath = "/__axonyx/action?path=%2Fadmin&name=SignOut"
   Invoke-Request -Path $logoutPath -Method POST -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null
@@ -315,6 +346,11 @@ try {
   if ($Content) {
     Invoke-Request -Path $contentAction -Method POST -Body $contentForm -Headers $revokedProof -Status 403 | Out-Null
     Assert-ContentCount -Expected 2
+  }
+  if ($Media) {
+    Send-Media -Bytes $validImage -Headers $revokedProof -Status 403 | Out-Null
+    Invoke-Request -Path "/admin/media-proof" -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
+    Assert-MediaCounts -Rows 2 -Files 3
   }
   if ($Posts) {
     Invoke-Request -Path "/admin/posts" -Headers @{ Cookie = $cookie } -Status 403 | Out-Null

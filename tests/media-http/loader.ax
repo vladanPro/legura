@@ -1,0 +1,16 @@
+export type MediaProofItem {
+  id: String
+  content_type: String
+  byte_size: Number
+  width: Number
+  height: Number
+}
+
+export query loadMediaProof() -> MediaProofItem[] {
+  require Auth.subject else forbidden()
+  data administrator = db.legura_users.where({ id: Auth.subject }).first()
+  require administrator else forbidden()
+  require administrator["role"] == "admin" else forbidden()
+  data items = db.query("SELECT id, content_type, byte_size, width, height FROM legura_media ORDER BY id LIMIT 50")
+  return items
+}
