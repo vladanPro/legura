@@ -157,6 +157,10 @@ Backup / Restore V1 passed those gates and PR #6 is integrated into dev.
 
 ## 4. Product Expansion
 
+Media Storage V0 begins with an inactive local adapter and provider-neutral object
+references; see media-storage-v0.md. Upload/image validation, library UI, post
+images and media-aware backups are separate gates, not shipped by this foundation.
+
 - Media library with storage limits, safe upload handling, and deletion policy.
 - Pages, navigation, SEO fields, and richer editorial workflow.
 - Themes with stable content/rendering contracts and installation boundaries.
