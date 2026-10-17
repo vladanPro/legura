@@ -3,6 +3,7 @@ use legura::content_preparation::{prepare_content, ContentInput, ContentPreparat
 use serde_json::json;
 
 include!(concat!(env!("OUT_DIR"), "/module.rs"));
+mod media_upload;
 
 fn compiled_action_proof() {
     use axonyx_runtime::backend::{AxDatabaseRuntime, AxEnv, MemoryAdapter};
@@ -147,6 +148,7 @@ fn compiled_action_proof() {
 }
 
 fn main() {
+    media_upload::compiled_upload_proof();
     compiled_action_proof();
     let mut registry = AxNativeRegistry::default();
     registry

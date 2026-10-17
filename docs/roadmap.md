@@ -98,6 +98,11 @@ JPEG/PNG/WebP decode, EXIF orientation, re-encoding and input/output/pixel limit
 See media-image-validation-v0.md. Storage and image validation alone do not provide
 an upload endpoint, media library or media-inclusive backup/restore.
 
+Media Upload Adapter V0 connects validated bytes to the existing AxFileStorage
+trait with a compiled/preview action proof; see media-upload-adapter-v0.md.
+Application storage registration in generated startup remains an integration
+gate. It is not yet a CMS upload route or an authorization/CSRF proof.
+
 Rich-text storage has a validated Rust content contract, SQLite compatibility
 proof and native package bridge. Real create/edit forms now use the locked
 editor generation; see active-editor-v0.md. Plain/rich conversion is explicit

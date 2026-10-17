@@ -6,3 +6,10 @@ action PreparePost(content_format: String, body: String, content_document: Strin
   data acknowledged = Native.call("legura.proof.persist", prepared["columns"])
   return acknowledged
 }
+
+action UploadMedia(image: File) {
+  data bearer = Auth.bearer
+  require bearer == "isolated-proof" else forbidden()
+  data saved = Storage.save("legura-media", input.image)
+  return json(saved)
+}

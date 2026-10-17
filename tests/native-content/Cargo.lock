@@ -926,6 +926,7 @@ version = "0.0.0"
 dependencies = [
  "axonyx-core",
  "axonyx-runtime",
+ "image",
  "legura",
  "serde_json",
 ]
