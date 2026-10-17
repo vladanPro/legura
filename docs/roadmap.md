@@ -93,6 +93,11 @@ unsaved live preview or a shareable token. See posts-preview-v0.md.
 
 ## 2. Self-Hosted Release Gate
 
+Media image validation adds a bounded still-image contract before upload transport:
+JPEG/PNG/WebP decode, EXIF orientation, re-encoding and input/output/pixel limits.
+See media-image-validation-v0.md. Storage and image validation alone do not provide
+an upload endpoint, media library or media-inclusive backup/restore.
+
 Rich-text storage has a validated Rust content contract, SQLite compatibility
 proof and native package bridge. Real create/edit forms now use the locked
 editor generation; see active-editor-v0.md. Plain/rich conversion is explicit
