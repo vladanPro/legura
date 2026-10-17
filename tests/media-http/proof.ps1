@@ -148,3 +148,11 @@ if ($MediaBrowser) {
   Assert-StoredMedia
 }
 Write-Host 'Media HTTP proof passed: protected uploads, native redirect, Foundry library, bounded pagination, persistence and orphan-on-DB-failure policy.'
+
+# Run the operator boundary against the real uploaded objects and live SQLite.
+# Media's target is disposable; this never replaces the operator maintenance tool.
+$inventoryJson = & cargo run --locked --release --bin legura-maintenance -- media-check $db local-media $mediaRoot
+if ($LASTEXITCODE -ne 0) { throw "Operator media integrity check rejected valid uploaded objects" }
+$inventory = $inventoryJson | ConvertFrom-Json
+if ($inventory.objects -ne $mediaExpectedRows -or $inventory.bytes -ne ($result.value.size * $mediaExpectedRows)) { throw "Operator media inventory does not match persisted uploads" }
+Assert-MediaCounts -Rows $mediaExpectedRows -Files $mediaExpectedFiles

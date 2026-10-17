@@ -76,6 +76,10 @@ published CLI. The [library view pilot](docs/media-library-view-v0.md) stays
 isolated until product opt-in, versioned migration and media-aware recovery are
 ready. Existing operator installations still have no active media library.
 
+The read-only [media integrity check](docs/media-integrity-check-v0.md) prepares
+the backup boundary. Database-only backup refuses media references; coordinated
+file-inclusive backup/restore remains unimplemented. No media is activated here.
+
 ## Product
 
 - Own your server, content, files, and database.

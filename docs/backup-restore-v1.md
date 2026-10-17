@@ -5,6 +5,11 @@ cloud backup service or production installer. Use trusted local storage and
 backups you created; a SHA-256 checksum detects corruption, not a malicious
 backup whose manifest was also replaced.
 
+Database-only backup/verify/restore now explicitly refuses databases with media
+references instead of reporting success without their files. Empty media tables
+remain compatible. The read-only [media integrity check](media-integrity-check-v0.md)
+is a separate prerequisite; media-inclusive archives and restore are not ready yet.
+
 ## Build and Backup
 
 For the local source pilot, [Operator Quickstart](operator-quickstart.md) provides
