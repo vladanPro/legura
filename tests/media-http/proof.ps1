@@ -156,3 +156,18 @@ if ($LASTEXITCODE -ne 0) { throw "Operator media integrity check rejected valid 
 $inventory = $inventoryJson | ConvertFrom-Json
 if ($inventory.objects -ne $mediaExpectedRows -or $inventory.bytes -ne ($result.value.size * $mediaExpectedRows)) { throw "Operator media inventory does not match persisted uploads" }
 Assert-MediaCounts -Rows $mediaExpectedRows -Files $mediaExpectedFiles
+
+# Source-pilot archive creation while the disposable CMS is still listening.
+# This uses SQLite's online backup API, never a raw copy of its live DB file.
+$archivePath = Join-Path $fixture 'media-backup.legura'
+$archiveJson = & cargo run --locked --release --bin legura-maintenance -- archive-backup $db local-media $mediaRoot $archivePath
+if ($LASTEXITCODE -ne 0) { throw "Live media archive creation failed" }
+$archiveInventory = $archiveJson | ConvertFrom-Json
+if ($archiveInventory.files -ne ($mediaExpectedRows + 1)) { throw "Live archive did not contain DB plus all referenced images" }
+$checkedJson = & cargo run --locked --release --bin legura-maintenance -- archive-verify $archivePath
+if ($LASTEXITCODE -ne 0) { throw "Live media archive verification failed" }
+$checked = $checkedJson | ConvertFrom-Json
+if ($checked.files -ne $archiveInventory.files -or $checked.bytes -ne $archiveInventory.bytes) { throw "Archive verification inventory changed" }
+Assert-MediaCounts -Rows $mediaExpectedRows -Files $mediaExpectedFiles
+Invoke-Request -Path '/admin/media-proof' -Headers @{ Cookie = $cookie } | Out-Null
+Write-Host 'Live media archive proof passed without stopping or changing the running disposable CMS.'

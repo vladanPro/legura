@@ -78,7 +78,12 @@ ready. Existing operator installations still have no active media library.
 
 The read-only [media integrity check](docs/media-integrity-check-v0.md) prepares
 the backup boundary. Database-only backup refuses media references; coordinated
-file-inclusive backup/restore remains unimplemented. No media is activated here.
+file-inclusive recovery remains incomplete. No media is activated here.
+
+An experimental [`.legura` archive container](docs/legura-archive-v0.md) can package
+an explicitly supplied frozen snapshot or capture live SQLite through its backup
+API, including referenced images. Full product compatibility checks, restore and
+operator activation are not included.
 
 ## Product
 

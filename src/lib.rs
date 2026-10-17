@@ -1,4 +1,5 @@
 //! Product contracts and explicitly registered native helpers.
+pub mod backup_archive;
 pub mod content;
 pub mod content_audit;
 pub mod content_loading;
