@@ -64,6 +64,9 @@ overview, posts and editor screens. See [the layout contract](docs/admin-shell-v
 and [Light/Dark appearance](docs/appearance-v0.md). These remain development
 pilots, not an installable product release.
 
+The [posts table contract](docs/posts-table-v1.md) explains published Foundry UI
+adoption and why search and pagination remain server-owned.
+
 ## Product
 
 - Own your server, content, files, and database.
