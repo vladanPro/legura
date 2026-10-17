@@ -56,6 +56,10 @@ reference-safe deletion and orphan cleanup need their own product policy.
 
 ## Verification
 
+The next source slice implements the still-image decoding/normalization boundary;
+see [Media Image Validation V0](media-image-validation-v0.md). It does not activate
+an HTTP upload or storage directory in the CMS.
+
 `cargo test --locked --lib` exercises object boundaries, restart/reopen reads,
 hash/length metadata, trait dispatch, size rejection without writes, no-clobber,
 cross-store rejection and concurrent random-key writes. Linux additionally proves
