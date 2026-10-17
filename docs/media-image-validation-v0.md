@@ -54,6 +54,15 @@ Both root and native-content proof lockfiles include the same image dependency.
 Existing Linux/Windows library CI runs the boundary; broad auth/content regression
 gates remain mandatory before integration into dev.
 
+The first broad CI attempt exposed an existing post-save test race, not an image
+decode failure: waitForURL resolved against the current editor URL before the
+action's same-URL redirect committed, allowing the next /admin navigation to be
+aborted. The submit helper now arms a new main-frame commit/load wait before
+clicking. Two isolated browser regressions cover delayed same-URL JS redirects
+and native 303 form redirects; no sleep/retry masks the failure. The compiled-auth
+job budget is 30 minutes, matching the other full-flow gates, to accommodate its
+multiple fresh source builds with the image codecs. Required checks are retained.
+
 ## Next
 
 Add an administrator/CSRF-protected transport with a bounded body reader before

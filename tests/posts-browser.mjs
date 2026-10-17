@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { waitForDocumentNavigation } from "./document-navigation.mjs";
 
 const [baseUrl, mode] = process.argv.slice(2);
 assert.ok(["127.0.0.1", "localhost"].includes(new URL(baseUrl).hostname), "Use an isolated local fixture");
@@ -34,10 +35,11 @@ async function navigate(target, path, expected = 200) {
 
 async function submit(button, destination) {
   const responsePromise = page.waitForResponse((response) => response.url().includes("/__axonyx/action?") && response.request().method() === "POST");
+  const navigation = waitForDocumentNavigation(page, `${baseUrl}${destination}`);
   await page.getByRole("button", { name: button, exact: true }).click();
   const response = await responsePromise;
   assert.ok([200, 303].includes(response.status()), `Unexpected ${button} status ${response.status()}`);
-  await page.waitForURL(`${baseUrl}${destination}`);
+  await navigation;
 }
 
 async function fillPost(title, slug, body, status) {

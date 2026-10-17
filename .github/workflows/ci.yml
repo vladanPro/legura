@@ -118,7 +118,7 @@ jobs:
   compiled-auth:
     name: Registry Compiled Auth
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -153,6 +153,8 @@ jobs:
           npm ci
           npm audit --audit-level=high
           npx playwright install --with-deps chromium
+      - name: Verify same-URL and native save navigation synchronization
+        run: node --test tests/document-navigation.test.mjs
       - name: Verify browser forms with and without JavaScript
         shell: pwsh
         run: |
