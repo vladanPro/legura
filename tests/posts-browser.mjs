@@ -200,6 +200,9 @@ async function checkPostListing() {
   const table = page.getByRole('table', { name: 'Your posts', exact: true });
   const rows = table.getByRole('rowheader');
   const navigation = page.getByRole('navigation', { name: 'Posts pages', exact: true });
+  // This is one server-paginated slice, not a complete client-side DataTable dataset.
+  assert.equal(await page.locator('[data-ax-data-table]').count(), 0);
+  assert.equal(await page.getByRole('searchbox').count(), 1);
   assert.equal(await rows.count(), 10);
   assert.equal(await rows.first().textContent(), 'Listing 01listing-01');
   assert.equal(await navigation.getByRole('button', { name: 'Previous page' }).count(), 0);
