@@ -184,6 +184,10 @@ backup refuses media references. See media-integrity-check-v0.md. Coordinated
 SQLite + file recovery is source-pilot only; current-schema compatibility now has
 an explicit read-only gate. Separately approved activation and historical upgrade
 policy remain next; no production installer is claimed.
+The isolated media smoke now exercises recovery activation with independent
+session secrets, fresh login, separate writes/restart, failed-start refusal and
+return to the untouched source. This is acceptance only, not operator/service
+activation; see recovery-activation-proof-v0.md.
 
 Media Library View V0 builds on the isolated upload proof with Foundry admin
 navigation, empty state, processed metadata, bounded pagination and a native

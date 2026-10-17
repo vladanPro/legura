@@ -89,3 +89,6 @@ checks, changed recovered bytes, migration checksum/name/history failures,
 missing/future migrations, schema drift, extra objects, invalid rich documents
 and protected media rollback. The disposable HTTP/browser smoke also checks its
 recovered live archive with the same command before continuing source auth tests.
+The subsequent [isolated activation proof](recovery-activation-proof-v0.md) now
+tests key rotation, fresh login, recovered-only writes/restart and return to the
+preserved source. It is not a product activation or service-management command.

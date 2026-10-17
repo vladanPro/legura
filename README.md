@@ -87,6 +87,9 @@ validates SQLite and exact media references without switching configuration.
 An explicit read-only [recovery compatibility check](docs/recovery-compatibility-v0.md)
 checks current product migrations, schema, content and original archived bytes.
 Operator activation remains separate; a recovery receipt is not startup certification.
+An [isolated activation proof](docs/recovery-activation-proof-v0.md) exercises
+stop/check/switch/start with new session secrets and source rollback, without
+changing the developer's running CMS or claiming an operator activation command.
 
 ## Product
 

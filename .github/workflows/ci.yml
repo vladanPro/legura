@@ -39,7 +39,7 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium
-      - name: Prove media library navigation with and without JavaScript
+      - name: Prove media library recovery and isolated activation
         shell: pwsh
         run: ./scripts/smoke-auth.ps1 -Media -MediaBrowser -ToolPath (Get-Command cargo-axonyx).Source -Port 3963
   media-storage:
