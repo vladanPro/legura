@@ -43,6 +43,10 @@ cargo run --locked --manifest-path tests/native-content/Cargo.toml
 
 The proof uses existing CI; its image encoder is test-fixture tooling, not npm.
 No local operator DB/config/server is touched.
+Library/tests strict Clippy passes. Additional Clippy on the generated consumer
+reports four codegen-only style warnings (owned string comparisons, redundant
+closure, match-single-binding); its ordinary check succeeds. No generated Rust
+is manually rewritten or lint allowance added to hide those upstream warnings.
 
 ## Integration gap and next boundary
 
@@ -56,3 +60,4 @@ startup, with a compiled consumer proof. Then wire administrator/CSRF-protected
 bounded upload, SQLite metadata and library UI in one isolated HTTP flow.
 File write plus DB insert is not atomic: failure/orphan policy and media-aware
 backup/restore must be covered before exposing the flow to operators.
+Framework tracking: https://github.com/vladanPro/axonyx-framework/issues/356
