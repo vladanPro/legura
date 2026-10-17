@@ -176,7 +176,8 @@ fn unique_files<'de, D: serde::Deserializer<'de>>(
     input.deserialize_map(Unique)
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ArchiveReport {
     pub files: usize,
     pub bytes: u64,
@@ -597,6 +598,97 @@ pub fn restore(archive: &Path, destination: &Path) -> Result<ArchiveReport> {
     }))?;
     workspace.copy("recovery.json", &mut receipt.as_slice())?;
     workspace.complete = true;
+    Ok(report)
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RecoveryReceipt {
+    format: u32,
+    status: String,
+    cms_compatibility: String,
+    store: String,
+    inventory: ArchiveReport,
+}
+
+/// Read-only, point-in-time compatibility check against the original archive.
+/// Never upgrades the database, rewrites the receipt or activates a service.
+pub fn check_recovery(archive: &Path, root: &Path) -> Result<ArchiveReport> {
+    // Strip trailing separators/`.` before lstat so a final symlink cannot be
+    // treated as a directory merely because the supplied path ends in `/`.
+    let root = root.components().collect::<PathBuf>();
+    let root = root.as_path();
+    let mut file = open_archive(archive)?;
+    let (manifest, report) = scan(&mut file, |_, _| Ok(()))?;
+    for path in [
+        root.to_owned(),
+        root.join("media"),
+        root.join("media").join(&manifest.store),
+    ] {
+        ensure!(
+            fs::symlink_metadata(path)?.file_type().is_dir(),
+            "Recovery directories must not be symlinks"
+        );
+    }
+    let receipt_path = root.join("recovery.json");
+    ensure!(
+        fs::symlink_metadata(&receipt_path)?.file_type().is_file(),
+        "Recovery receipt must be a regular file"
+    );
+    let receipt_file = File::open(receipt_path)?;
+    ensure!(
+        receipt_file.metadata()?.len() <= 4096,
+        "Recovery receipt exceeds limit"
+    );
+    let receipt: RecoveryReceipt = serde_json::from_reader(receipt_file.take(4097))?;
+    ensure!(
+        receipt.format == 1
+            && receipt.status == "recovered-not-activated"
+            && receipt.cms_compatibility == "not-checked"
+            && receipt.store == manifest.store
+            && receipt.inventory == report,
+        "Recovery receipt does not match archive"
+    );
+    for (path, expected) in &manifest.files {
+        let path = root.join(path);
+        ensure!(
+            fs::symlink_metadata(&path)?.file_type().is_file(),
+            "Recovered payload must be a regular file"
+        );
+        let file = File::open(path)?;
+        ensure!(
+            file.metadata()?.len() == expected.bytes,
+            "Recovered payload size changed"
+        );
+        let mut reader = HashReader {
+            inner: file.take(expected.bytes + 1),
+            hash: Sha256::new(),
+            bytes: 0,
+        };
+        io::copy(&mut reader, &mut io::sink())?;
+        ensure!(
+            reader.bytes == expected.bytes
+                && format!("{:x}", reader.hash.finalize()) == expected.sha256,
+            "Recovered payload checksum changed"
+        );
+    }
+    let database = Connection::open_with_flags(
+        root.join("database.sqlite"),
+        OpenFlags::SQLITE_OPEN_READ_ONLY,
+    )?;
+    database.execute_batch("PRAGMA trusted_schema = OFF; PRAGMA query_only = ON;")?;
+    crate::database_contract::validate_current(&database)?;
+    let store = StoreId::parse(&manifest.store)?;
+    let storage = crate::storage::LocalStorage::open(
+        &root.join("media").join(store.as_str()),
+        store.clone(),
+        MAX_OBJECT_BYTES,
+    )?;
+    let inventory = crate::media_audit::audit(&database, &storage, &store)?;
+    ensure!(
+        inventory.objects == (report.files - 1) as u64,
+        "Recovered media inventory differs from archive"
+    );
     Ok(report)
 }
 

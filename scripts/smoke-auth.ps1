@@ -148,10 +148,6 @@ try {
     New-Item -ItemType Directory -Path $mediaRoute -Force | Out-Null
     foreach ($name in @("actions.ax", "loader.ax", "page.asx")) { Copy-Item -LiteralPath (Join-Path $root "tests/media-http/$name") -Destination $mediaRoute }
     Copy-Item -LiteralPath (Join-Path $root "tests/media-http/native_storage.rs") -Destination (Join-Path $fixture "src/native_storage.rs")
-    $mediaMigration = Join-Path $fixture "db/migrations/20261017000000_004_media_proof"
-    New-Item -ItemType Directory -Path $mediaMigration | Out-Null
-    Copy-Item -LiteralPath (Join-Path $root "tests/media-http/schema.sql") -Destination (Join-Path $mediaMigration "up.sql")
-    Copy-Item -LiteralPath (Join-Path $root "tests/media-http/down.sql") -Destination (Join-Path $mediaMigration "down.sql")
     # Raise only this fixture's transport budget; the product's 64 KiB setting stays.
     $configPath = Join-Path $fixture "Axonyx.toml"
     [IO.File]::WriteAllText($configPath, ([IO.File]::ReadAllText($configPath)).Replace('max_body_bytes = "64kb"', 'max_body_bytes = "9mb"'))

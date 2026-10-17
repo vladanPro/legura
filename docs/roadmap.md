@@ -172,15 +172,18 @@ as standard TAR with a final hash inventory and read-only safe verification.
 Its source-pilot archive-backup command now captures live SQLite through the
 backup API before reading referenced images. Inactive no-clobber recovery now
 copies to a NEW private directory, preserving keys and checking SQLite/FKs plus
-exact media references. Full product migration/content compatibility is NOT
-certified; configuration/service switching is not provided. See legura-archive-v0.md.
+exact media references. The separate read-only recovery check validates current
+product migration history, actual schema, content and original archived bytes.
+Configuration/service switching is not provided. See legura-archive-v0.md and
+recovery-compatibility-v0.md.
 The existing database-only backup refusal remains in place.
 
 Read-only Media Integrity Check V0 verifies referenced objects/size/SHA-256 via
 an explicit local operator command, without repair or activation. Database-only
 backup refuses media references. See media-integrity-check-v0.md. Coordinated
-SQLite + file recovery is source-pilot only; complete CMS compatibility and
-separately approved activation remain the next recovery gates.
+SQLite + file recovery is source-pilot only; current-schema compatibility now has
+an explicit read-only gate. Separately approved activation and historical upgrade
+policy remain next; no production installer is claimed.
 
 Media Library View V0 builds on the isolated upload proof with Foundry admin
 navigation, empty state, processed metadata, bounded pagination and a native

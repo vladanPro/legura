@@ -116,7 +116,9 @@ mod tests {
     fn inserts_processed_metadata_without_overwriting_existing_objects() {
         let connection = Connection::open_in_memory().unwrap();
         connection
-            .execute_batch(include_str!("../tests/media-http/schema.sql"))
+            .execute_batch(include_str!(
+                "../db/migrations/20261018000000_004_media/up.sql"
+            ))
             .unwrap();
         let saved = saved();
         insert_metadata(&connection, &saved).unwrap();
@@ -142,7 +144,9 @@ mod tests {
     fn metadata_constraints_and_sql_errors_fail_without_rows() {
         let connection = Connection::open_in_memory().unwrap();
         connection
-            .execute_batch(include_str!("../tests/media-http/schema.sql"))
+            .execute_batch(include_str!(
+                "../db/migrations/20261018000000_004_media/up.sql"
+            ))
             .unwrap();
         let mut invalid = saved();
         invalid.content_type = "text/html";
@@ -196,7 +200,9 @@ mod tests {
             0
         );
         connection
-            .execute_batch(include_str!("../tests/media-http/schema.sql"))
+            .execute_batch(include_str!(
+                "../db/migrations/20261018000000_004_media/up.sql"
+            ))
             .unwrap();
         assert!(open().is_ok());
     }
