@@ -167,6 +167,11 @@ Backup / Restore V1 passed those gates and PR #6 is integrated into dev.
 
 ## 4. Product Expansion
 
+The `.legura` archive V0 container packages a supplied frozen SQLite/media snapshot
+as standard TAR with a final hash inventory and read-only safe verification.
+See legura-archive-v0.md. It does not yet acquire live snapshots or restore them;
+the existing database-only backup refusal remains in place.
+
 Read-only Media Integrity Check V0 verifies referenced objects/size/SHA-256 via
 an explicit local operator command, without repair or activation. Database-only
 backup refuses media references. See media-integrity-check-v0.md. Coordinated

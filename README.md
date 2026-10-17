@@ -80,6 +80,10 @@ The read-only [media integrity check](docs/media-integrity-check-v0.md) prepares
 the backup boundary. Database-only backup refuses media references; coordinated
 file-inclusive backup/restore remains unimplemented. No media is activated here.
 
+An experimental [`.legura` archive container](docs/legura-archive-v0.md) can package
+an explicitly supplied frozen snapshot and referenced images. Live snapshot
+acquisition, semantic restore validation and operator activation are not included.
+
 ## Product
 
 - Own your server, content, files, and database.

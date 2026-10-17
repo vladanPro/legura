@@ -77,11 +77,26 @@ fn run() -> Result<()> {
             let report = legura::media_audit::audit(&open_readonly(Path::new(database))?, &storage, &store)?;
             println!("{}", serde_json::to_string(&report)?);
         }
+        [command, archive] if command == "archive-verify" => {
+            println!("{}", serde_json::to_string(&legura::backup_archive::verify(Path::new(archive))?)?);
+        }
+        [command, snapshot, store, root, archive] if command == "archive-pack-snapshot" => {
+            let store = legura::storage::StoreId::parse(store.to_str().context("store ID must be UTF-8")?)?;
+            let storage = legura::storage::LocalStorage::open(Path::new(root), store.clone(), legura::storage::MAX_OBJECT_BYTES)?;
+            println!("{}", serde_json::to_string(&legura::backup_archive::pack_snapshot(Path::new(snapshot), &storage, &store, Path::new(archive))?)?);
+        }
         [command, bundle, destination] if command == "restore" => {
             restore(Path::new(bundle), Path::new(destination))?;
             println!("Restored to a NEW database. Stop the CMS before switching its database configuration; rotate the session key.");
         }
-        _ => bail!("usage: legura-maintenance config-local <package-directory> | init <new-database-file> | backup <database-file> <new-backup-directory> | verify <backup-directory> | restore <backup-directory> <new-database-file> | content-check <database-file> | media-check <database-file> <store-id> <private-media-directory>"),
+        _ => bail!(concat!(
+            "usage: legura-maintenance config-local <package-directory> | init <new-database-file>",
+            " | backup <database-file> <new-backup-directory> | verify <backup-directory>",
+            " | restore <backup-directory> <new-database-file> | content-check <database-file>",
+            " | media-check <database-file> <store-id> <private-media-directory>",
+            " | archive-pack-snapshot <frozen-snapshot-file> <store-id> <private-media-directory> <new-archive>",
+            " | archive-verify <archive>"
+        )),
     }
     Ok(())
 }
