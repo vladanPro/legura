@@ -1,18 +1,78 @@
+import { AdminFrame } from "@/components/AdminFrame"
+import { Card } from "@axonyx/ui/foundry/Card"
+import { Grid } from "@axonyx/ui/foundry/Grid"
+import { Button } from "@axonyx/ui/foundry/Button"
+
 page MediaProof() {
-  data images: MediaProofItem[] = loadMediaProof()
+  data listing: MediaProofPage = loadMediaProof(query.page ?? "1")
   return ASX {
-    <section>
-      <h1>Isolated media library</h1>
-      <form method="post" enctype="multipart/form-data" action={action UploadLibraryImage}>
-        <label for="proof-image">Image</label>
-        <input type="file" id="proof-image" name="image" accept="image/jpeg,image/png,image/webp" />
-        <button type="submit">Upload image</button>
-      </form>
-      <ul>
-        <Each items={images} as="image">
-          <li>{image.id}: {image.content_type}, {image.width} x {image.height}</li>
-        </Each>
-      </ul>
-    </section>
+    <AdminFrame section="media" mediaHref="/admin/media-proof">
+      <section aria-labelledby="media-heading">
+        <header class="legura-page-heading">
+          <div>
+            <h1 id="media-heading">Media library</h1>
+            <p>Private, validated images for your content.</p>
+          </div>
+          <p class="legura-hint" data-media-total={listing.total}>{listing.total + " stored images"}</p>
+        </header>
+        <p class="legura-preview-notice">Isolated pilot: files stay private. Image previews and post attachments are not enabled.</p>
+        <Card title="Upload an image">
+          <form
+            method="post"
+            enctype="multipart/form-data"
+            action={action UploadLibraryImageAndReturn}
+            class="legura-form"
+          >
+            <label for="proof-image">Image</label>
+            <input
+              type="file"
+              id="proof-image"
+              name="image"
+              accept="image/jpeg,image/png,image/webp"
+              required="true"
+              aria-describedby="media-upload-help"
+            />
+            <p id="media-upload-help" class="legura-hint">JPEG, PNG or still WebP. Up to 8 MiB and 16 million pixels; images are re-encoded before storage.</p>
+            <Button type="submit">Upload image</Button>
+          </form>
+        </Card>
+        <If when={listing.total == 0}>
+          <Card title="No images yet">
+            <p>Upload your first image above. Only administrators can access this library.</p>
+          </Card>
+        </If>
+        <If when={listing.items}>
+          <Grid cols="2" colsMobile="1" gap="lg">
+            <Each items={listing.items} as="image">
+              <Card>
+                <article data-media-id={image.id} aria-label="Stored image details">
+                  <h2>{image.content_type}</h2>
+                  <p>{image.width + " x " + image.height + " pixels"}</p>
+                  <p>{image.byte_size + " bytes"}</p>
+                  <p class="legura-hint">{image.id}</p>
+                </article>
+              </Card>
+            </Each>
+          </Grid>
+        </If>
+        <nav class="legura-post-pagination" aria-label="Media pages">
+          <If when={listing.page > 1}>
+            <a
+              class="ax-button"
+              data-variant="secondary"
+              href={"/admin/media-proof?page=" + (listing.page - 1)}
+            >Previous page</a>
+          </If>
+          <span data-media-page={listing.page}>{"Page " + listing.page + " of " + listing.total_pages}</span>
+          <If when={listing.page < listing.total_pages}>
+            <a
+              class="ax-button"
+              data-variant="secondary"
+              href={"/admin/media-proof?page=" + (listing.page + 1)}
+            >Next page</a>
+          </If>
+        </nav>
+      </section>
+    </AdminFrame>
   }
 }

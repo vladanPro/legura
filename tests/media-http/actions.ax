@@ -3,3 +3,9 @@ action UploadLibraryImage(image: File) {
   data saved = Storage.save("legura-media", input.image)
   return json(saved)
 }
+
+action UploadLibraryImageAndReturn(image: File) {
+  data administrator = loadAdministrator()
+  data saved = Storage.save("legura-media", input.image)
+  return redirect("/admin/media-proof")
+}
