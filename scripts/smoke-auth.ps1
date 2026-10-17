@@ -43,7 +43,7 @@ $client = $null
 $handler = $null
 $environment = @{}
 $keys = @("AX_SECRET_DB_URL", "AX_SECRET_DB_DIALECT", "AX_SECRET_SESSION_KEY", "AX_SECRET_SETUP_TOKEN", "AX_SECRET_SESSION_COOKIE_SECURE", "AXONYX_HOST", "AXONYX_PORT")
-$keys += @("AX_TEST_MEDIA_ROOT", "AX_TEST_MEDIA_DB")
+$keys += @('AX_SECRET_MEDIA_DRIVER', 'AX_SECRET_MEDIA_ROOT', 'AX_SECRET_MEDIA_STORE_ID')
 if ($Media) { $keys += "CARGO_TARGET_DIR" }
 $keys = @($keys + @(Get-ChildItem Env: | Where-Object Name -Match '^(AX_SECRET_|AX_PUBLIC_|DB_|DATABASE_|DATA_|SESSION_|SETUP_TOKEN$)' | Select-Object -ExpandProperty Name) | Select-Object -Unique)
 foreach ($key in $keys) { $environment[$key] = [Environment]::GetEnvironmentVariable($key) }
@@ -147,7 +147,6 @@ try {
     $mediaRoute = Join-Path $fixture "app/admin/media-proof"
     New-Item -ItemType Directory -Path $mediaRoute -Force | Out-Null
     foreach ($name in @("actions.ax", "loader.ax", "page.asx")) { Copy-Item -LiteralPath (Join-Path $root "tests/media-http/$name") -Destination $mediaRoute }
-    Copy-Item -LiteralPath (Join-Path $root "tests/media-http/native_storage.rs") -Destination (Join-Path $fixture "src/native_storage.rs")
     # Raise only this fixture's transport budget; the product's 64 KiB setting stays.
     $configPath = Join-Path $fixture "Axonyx.toml"
     [IO.File]::WriteAllText($configPath, ([IO.File]::ReadAllText($configPath)).Replace('max_body_bytes = "64kb"', 'max_body_bytes = "9mb"'))
@@ -219,7 +218,7 @@ try {
     & cargo run --locked --bin legura-editor-assets -- check $fixture
     if ($LASTEXITCODE -ne 0) { throw "Installed editor generation verification failed" }
   }
-  foreach ($key in $keys) { [Environment]::SetEnvironmentVariable($key, $null) }
+  foreach ($key in $keys) { Remove-Item -LiteralPath "Env:$key" -ErrorAction SilentlyContinue }
   New-Item -ItemType Directory -Path "data" | Out-Null
   $db = Join-Path $fixture "data/legura.db"
   $setup = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
@@ -232,7 +231,9 @@ try {
   $env:AXONYX_HOST = "127.0.0.1"
   $env:AXONYX_PORT = "$Port"
   if ($Media) {
-    $env:AX_TEST_MEDIA_DB = $db; $env:AX_TEST_MEDIA_ROOT = $mediaRoot
+    $env:AX_SECRET_MEDIA_DRIVER = 'local'
+    $env:AX_SECRET_MEDIA_ROOT = $mediaRoot
+    $env:AX_SECRET_MEDIA_STORE_ID = 'local-media'
     $env:CARGO_TARGET_DIR = Join-Path $fixture 'target'
   }
   Invoke-Ax -Arguments @("db", "migrate")
@@ -370,7 +371,10 @@ try {
   Stop-Fixture
   if ($client) { $client.Dispose() }
   if ($handler) { $handler.Dispose() }
-  foreach ($key in $keys) { [Environment]::SetEnvironmentVariable($key, $environment[$key]) }
+  foreach ($key in $keys) {
+    if ($null -eq $environment[$key]) { Remove-Item -LiteralPath "Env:$key" -ErrorAction SilentlyContinue }
+    else { [Environment]::SetEnvironmentVariable($key, $environment[$key]) }
+  }
   Pop-Location
   $resolved = [IO.Path]::GetFullPath($fixture)
   $temp = [IO.Path]::GetFullPath([IO.Path]::GetTempPath()).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar

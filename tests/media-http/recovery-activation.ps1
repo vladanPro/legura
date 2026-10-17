@@ -13,7 +13,7 @@ function Invoke-RecoveryActivationProof {
   $maintenance = Join-Path (Split-Path $script:binary) $maintenanceName
   if (!(Test-Path -LiteralPath $maintenance -PathType Leaf)) { throw 'Fixture native maintenance binary is missing' }
   $saved = @{}
-  foreach ($name in @('AX_SECRET_DB_URL', 'AX_SECRET_SESSION_KEY', 'AX_SECRET_SETUP_TOKEN', 'AX_TEST_MEDIA_ROOT', 'AX_TEST_MEDIA_DB')) {
+  foreach ($name in @('AX_SECRET_DB_URL', 'AX_SECRET_SESSION_KEY', 'AX_SECRET_SETUP_TOKEN', 'AX_SECRET_MEDIA_DRIVER', 'AX_SECRET_MEDIA_ROOT', 'AX_SECRET_MEDIA_STORE_ID')) {
     $saved[$name] = [Environment]::GetEnvironmentVariable($name)
   }
   $sourceFingerprint = $null
@@ -55,8 +55,7 @@ function Invoke-RecoveryActivationProof {
     $env:AX_SECRET_DB_URL = 'sqlite://' + $recoveredDb.Replace('\', '/')
     $env:AX_SECRET_SESSION_KEY = $newKey
     $env:AX_SECRET_SETUP_TOKEN = $newSetup
-    $env:AX_TEST_MEDIA_ROOT = $recoveredMedia
-    $env:AX_TEST_MEDIA_DB = $recoveredDb
+    $env:AX_SECRET_MEDIA_ROOT = $recoveredMedia
     Start-Fixture
     Invoke-Request -Path '/setup' -Status 403 | Out-Null
     Invoke-Request -Path '/admin' -Status 403 | Out-Null
@@ -81,10 +80,23 @@ function Invoke-RecoveryActivationProof {
     Invoke-Request -Path '/admin/media-proof' -Headers @{ Cookie = $recoveryCookie } | Out-Null
     Assert-RecoveredMedia ($mediaExpectedRows + 1)
 
+    # The shipped adapter must deny even an authorized upload when disabled,
+    # rather than passing image bytes to the framework's raw fallback store.
+    Stop-Fixture
+    $env:AX_SECRET_MEDIA_DRIVER = 'disabled'
+    Remove-Item -LiteralPath 'Env:AX_SECRET_MEDIA_ROOT' -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath 'Env:AX_SECRET_MEDIA_STORE_ID' -ErrorAction SilentlyContinue
+    Start-Fixture
+    Send-Media -Bytes $validImage -Headers (Get-Proof -Cookie $recoveryCookie) -Status 403 | Out-Null
+    Assert-RecoveredMedia ($mediaExpectedRows + 1)
+    Stop-Fixture
+    $env:AX_SECRET_MEDIA_DRIVER = 'local'
+    $env:AX_SECRET_MEDIA_STORE_ID = $saved['AX_SECRET_MEDIA_STORE_ID']
+
     # A bad storage configuration must exit before becoming ready. Rollback
     # below restores only this proof's environment and its own server process.
     Stop-Fixture
-    $env:AX_TEST_MEDIA_ROOT = Join-Path $recoveryRoot 'missing-storage-must-not-be-created'
+    $env:AX_SECRET_MEDIA_ROOT = Join-Path $recoveryRoot 'missing-storage-must-not-be-created'
     $rejected = $false
     $exited = $false
     try { Start-Fixture }
@@ -94,11 +106,14 @@ function Invoke-RecoveryActivationProof {
     }
     finally { Stop-Fixture }
     if (!$rejected -or !$exited) { throw 'Invalid recovered storage did not fail closed at startup' }
-    if (Test-Path -LiteralPath $env:AX_TEST_MEDIA_ROOT) { throw 'Failed startup created a missing storage directory' }
+    if (Test-Path -LiteralPath $env:AX_SECRET_MEDIA_ROOT) { throw 'Failed startup created a missing storage directory' }
   } finally {
     Stop-Fixture
     if ($null -ne $sourceFingerprint) { $sourceUnchanged = (Get-SourceFingerprint) -ceq $sourceFingerprint }
-    foreach ($name in $saved.Keys) { [Environment]::SetEnvironmentVariable($name, $saved[$name]) }
+    foreach ($name in $saved.Keys) {
+      if ($null -eq $saved[$name]) { Remove-Item -LiteralPath "Env:$name" -ErrorAction SilentlyContinue }
+      else { [Environment]::SetEnvironmentVariable($name, $saved[$name]) }
+    }
     Start-Fixture
   }
 

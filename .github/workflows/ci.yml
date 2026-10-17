@@ -29,7 +29,7 @@ jobs:
       - name: Check storage hook formatting
         shell: pwsh
         run: |
-          rustfmt --edition 2021 --check tests/media-http/native_storage.rs
+          rustfmt --edition 2021 --check src/native_storage.rs
           if ($LASTEXITCODE -ne 0) { throw "Media hook formatting failed" }
       - uses: actions/setup-node@v4
         with:
