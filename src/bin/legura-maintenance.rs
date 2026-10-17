@@ -71,11 +71,17 @@ fn run() -> Result<()> {
             println!("{}", serde_json::to_string(&report)?);
             ensure!(report.invalid == 0, "Stored content is incompatible; no rows were repaired or changed");
         }
+        [command, database, store, root] if command == "media-check" => {
+            let store = legura::storage::StoreId::parse(store.to_str().context("store ID must be UTF-8")?)?;
+            let storage = legura::storage::LocalStorage::open(Path::new(root), store.clone(), legura::storage::MAX_OBJECT_BYTES)?;
+            let report = legura::media_audit::audit(&open_readonly(Path::new(database))?, &storage, &store)?;
+            println!("{}", serde_json::to_string(&report)?);
+        }
         [command, bundle, destination] if command == "restore" => {
             restore(Path::new(bundle), Path::new(destination))?;
             println!("Restored to a NEW database. Stop the CMS before switching its database configuration; rotate the session key.");
         }
-        _ => bail!("usage: legura-maintenance config-local <package-directory> | init <new-database-file> | backup <database-file> <new-backup-directory> | verify <backup-directory> | restore <backup-directory> <new-database-file> | content-check <database-file>"),
+        _ => bail!("usage: legura-maintenance config-local <package-directory> | init <new-database-file> | backup <database-file> <new-backup-directory> | verify <backup-directory> | restore <backup-directory> <new-database-file> | content-check <database-file> | media-check <database-file> <store-id> <private-media-directory>"),
     }
     Ok(())
 }
@@ -256,6 +262,22 @@ fn validate(connection: &Connection) -> Result<()> {
     Ok(())
 }
 
+fn require_database_only(connection: &Connection) -> Result<()> {
+    let has_media: bool = connection.query_row(
+        "SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name = 'legura_media')",
+        [],
+        |row| row.get(0),
+    )?;
+    if has_media {
+        let references: bool =
+            connection.query_row("SELECT EXISTS(SELECT 1 FROM legura_media)", [], |row| {
+                row.get(0)
+            })?;
+        ensure!(!references, "Database-only backup cannot protect referenced media; media-inclusive backup is required");
+    }
+    Ok(())
+}
+
 fn digest(path: &Path) -> Result<String> {
     regular_file(path)?;
     let mut file = fs::File::open(path)?;
@@ -322,6 +344,7 @@ fn snapshot(source: &Connection, target: &Path) -> Result<()> {
         }
         destination.pragma_update(None, "journal_mode", "DELETE")?;
         validate(&destination)?;
+        require_database_only(&destination)?;
         drop(destination);
         file.sync_all()?;
         Ok(())
@@ -335,6 +358,7 @@ fn snapshot(source: &Connection, target: &Path) -> Result<()> {
 
 fn backup(database: &Path, bundle: &Path) -> Result<()> {
     let source = open_readonly(database).context("cannot open source database")?;
+    require_database_only(&source)?;
     let builder = fs::DirBuilder::new();
     #[cfg(unix)]
     let builder = {
@@ -391,7 +415,9 @@ fn verify(bundle: &Path) -> Result<()> {
             "unexpected SQLite sidecar in backup"
         );
     }
-    validate(&open_readonly(&database)?)
+    let connection = open_readonly(&database)?;
+    validate(&connection)?;
+    require_database_only(&connection)
 }
 
 fn restore(bundle: &Path, target: &Path) -> Result<()> {
@@ -438,6 +464,65 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn database_only_backup_refuses_media_instead_of_reporting_incomplete_success() {
+        let fixture = Fixture::new();
+        let source = Connection::open(fixture.path("source.db")).unwrap();
+        source
+            .execute_batch(include_str!("../../tests/media-http/schema.sql"))
+            .unwrap();
+        backup(
+            &fixture.path("source.db"),
+            &fixture.path("empty-media-backup"),
+        )
+        .unwrap();
+        source
+            .execute(
+                "INSERT INTO legura_media VALUES (?1, 'local-media', 'image/png', 10, 1, 1, ?2)",
+                ["a".repeat(64), "b".repeat(64)],
+            )
+            .unwrap();
+        let result = backup(
+            &fixture.path("source.db"),
+            &fixture.path("incomplete-backup"),
+        );
+        assert!(result.unwrap_err().to_string().contains("media-inclusive"));
+        assert!(!fixture.path("incomplete-backup").exists());
+        // The snapshot-level guard covers a media insert racing initial preflight.
+        assert!(snapshot(&source, &fixture.path("incomplete.db")).is_err());
+        assert!(!fixture.path("incomplete.db").exists());
+        assert_eq!(
+            source
+                .query_row("SELECT COUNT(*) FROM legura_media", [], |row| row
+                    .get::<_, i64>(0))
+                .unwrap(),
+            1
+        );
+        let bundle = fixture.path("empty-media-backup");
+        let copied = Connection::open(bundle.join("database.sqlite")).unwrap();
+        copied
+            .execute(
+                "INSERT INTO legura_media VALUES (?1, 'local-media', 'image/png', 10, 1, 1, ?2)",
+                ["a".repeat(64), "b".repeat(64)],
+            )
+            .unwrap();
+        drop(copied);
+        let mut manifest: Manifest =
+            serde_json::from_slice(&fs::read(bundle.join("manifest.json")).unwrap()).unwrap();
+        manifest.database_sha256 = digest(&bundle.join("database.sqlite")).unwrap();
+        fs::write(
+            bundle.join("manifest.json"),
+            serde_json::to_vec(&manifest).unwrap(),
+        )
+        .unwrap();
+        assert!(verify(&bundle)
+            .unwrap_err()
+            .to_string()
+            .contains("media-inclusive"));
+        assert!(restore(&bundle, &fixture.path("incomplete-restored.db")).is_err());
+        assert!(!fixture.path("incomplete-restored.db").exists());
     }
 
     #[test]

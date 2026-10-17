@@ -167,6 +167,11 @@ Backup / Restore V1 passed those gates and PR #6 is integrated into dev.
 
 ## 4. Product Expansion
 
+Read-only Media Integrity Check V0 verifies referenced objects/size/SHA-256 via
+an explicit local operator command, without repair or activation. Database-only
+backup refuses media references. See media-integrity-check-v0.md. Coordinated
+SQLite + file archives and no-clobber media restore are the next recovery gate.
+
 Media Library View V0 builds on the isolated upload proof with Foundry admin
 navigation, empty state, processed metadata, bounded pagination and a native
 upload-to-redirect flow. See media-library-view-v0.md. Product activation and
