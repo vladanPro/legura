@@ -1,5 +1,5 @@
-//! Experimental SQLite/media archive creation and read-only container checking.
-//! No extraction, schema upgrade or application switch occurs.
+//! Experimental SQLite/media archives and inactive recovery to a new directory.
+//! No schema upgrade, installation certification or application switch occurs.
 use crate::storage::{
     ObjectKey, ObjectRef, ObjectStorage, StorageError, StoreId, StoredObject, MAX_OBJECT_BYTES,
 };
@@ -371,11 +371,24 @@ fn path_limit(path: &str) -> Result<u64> {
 /// Validate the container without unpacking anything. Hashes detect corruption,
 /// not an attacker replacing both payload and manifest. Not schema compatibility.
 pub fn verify(path: &Path) -> Result<ArchiveReport> {
+    let mut file = open_archive(path)?;
+    Ok(scan(&mut file, |_, _| Ok(()))?.1)
+}
+
+fn open_archive(path: &Path) -> Result<File> {
     ensure!(
         fs::symlink_metadata(path)?.file_type().is_file(),
         "Archive must be a regular file"
     );
-    let mut file = File::open(path)?;
+    Ok(File::open(path)?)
+}
+
+// One parser owns validation and bounded payload consumption for both commands.
+// Recovery scans the same open handle again and rechecks all copied hashes.
+fn scan(
+    file: &mut File,
+    mut consume: impl FnMut(&str, &mut dyn Read) -> Result<()>,
+) -> Result<(Manifest, ArchiveReport)> {
     let length = file.metadata()?.len();
     ensure!(
         (1024..=MAX_ARCHIVE_BYTES).contains(&length) && length % 512 == 0,
@@ -433,6 +446,7 @@ pub fn verify(path: &Path) -> Result<ArchiveReport> {
                 hash: Sha256::new(),
                 bytes: 0,
             };
+            consume(&path, &mut reader)?;
             io::copy(&mut reader, &mut io::sink())?;
             ensure!(reader.bytes == declared, "Truncated archive entry");
             observed.insert(
@@ -463,10 +477,127 @@ pub fn verify(path: &Path) -> Result<ArchiveReport> {
             .all(|path| path == "database.sqlite" || path.starts_with(&prefix)),
         "Archive contains an unconfigured store"
     );
-    Ok(ArchiveReport {
+    let report = ArchiveReport {
         files: observed.len(),
         bytes: observed.values().map(|record| record.bytes).sum(),
-    })
+    };
+    Ok((manifest, report))
+}
+
+fn private_directory(path: &Path) -> io::Result<()> {
+    let builder = fs::DirBuilder::new();
+    #[cfg(unix)]
+    let builder = {
+        use std::os::unix::fs::DirBuilderExt;
+        let mut builder = builder;
+        builder.mode(0o700);
+        builder
+    };
+    builder.create(path)
+}
+
+// Only track paths we created. Failure cleanup is nonrecursive and never opens
+// or removes an existing destination directory, even when it is empty.
+struct RecoveryWorkspace {
+    root: PathBuf,
+    files: Vec<PathBuf>,
+    directories: Vec<PathBuf>,
+    complete: bool,
+}
+impl RecoveryWorkspace {
+    fn new(root: &Path) -> Result<Self> {
+        private_directory(root).context("Recovery destination must be a new directory")?;
+        Ok(Self {
+            root: root.to_owned(),
+            files: Vec::new(),
+            directories: vec![root.to_owned()],
+            complete: false,
+        })
+    }
+    fn directory(&mut self, path: PathBuf) -> Result<()> {
+        private_directory(&path)?;
+        self.directories.push(path);
+        Ok(())
+    }
+    fn copy(&mut self, relative: &str, input: &mut dyn Read) -> Result<()> {
+        let path = self.root.join(relative);
+        let mut output = private_file(&path)?;
+        self.files.push(path);
+        io::copy(input, &mut output)?;
+        output.sync_all()?;
+        Ok(())
+    }
+}
+impl Drop for RecoveryWorkspace {
+    fn drop(&mut self) {
+        if !self.complete {
+            for file in self.files.iter().rev() {
+                let _ = fs::remove_file(file);
+            }
+            for directory in self.directories.iter().rev() {
+                let _ = fs::remove_dir(directory);
+            }
+        }
+    }
+}
+
+/// Recover a trusted operator bundle into NEW private paths without activating
+/// it. Validates SQLite integrity/FKs and exact media references, not the full
+/// CMS migration history. A separate compatibility gate must precede startup.
+pub fn restore(archive: &Path, destination: &Path) -> Result<ArchiveReport> {
+    let mut file = open_archive(archive)?;
+    let (expected, _) = scan(&mut file, |_, _| Ok(()))?;
+    let store = StoreId::parse(&expected.store)?;
+    let mut workspace = RecoveryWorkspace::new(destination)?;
+    workspace.directory(destination.join("media"))?;
+    let media_root = destination.join("media").join(store.as_str());
+    workspace.directory(media_root.clone())?;
+    file.rewind()?;
+    let (manifest, report) = scan(&mut file, |path, input| workspace.copy(path, input))?;
+    ensure!(
+        manifest.files == expected.files && manifest.store == expected.store,
+        "Archive changed during recovery"
+    );
+    let database = Connection::open_with_flags(
+        destination.join("database.sqlite"),
+        OpenFlags::SQLITE_OPEN_READ_ONLY,
+    )?;
+    database.execute_batch("PRAGMA trusted_schema = OFF; PRAGMA query_only = ON;")?;
+    ensure!(
+        database.query_row("PRAGMA integrity_check", [], |row| row.get::<_, String>(0))? == "ok",
+        "Recovered database integrity check failed"
+    );
+    ensure!(
+        !database.prepare("PRAGMA foreign_key_check")?.exists([])?,
+        "Recovered database has foreign key violations"
+    );
+    let storage = crate::storage::LocalStorage::open(&media_root, store.clone(), MAX_OBJECT_BYTES)?;
+    ensure!(
+        database.query_row(
+            "SELECT COUNT(*) = COUNT(DISTINCT id) FROM legura_media",
+            [],
+            |row| row.get::<_, bool>(0),
+        )?,
+        "Recovered media identifiers must be unique"
+    );
+    let inventory = crate::media_audit::audit(&database, &storage, &store)?;
+    ensure!(
+        inventory.objects == (manifest.files.len() - 1) as u64,
+        "Archive contains unreferenced media objects"
+    );
+    drop(storage);
+    drop(database);
+    // This receipt certifies inactive data recovery only, never CMS startup.
+    let receipt = serde_json::to_vec(&serde_json::json!({
+        "format": 1,
+        "status": "recovered-not-activated",
+        "cms_compatibility": "not-checked",
+        "store": store.as_str(),
+        "inventory": report,
+    }))?;
+    workspace.copy("recovery.json", &mut receipt.as_slice())?;
+    workspace.complete = true;
+    Ok(report)
 }
 
 #[cfg(test)]

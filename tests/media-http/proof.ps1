@@ -168,6 +168,35 @@ $checkedJson = & cargo run --locked --release --bin legura-maintenance -- archiv
 if ($LASTEXITCODE -ne 0) { throw "Live media archive verification failed" }
 $checked = $checkedJson | ConvertFrom-Json
 if ($checked.files -ne $archiveInventory.files -or $checked.bytes -ne $archiveInventory.bytes) { throw "Archive verification inventory changed" }
+$recoveryRoot = Join-Path $fixture 'recovered-media'
+$restoredJson = & cargo run --locked --release --bin legura-maintenance -- archive-restore $archivePath $recoveryRoot
+if ($LASTEXITCODE -ne 0) { throw "Inactive media recovery failed" }
+$restored = $restoredJson | ConvertFrom-Json
+if ($restored.files -ne $checked.files -or $restored.bytes -ne $checked.bytes) { throw "Recovery inventory changed" }
+$recoveredDb = Join-Path $recoveryRoot 'database.sqlite'
+$recoveredMedia = Join-Path $recoveryRoot 'media/local-media'
+$recoveredInventoryJson = & cargo run --locked --release --bin legura-maintenance -- media-check $recoveredDb local-media $recoveredMedia
+if ($LASTEXITCODE -ne 0) { throw "Recovered media failed independent audit" }
+$recoveredInventory = $recoveredInventoryJson | ConvertFrom-Json
+if ($recoveredInventory.objects -ne $inventory.objects -or $recoveredInventory.bytes -ne $inventory.bytes) { throw "Recovered objects do not match live snapshot" }
+$comparison = @'
+import json, pathlib, sqlite3, sys
+with sqlite3.connect(sys.argv[1]) as source, sqlite3.connect(sys.argv[2]) as recovered:
+    for table in ("legura_users", "legura_credentials", "legura_installation", "legura_posts", "legura_media", "_axonyx_migrations"):
+        assert source.execute(f'SELECT * FROM "{table}" ORDER BY 1').fetchall() == recovered.execute(f'SELECT * FROM "{table}" ORDER BY 1').fetchall(), table
+root = pathlib.Path(sys.argv[3])
+receipt = json.loads((root / "recovery.json").read_text())
+assert receipt["status"] == "recovered-not-activated"
+assert receipt["cms_compatibility"] == "not-checked"
+assert not (root / ".env").exists()
+'@
+& $python.Source -c $comparison $db $recoveredDb $recoveryRoot
+if ($LASTEXITCODE -ne 0) { throw "Recovery altered identity, posts, media or migration rows" }
+# Repeated recovery must fail, leaving both source and recovered data intact.
+& cargo run --locked --release --bin legura-maintenance -- archive-restore $archivePath $recoveryRoot
+if ($LASTEXITCODE -eq 0) { throw "Repeated recovery overwrote an existing destination" }
+& $python.Source -c $comparison $db $recoveredDb $recoveryRoot
+if ($LASTEXITCODE -ne 0) { throw "Refused overwrite damaged recovered data" }
 Assert-MediaCounts -Rows $mediaExpectedRows -Files $mediaExpectedFiles
 Invoke-Request -Path '/admin/media-proof' -Headers @{ Cookie = $cookie } | Out-Null
-Write-Host 'Live media archive proof passed without stopping or changing the running disposable CMS.'
+Write-Host 'Live media archive/recovery proof passed without stopping or changing the running disposable CMS; recovery remains inactive.'
