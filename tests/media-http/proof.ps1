@@ -192,6 +192,14 @@ assert not (root / ".env").exists()
 '@
 & $python.Source -c $comparison $db $recoveredDb $recoveryRoot
 if ($LASTEXITCODE -ne 0) { throw "Recovery altered identity, posts, media or migration rows" }
+$compatibleJson = & cargo run --locked --release --bin legura-maintenance -- archive-check-recovery $archivePath $recoveryRoot
+if ($LASTEXITCODE -ne 0) { throw "Recovered current product failed schema/migration/content/media compatibility" }
+$compatible = $compatibleJson | ConvertFrom-Json
+if ($compatible.files -ne $checked.files -or $compatible.bytes -ne $checked.bytes) { throw "Compatibility check changed inventory" }
+# Certification is read-only: it does not rewrite receipts, apply migrations or
+# change the live configuration. The original payloads remain authoritative.
+& $python.Source -c $comparison $db $recoveredDb $recoveryRoot
+if ($LASTEXITCODE -ne 0) { throw "Read-only recovery check changed product data or receipt" }
 # Repeated recovery must fail, leaving both source and recovered data intact.
 & cargo run --locked --release --bin legura-maintenance -- archive-restore $archivePath $recoveryRoot
 if ($LASTEXITCODE -eq 0) { throw "Repeated recovery overwrote an existing destination" }

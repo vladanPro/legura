@@ -1,5 +1,8 @@
 use anyhow::{bail, ensure, Context, Result};
 use axonyx_runtime::backend::{runtime_from_env, AxEnv, AxMigration, AxMigrationExecutor};
+use legura::database_contract::{embedded_migrations, validate, validate_structure};
+#[cfg(test)]
+use legura::database_contract::{migration_hash, MIGRATIONS};
 use rusqlite::{
     backup::{Backup, StepResult},
     Connection, OpenFlags,
@@ -21,24 +24,6 @@ struct Manifest {
     version: String,
     database_sha256: String,
 }
-
-const MIGRATIONS: &[(&str, &str, &str)] = &[
-    (
-        "20261008000000_001",
-        include_str!("../../db/migrations/20261008000000_001_identity/up.sql"),
-        include_str!("../../db/migrations/20261008000000_001_identity/down.sql"),
-    ),
-    (
-        "20261009000000_002",
-        include_str!("../../db/migrations/20261009000000_002_posts/up.sql"),
-        include_str!("../../db/migrations/20261009000000_002_posts/down.sql"),
-    ),
-    (
-        "20261012000000_003",
-        include_str!("../../db/migrations/20261012000000_003_richtext/up.sql"),
-        include_str!("../../db/migrations/20261012000000_003_richtext/down.sql"),
-    ),
-];
 
 fn main() {
     if let Err(error) = run() {
@@ -85,6 +70,11 @@ fn run() -> Result<()> {
             println!("{}", serde_json::to_string(&report)?);
             eprintln!("Recovered to a NEW inactive directory. Full CMS migration compatibility is NOT checked. Do not switch configuration or start this database before that check; use independent session secrets.");
         }
+        [command, archive, destination] if command == "archive-check-recovery" => {
+            let report = legura::backup_archive::check_recovery(Path::new(archive), Path::new(destination))?;
+            println!("{}", serde_json::to_string(&report)?);
+            eprintln!("Current SQLite schema, migrations, content and media checked. Recovery is still inactive; no configuration or secrets were changed.");
+        }
         [command, snapshot, store, root, archive] if command == "archive-pack-snapshot" => {
             let store = legura::storage::StoreId::parse(store.to_str().context("store ID must be UTF-8")?)?;
             let storage = legura::storage::LocalStorage::open(Path::new(root), store.clone(), legura::storage::MAX_OBJECT_BYTES)?;
@@ -106,7 +96,8 @@ fn run() -> Result<()> {
             " | media-check <database-file> <store-id> <private-media-directory>",
             " | archive-pack-snapshot <frozen-snapshot-file> <store-id> <private-media-directory> <new-archive>",
             " | archive-backup <database-file> <store-id> <private-media-directory> <new-archive>",
-            " | archive-verify <archive> | archive-restore <archive> <new-private-directory>"
+            " | archive-verify <archive> | archive-restore <archive> <new-private-directory>",
+            " | archive-check-recovery <archive> <inactive-recovery-directory>"
         )),
     }
     Ok(())
@@ -173,34 +164,6 @@ fn open_readonly(path: &Path) -> Result<Connection> {
     Ok(connection)
 }
 
-fn migration_hash(up: &str, down: &str) -> String {
-    let mut hash = Sha256::new();
-    hash.update(b"axonyx-migration-v1\0");
-    hash.update(up.replace("\r\n", "\n"));
-    hash.update(b"\0");
-    hash.update(down.replace("\r\n", "\n"));
-    format!("{:x}", hash.finalize())
-}
-
-fn embedded_migrations() -> Vec<AxMigration> {
-    MIGRATIONS
-        .iter()
-        .map(|(version, up, down)| AxMigration {
-            version: (*version).into(),
-            name: match *version {
-                "20261008000000_001" => "identity",
-                "20261009000000_002" => "posts",
-                "20261012000000_003" => "richtext",
-                _ => unreachable!("embedded migration name is missing"),
-            }
-            .into(),
-            checksum: migration_hash(up, down),
-            up_sql: (*up).into(),
-            down_sql: (*down).into(),
-        })
-        .collect()
-}
-
 fn initialize(path: &Path) -> Result<()> {
     initialize_with_migrations(path, &embedded_migrations())
 }
@@ -234,58 +197,6 @@ fn initialize_with_migrations(path: &Path, migrations: &[AxMigration]) -> Result
         let _ = fs::remove_file(&path);
     }
     result
-}
-
-fn validate_structure(connection: &Connection) -> Result<usize> {
-    let integrity: String = connection.query_row("PRAGMA integrity_check", [], |row| row.get(0))?;
-    ensure!(integrity == "ok", "SQLite integrity check failed");
-    ensure!(
-        !connection
-            .prepare("PRAGMA foreign_key_check")?
-            .query([])?
-            .next()?
-            .is_some(),
-        "foreign-key integrity check failed"
-    );
-    for sql in [
-        "SELECT id, email, role FROM legura_users LIMIT 0",
-        "SELECT user_id, email, password_hash FROM legura_credentials LIMIT 0",
-        "SELECT id, site_name, admin_id FROM legura_installation LIMIT 0",
-        "SELECT id, title, slug, body, status FROM legura_posts LIMIT 0",
-    ] {
-        connection.prepare(sql)?;
-    }
-    let count: usize =
-        connection.query_row("SELECT count(*) FROM _axonyx_migrations", [], |row| {
-            row.get(0)
-        })?;
-    // Both the pre-editor schema and its upgraded schema are valid backups.
-    ensure!(
-        (2..=MIGRATIONS.len()).contains(&count),
-        "unsupported migration history"
-    );
-    for (version, up, down) in MIGRATIONS.iter().take(count) {
-        let checksum: String = connection.query_row(
-            "SELECT checksum FROM _axonyx_migrations WHERE version = ?1",
-            [version],
-            |row| row.get(0),
-        )?;
-        ensure!(
-            checksum == migration_hash(up, down),
-            "migration checksum does not match this maintenance build"
-        );
-    }
-    Ok(count)
-}
-
-fn validate(connection: &Connection) -> Result<()> {
-    if validate_structure(connection)? >= 3 {
-        ensure!(
-            legura::content_audit::audit(connection)?.invalid == 0,
-            "Stored post content is invalid; backup verification refused"
-        );
-    }
-    Ok(())
 }
 
 fn require_database_only(connection: &Connection) -> Result<()> {
@@ -496,9 +407,6 @@ mod tests {
     fn database_only_backup_refuses_media_instead_of_reporting_incomplete_success() {
         let fixture = Fixture::new();
         let source = Connection::open(fixture.path("source.db")).unwrap();
-        source
-            .execute_batch(include_str!("../../tests/media-http/schema.sql"))
-            .unwrap();
         backup(
             &fixture.path("source.db"),
             &fixture.path("empty-media-backup"),
@@ -620,7 +528,7 @@ mod tests {
     fn legacy_upgrade_rich_restore_and_lossless_rollback() {
         let fixture = Fixture::new();
         let path = fixture.path("legacy.db");
-        let migrations = embedded_migrations();
+        let migrations = embedded_migrations()[..3].to_vec();
         initialize_with_migrations(&path, &migrations[..2]).unwrap();
         let db = Connection::open(&path).unwrap();
         let original = "<script>literal</script>\nExisting post";

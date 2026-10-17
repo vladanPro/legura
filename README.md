@@ -84,8 +84,9 @@ An experimental [`.legura` archive container](docs/legura-archive-v0.md) can pac
 an explicitly supplied frozen snapshot or capture live SQLite through its backup
 API, including referenced images. Inactive recovery into a NEW private directory
 validates SQLite and exact media references without switching configuration.
-Full product migration/content compatibility checks and operator activation are
-not included; a successful recovery receipt is not startup certification.
+An explicit read-only [recovery compatibility check](docs/recovery-compatibility-v0.md)
+checks current product migrations, schema, content and original archived bytes.
+Operator activation remains separate; a recovery receipt is not startup certification.
 
 ## Product
 

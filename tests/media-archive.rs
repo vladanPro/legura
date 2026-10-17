@@ -28,9 +28,26 @@ impl Fixture {
         fs::create_dir(root.join("objects")).unwrap();
         let database = Connection::open(root.join("snapshot.sqlite")).unwrap();
         database
-            .execute_batch(include_str!("media-http/schema.sql"))
+            .execute_batch(include_str!(
+                "../db/migrations/20261018000000_004_media/up.sql"
+            ))
             .unwrap();
         Self(root)
+    }
+    fn product() -> Self {
+        let fixture = Self::new();
+        fs::remove_file(fixture.0.join("snapshot.sqlite")).unwrap();
+        let output = Command::new(env!("CARGO_BIN_EXE_legura-maintenance"))
+            .arg("init")
+            .arg(fixture.0.join("snapshot.sqlite"))
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        fixture
     }
     fn upload(&self) -> String {
         let storage = MediaLibraryStorage::open(
@@ -749,4 +766,157 @@ fn recovery_refuses_symlink_destinations_without_touching_their_targets() {
     assert!(backup_archive::restore(&fixture.0.join("site.legura"), &link).is_err());
     assert!(fs::symlink_metadata(link).unwrap().file_type().is_symlink());
     assert_eq!(fs::read_dir(target).unwrap().count(), 0);
+}
+
+#[test]
+fn current_product_recovery_check_is_read_only_and_checks_original_payloads() {
+    let fixture = Fixture::product();
+    let key = fixture.upload();
+    let db_path = fixture.0.join("snapshot.sqlite");
+    drop(axonyx_runtime::session::AxSqliteSessionStore::open(&db_path).unwrap());
+    let database = Connection::open(&db_path).unwrap();
+    database.execute_batch("INSERT INTO legura_posts(id,title,slug,body,status) VALUES('post','Title','title','Original body','published')").unwrap();
+    let rich = legura::content::PostContent::rich(
+        &serde_json::json!({"format":"legura-richtext","version":1,"blocks":[
+            {"type":"paragraph","children":[{"text":"Rich body","marks":["bold"]}]}
+        ]})
+        .to_string(),
+    )
+    .unwrap()
+    .storage_columns()
+    .unwrap();
+    database.execute(
+        "INSERT INTO legura_posts(id,title,slug,body,status,content_format,content_document) VALUES('rich','Rich','rich',?1,'draft',?2,?3)",
+        rusqlite::params![rich.body, rich.content_format, rich.content_document],
+    ).unwrap();
+    drop(database);
+    let packed = fixture.pack("site.legura").unwrap();
+    let archive = fixture.0.join("site.legura");
+    let root = fixture.0.join("recovery");
+    backup_archive::restore(&archive, &root).unwrap();
+    let db_before = fs::read(root.join("database.sqlite")).unwrap();
+    let receipt_before = fs::read(root.join("recovery.json")).unwrap();
+    for _ in 0..2 {
+        assert_eq!(
+            backup_archive::check_recovery(&archive, &root).unwrap(),
+            packed
+        );
+    }
+    let output = Command::new(env!("CARGO_BIN_EXE_legura-maintenance"))
+        .arg("archive-check-recovery")
+        .arg(&archive)
+        .arg(&root)
+        .env("AX_SECRET_DB_URL", "not-the-source")
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&output.stderr).contains("still inactive"));
+    assert_eq!(fs::read(root.join("database.sqlite")).unwrap(), db_before);
+    assert_eq!(
+        fs::read(root.join("recovery.json")).unwrap(),
+        receipt_before
+    );
+    assert!(!root.join(".env").exists());
+    let image = root.join("media/local-media").join(key);
+    let mut changed = fs::read(&image).unwrap();
+    changed[0] ^= 1;
+    fs::write(image, changed).unwrap();
+    assert!(backup_archive::check_recovery(&archive, &root).is_err());
+    assert_eq!(fs::read(root.join("database.sqlite")).unwrap(), db_before);
+    assert_eq!(
+        fs::read(root.join("recovery.json")).unwrap(),
+        receipt_before
+    );
+}
+
+#[test]
+fn intact_archives_with_wrong_product_contract_are_not_certified() {
+    for sql in [
+        "UPDATE _axonyx_migrations SET checksum='wrong' WHERE version='20261018000000_004'",
+        "UPDATE _axonyx_migrations SET name='foreign-module' WHERE version='20261018000000_004'",
+        "INSERT INTO _axonyx_migrations SELECT '20990101000000_999',name,checksum,applied_at,execution_ms FROM _axonyx_migrations LIMIT 1",
+        "DELETE FROM _axonyx_migrations WHERE version='20261018000000_004'",
+        "ALTER TABLE legura_posts ADD COLUMN unexpected TEXT",
+        "CREATE TABLE unexpected(value TEXT)",
+        "CREATE TRIGGER unexpected AFTER INSERT ON legura_posts BEGIN SELECT 1; END",
+        "DROP TABLE legura_credentials; CREATE TABLE legura_credentials(user_id TEXT, email TEXT, password_hash TEXT)",
+        "INSERT INTO legura_posts(id,title,slug,body,status,content_format,content_document) VALUES('bad','Bad','bad','Body','draft','legura-richtext','{}')",
+    ] {
+        let fixture = Fixture::product();
+        fixture.upload();
+        let database = Connection::open(fixture.0.join("snapshot.sqlite")).unwrap();
+        database.execute_batch(sql).unwrap();
+        drop(database);
+        // These are intact data backups, not compatibility-certified installs.
+        fixture.pack("site.legura").unwrap();
+        let archive = fixture.0.join("site.legura");
+        let root = fixture.0.join("recovery");
+        backup_archive::restore(&archive, &root).unwrap();
+        let before = fs::read(root.join("database.sqlite")).unwrap();
+        assert!(backup_archive::check_recovery(&archive, &root).is_err(), "{sql}");
+        assert_eq!(fs::read(root.join("database.sqlite")).unwrap(), before);
+        assert!(root.join("recovery.json").exists());
+    }
+}
+
+#[test]
+fn media_migration_rollback_preserves_referenced_rows_then_allows_empty_table() {
+    use axonyx_runtime::backend::{runtime_from_env, AxEnv, AxMigrationExecutor};
+    let fixture = Fixture::product();
+    fixture.upload();
+    let path = fixture.0.join("snapshot.sqlite");
+    let runtime = runtime_from_env(
+        AxEnv::new()
+            .with_secret("db_url", format!("sqlite:{}", path.to_str().unwrap()))
+            .with_secret("db_dialect", "sqlite"),
+    )
+    .unwrap();
+    let migrations = legura::database_contract::embedded_migrations();
+    assert!(AxMigrationExecutor::rollback_migration(&runtime, &migrations[3]).is_err());
+    let database = Connection::open(path).unwrap();
+    legura::database_contract::validate_current(&database).unwrap();
+    assert_eq!(
+        database
+            .query_row("SELECT COUNT(*) FROM legura_media", [], |row| row
+                .get::<_, u64>(0))
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        database
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_schema WHERE name='_legura_media_rollback_guard'",
+                [],
+                |row| row.get::<_, u64>(0)
+            )
+            .unwrap(),
+        0
+    );
+    database.execute("DELETE FROM legura_media", []).unwrap();
+    AxMigrationExecutor::rollback_migration(&runtime, &migrations[3]).unwrap();
+    legura::database_contract::validate(&database).unwrap();
+    assert!(legura::database_contract::validate_current(&database).is_err());
+}
+
+#[test]
+fn runtime_session_shape_drift_is_not_ignored_by_compatibility_checks() {
+    for sql in [
+        "DROP INDEX ax_sessions_expires_at_idx",
+        "ALTER TABLE ax_sessions ADD COLUMN unexpected TEXT",
+        "DROP INDEX ax_sessions_expires_at_idx; CREATE UNIQUE INDEX ax_sessions_expires_at_idx ON ax_sessions(expires_at_unix)",
+        "DROP INDEX ax_sessions_expires_at_idx; CREATE INDEX ax_sessions_expires_at_idx ON ax_sessions(expires_at_unix) WHERE expires_at_unix > 0",
+        "CREATE TRIGGER unexpected AFTER INSERT ON ax_sessions BEGIN SELECT 1; END",
+    ] {
+        let fixture = Fixture::product();
+        let path = fixture.0.join("snapshot.sqlite");
+        drop(axonyx_runtime::session::AxSqliteSessionStore::open(&path).unwrap());
+        let database = Connection::open(path).unwrap();
+        legura::database_contract::validate_current(&database).unwrap();
+        database.execute_batch(sql).unwrap();
+        assert!(legura::database_contract::validate_current(&database).is_err(), "{sql}");
+    }
 }

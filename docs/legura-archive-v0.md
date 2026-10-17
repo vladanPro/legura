@@ -5,7 +5,8 @@ caller-provided frozen SQLite/media snapshot. It is not a production installer,
 CMS updater or installation-ready restore. Inactive recovery into a new directory
 is available below. Existing database-only backup and its
 refusal of media references remain unchanged. Full product schema/migration
-compatibility certification is still a separate gate.
+compatibility checking is a separate explicit command; see
+[Recovery Compatibility V0](recovery-compatibility-v0.md).
 
 ## Format decision
 
@@ -36,6 +37,7 @@ cargo build --locked --release --bin legura-maintenance
 ./target/release/legura-maintenance archive-pack-snapshot frozen.sqlite local-media /private/media backup.legura
 ./target/release/legura-maintenance archive-verify backup.legura
 ./target/release/legura-maintenance archive-restore backup.legura /private/new-recovery
+./target/release/legura-maintenance archive-check-recovery backup.legura /private/new-recovery
 ```
 
 Use `.exe` on Windows and the actual Cargo target path if shared. Parent paths
@@ -172,5 +174,8 @@ is removed. The disposable HTTP proof also recovers the live archive, independen
 audits recovered images and compares identity, credentials, posts, media and
 migration rows without switching the running application.
 
-Next: full product schema/migration and rich-text compatibility certification,
-then a separately approved activation procedure. Operator media remains inactive.
+The explicit read-only `archive-check-recovery` command now checks current product
+schema/migrations, plain/rich content and recovered bytes against the original
+archive. It does not modify this receipt or activate a service. See the strict
+current-version policy in recovery-compatibility-v0.md; a separately approved
+activation procedure remains next. Operator media remains inactive.

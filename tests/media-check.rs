@@ -19,7 +19,9 @@ impl Fixture {
         fs::create_dir(root.join("objects")).unwrap();
         let database = Connection::open(root.join("library.db")).unwrap();
         database
-            .execute_batch(include_str!("media-http/schema.sql"))
+            .execute_batch(include_str!(
+                "../db/migrations/20261018000000_004_media/up.sql"
+            ))
             .unwrap();
         Self(root)
     }
