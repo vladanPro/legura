@@ -67,6 +67,9 @@ pilots, not an installable product release.
 The [posts table contract](docs/posts-table-v1.md) explains published Foundry UI
 adoption and why search and pagination remain server-owned.
 
+The inactive [media storage foundation](docs/media-storage-v0.md) defines local
+object storage; upload routes, a media library and post images are not added yet.
+
 ## Product
 
 - Own your server, content, files, and database.

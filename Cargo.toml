@@ -17,3 +17,5 @@ rusqlite = { version = "0.37", features = ["backup", "bundled"] }
 serde = { version = "1", features = ["derive"] }
 sha2 = "0.10"
 getrandom = "0.2"
+cap-std = "4.0.3"
+cap-fs-ext = "4.0.3"
