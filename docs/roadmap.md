@@ -167,6 +167,11 @@ Backup / Restore V1 passed those gates and PR #6 is integrated into dev.
 
 ## 4. Product Expansion
 
+An isolated Media Upload HTTP source pilot exercises the current administrator,
+CSRF, canonical image storage and SQLite metadata through the generated server;
+see media-upload-http-v0.md. Its migration/route/startup hook are fixture-only.
+No operator media activation, production library or media backup is implied.
+
 Media Storage V0 begins with an inactive local adapter and provider-neutral object
 references; see media-storage-v0.md. Upload/image validation, library UI, post
 images and media-aware backups are separate gates, not shipped by this foundation.
