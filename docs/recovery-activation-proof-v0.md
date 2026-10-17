@@ -69,5 +69,7 @@ Operator media activation, portable runtime storage configuration, durable priva
 configuration generation, process/service management, maintenance-mode traffic
 admission and an explicit cutover/rollback policy are still separate gates.
 There is no `legura activate` command, installer or production upgrade support.
-This proof uses a test-only native storage adapter and explicit process settings;
-it must not be copied as an unattended production deployment script.
+The proof now uses the product native storage adapter with explicit private
+media settings and the same application DB URL. Its route, transport budget and
+activation orchestration remain test-only; it must not be copied as an unattended
+production deployment script. See native-media-config-v0.md.
