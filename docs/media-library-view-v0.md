@@ -12,6 +12,11 @@ processed MIME, dimensions, byte size and canonical object ID. The two-column
 grid becomes one column on small screens. There are no fabricated thumbnails:
 objects remain private and have no public image URL.
 
+The reusable `MediaPlaceholder` component renders an inline SVG image outline,
+semantic Foundry colors and an accessible label without JavaScript or external
+requests. The empty library says "No image selected"; stored images without an
+enabled preview say "Preview unavailable", not that their files are missing.
+
 The optional AdminFrame `mediaHref` defaults to empty. Existing installations
 receive no dead link. Only the fixture supplies it and selects the media item.
 

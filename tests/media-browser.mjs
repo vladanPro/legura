@@ -31,6 +31,10 @@ try {
         assert.match(response.headers()['cache-control'], /no-store/);
         assert.ok(await page.getByRole('heading', { name: 'Media library', exact: true }).isVisible());
         assert.equal(await page.locator('[data-media-id]').count(), 10);
+        const placeholders = page.getByRole('img', { name: 'Preview unavailable', exact: true });
+        assert.equal(await placeholders.count(), 10);
+        assert.ok(await placeholders.first().isVisible());
+        assert.ok(await placeholders.first().evaluate(node => node.getBoundingClientRect().height >= 128));
         const selected = page.locator('a[href="/admin/media-proof"][aria-current="true"]');
         assert.equal(await selected.count(), 1);
         assert.ok(await page.getByLabel('Image', { exact: true }).isVisible());

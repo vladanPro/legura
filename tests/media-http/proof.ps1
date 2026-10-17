@@ -60,6 +60,7 @@ Send-Media -Bytes $validImage -Headers @{ Cookie = $cookie; Origin = 'https://at
 Assert-MediaCounts -Rows 0 -Files 0
 $empty = Invoke-Request -Path '/admin/media-proof?page=999' -Headers @{ Cookie = $cookie }
 if (!$empty.Body.Contains('No images yet') -or !$empty.Body.Contains('data-media-page="1"') -or !$empty.Body.Contains('data-media-total="0"')) { throw "Empty media library is not bounded" }
+if (!$empty.Body.Contains('aria-label="No image selected"')) { throw "Empty media library has no accessible image placeholder" }
 if ($empty.Body -notmatch 'href="/admin/media-proof"[^>]*aria-current="true"|aria-current="true"[^>]*href="/admin/media-proof"') { throw "Media sidebar item is not selected" }
 
 foreach ($bytes in @([Text.Encoding]::UTF8.GetBytes('<svg onload="alert(1)"/>'), [byte[]]::new(0), [byte[]]::new(8388609))) {

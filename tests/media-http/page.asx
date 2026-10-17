@@ -1,4 +1,5 @@
 import { AdminFrame } from "@/components/AdminFrame"
+import { MediaPlaceholder } from "@/components/MediaPlaceholder"
 import { Card } from "@axonyx/ui/foundry/Card"
 import { Grid } from "@axonyx/ui/foundry/Grid"
 import { Button } from "@axonyx/ui/foundry/Button"
@@ -38,6 +39,7 @@ page MediaProof() {
         </Card>
         <If when={listing.total == 0}>
           <Card title="No images yet">
+            <MediaPlaceholder />
             <p>Upload your first image above. Only administrators can access this library.</p>
           </Card>
         </If>
@@ -46,6 +48,7 @@ page MediaProof() {
             <Each items={listing.items} as="image">
               <Card>
                 <article data-media-id={image.id} aria-label="Stored image details">
+                  <MediaPlaceholder label="Preview unavailable" />
                   <h2>{image.content_type}</h2>
                   <p>{image.width + " x " + image.height + " pixels"}</p>
                   <p>{image.byte_size + " bytes"}</p>
