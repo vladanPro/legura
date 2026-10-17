@@ -7,7 +7,13 @@ use legura::{
     storage::{LocalStorage, StoreId, MAX_OBJECT_BYTES},
 };
 use rusqlite::Connection;
-use std::{fs, io::Read, path::PathBuf, process::Command};
+use std::{
+    fs,
+    io::Read,
+    path::PathBuf,
+    process::Command,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 struct Fixture(PathBuf);
 impl Fixture {
@@ -81,6 +87,149 @@ impl Drop for Fixture {
             .starts_with("legura-archive-"));
         fs::remove_dir_all(root).unwrap();
     }
+}
+
+#[test]
+fn live_backup_captures_committed_wal_and_excludes_later_uploads() {
+    use legura::storage::{ObjectRef, ObjectStorage, StorageError, StoredObject};
+    let fixture = Fixture::new();
+    let connection = Connection::open(fixture.0.join("snapshot.sqlite")).unwrap();
+    connection
+        .pragma_update(None, "journal_mode", "WAL")
+        .unwrap();
+    connection
+        .pragma_update(None, "wal_autocheckpoint", 0)
+        .unwrap();
+    // Pin an older WAL reader so closing the upload connection cannot checkpoint
+    // and remove the WAL before the online backup is exercised.
+    connection
+        .execute_batch("BEGIN; SELECT COUNT(*) FROM legura_media;")
+        .unwrap();
+    let first = fixture.upload();
+    assert!(
+        fs::metadata(fixture.0.join("snapshot.sqlite-wal"))
+            .unwrap()
+            .len()
+            > 0
+    );
+    struct LaterUpload<'a> {
+        fixture: &'a Fixture,
+        storage: LocalStorage,
+        called: AtomicBool,
+    }
+    impl ObjectStorage for LaterUpload<'_> {
+        fn put(&self, _: &[u8]) -> Result<StoredObject, StorageError> {
+            panic!("backup attempted storage write")
+        }
+        fn get(&self, reference: &ObjectRef) -> Result<Vec<u8>, StorageError> {
+            // A real committed upload after the private DB snapshot exists.
+            if !self.called.swap(true, Ordering::SeqCst) {
+                self.fixture.upload();
+            }
+            self.storage.get(reference)
+        }
+    }
+    let store = StoreId::parse("local-media").unwrap();
+    let storage = LaterUpload {
+        fixture: &fixture,
+        storage: LocalStorage::open(&fixture.0.join("objects"), store.clone(), MAX_OBJECT_BYTES)
+            .unwrap(),
+        called: AtomicBool::new(false),
+    };
+    let archive = fixture.0.join("live.legura");
+    assert_eq!(
+        backup_archive::backup(
+            &fixture.0.join("snapshot.sqlite"),
+            &storage,
+            &store,
+            &archive
+        )
+        .unwrap()
+        .files,
+        2
+    );
+    assert!(storage.called.load(Ordering::SeqCst));
+    connection.execute_batch("COMMIT").unwrap();
+    assert_eq!(
+        connection
+            .query_row("SELECT COUNT(*) FROM legura_media", [], |row| row
+                .get::<_, i64>(0))
+            .unwrap(),
+        2
+    );
+    let mut names = Vec::new();
+    for entry in tar::Archive::new(fs::File::open(&archive).unwrap())
+        .entries()
+        .unwrap()
+    {
+        let mut entry = entry.unwrap();
+        let name = entry.path().unwrap().to_string_lossy().into_owned();
+        if name == "database.sqlite" {
+            let mut bytes = Vec::new();
+            entry.read_to_end(&mut bytes).unwrap();
+            // Test-only inspection, not a product restore/extraction API.
+            let recovered = fixture.0.join("inspected.sqlite");
+            fs::write(&recovered, bytes).unwrap();
+            let copied =
+                Connection::open_with_flags(recovered, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+                    .unwrap();
+            assert_eq!(
+                copied
+                    .query_row("SELECT COUNT(*) FROM legura_media", [], |row| row
+                        .get::<_, i64>(0))
+                    .unwrap(),
+                1
+            );
+            assert_eq!(
+                copied
+                    .query_row("SELECT id FROM legura_media", [], |row| row
+                        .get::<_, String>(0))
+                    .unwrap(),
+                first
+            );
+        }
+        names.push(name);
+    }
+    assert_eq!(
+        names,
+        vec![
+            "database.sqlite".to_owned(),
+            format!("media/local-media/{first}"),
+            "manifest.json".to_owned()
+        ]
+    );
+}
+
+#[test]
+fn live_backup_cli_is_new_only_and_never_creates_missing_sources() {
+    let fixture = Fixture::new();
+    fixture.upload();
+    let output = fixture.0.join("live.legura");
+    let run = |source: &str| {
+        Command::new(env!("CARGO_BIN_EXE_legura-maintenance"))
+            .arg("archive-backup")
+            .arg(fixture.0.join(source))
+            .arg("local-media")
+            .arg(fixture.0.join("objects"))
+            .arg(&output)
+            .env("AX_SECRET_DB_URL", "ignore-this-environment-value")
+            .output()
+            .unwrap()
+    };
+    let missing = run("missing.sqlite");
+    assert!(!missing.status.success());
+    assert!(!fixture.0.join("missing.sqlite").exists());
+    assert!(!output.exists());
+    let complete = run("snapshot.sqlite");
+    assert!(
+        complete.status.success(),
+        "{}",
+        String::from_utf8_lossy(&complete.stderr)
+    );
+    let original = fs::read(&output).unwrap();
+    assert!(!run("snapshot.sqlite").status.success());
+    assert_eq!(fs::read(&output).unwrap(), original);
+    assert_eq!(backup_archive::verify(&output).unwrap().files, 2);
 }
 
 #[test]

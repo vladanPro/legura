@@ -51,10 +51,11 @@ a bundle and again on the actual SQLite snapshot, so an upload between preflight
 and snapshot cannot produce an apparently complete database-only backup. Verify
 also refuses media rows even if the database checksum was recomputed.
 
-This is deliberate refusal, not media-inclusive backup support. The next slice
-must snapshot SQLite, copy its referenced immutable objects with hashes checked
-while copying, finalize a manifest last, and prove restore to NEW database/media
-paths without overwriting an installation. Do not enable operator media first.
+This is deliberate refusal, not media-inclusive support in the old V1 workflow.
+The separate [archive V0 source pilot](legura-archive-v0.md) now captures SQLite,
+copies its referenced immutable objects with hashes checked while copying and
+finalizes a manifest last. Restore to NEW database/media paths without overwriting
+an installation is still required. Do not enable operator media first.
 
 ## Acceptance
 

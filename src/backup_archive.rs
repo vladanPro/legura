@@ -1,24 +1,135 @@
-//! Experimental container for a caller-provided frozen SQLite/media snapshot.
-//! No extraction, schema upgrade, live snapshot or application switch occurs.
+//! Experimental SQLite/media archive creation and read-only container checking.
+//! No extraction, schema upgrade or application switch occurs.
 use crate::storage::{
     ObjectKey, ObjectRef, ObjectStorage, StorageError, StoreId, StoredObject, MAX_OBJECT_BYTES,
 };
 use anyhow::{bail, ensure, Context, Result};
-use rusqlite::{Connection, OpenFlags};
+use rusqlite::{
+    backup::{Backup, StepResult},
+    Connection, OpenFlags,
+};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     collections::BTreeMap,
     fs::{self, File, OpenOptions},
     io::{self, Read, Seek, SeekFrom},
-    path::Path,
+    path::{Path, PathBuf},
     sync::Mutex,
+    time::{Duration, Instant},
 };
 
 const MAX_DATABASE_BYTES: u64 = 1024 * 1024 * 1024;
 const MAX_ARCHIVE_BYTES: u64 = 8 * 1024 * 1024 * 1024;
 const MAX_MANIFEST_BYTES: u64 = 4 * 1024 * 1024;
 const MAX_OBJECTS: usize = 10_000;
+
+struct SnapshotWorkspace(PathBuf);
+impl SnapshotWorkspace {
+    fn new() -> Result<Self> {
+        let mut random = [0; 16];
+        getrandom::getrandom(&mut random)
+            .map_err(|_| anyhow::anyhow!("Snapshot randomness unavailable"))?;
+        let root = std::env::temp_dir().join(format!(
+            "legura-snapshot-{:032x}",
+            u128::from_le_bytes(random)
+        ));
+        let builder = fs::DirBuilder::new();
+        #[cfg(unix)]
+        let builder = {
+            use std::os::unix::fs::DirBuilderExt;
+            let mut builder = builder;
+            builder.mode(0o700);
+            builder
+        };
+        builder.create(&root)?;
+        Ok(Self(root))
+    }
+}
+impl Drop for SnapshotWorkspace {
+    fn drop(&mut self) {
+        // Only known files inside our newly created private workspace. Never
+        // recurse, follow links or remove an operator-provided directory.
+        for suffix in ["", "-wal", "-shm", "-journal"] {
+            let _ = fs::remove_file(self.0.join(format!("snapshot.sqlite{suffix}")));
+        }
+        let _ = fs::remove_dir(&self.0);
+    }
+}
+
+fn private_file(path: &Path) -> io::Result<File> {
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    options.open(path)
+}
+
+fn snapshot_live(source: &Path, target: &Path, budget: Duration) -> Result<()> {
+    ensure!(
+        fs::symlink_metadata(source)?.file_type().is_file(),
+        "Database must be a regular file"
+    );
+    let deadline = Instant::now() + budget;
+    let source = Connection::open_with_flags(source, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+    source.busy_timeout(budget.min(Duration::from_secs(5)))?;
+    source.execute_batch("PRAGMA trusted_schema = OFF; PRAGMA query_only = ON;")?;
+    let pages: u64 = source.pragma_query_value(None, "page_count", |row| row.get(0))?;
+    let page_size: u64 = source.pragma_query_value(None, "page_size", |row| row.get(0))?;
+    ensure!(
+        pages
+            .checked_mul(page_size)
+            .is_some_and(|bytes| bytes <= MAX_DATABASE_BYTES),
+        "Database exceeds snapshot limit"
+    );
+    let file = private_file(target)?;
+    let mut destination = Connection::open_with_flags(target, OpenFlags::SQLITE_OPEN_READ_WRITE)?;
+    destination.busy_timeout(budget.min(Duration::from_secs(5)))?;
+    {
+        let backup = Backup::new(&source, &mut destination)?;
+        loop {
+            ensure!(
+                Instant::now() < deadline,
+                "SQLite snapshot timed out; retry during a quiet period"
+            );
+            let state = backup.step(256)?;
+            ensure!(
+                file.metadata()?.len() <= MAX_DATABASE_BYTES,
+                "Database exceeds snapshot limit"
+            );
+            if matches!(state, StepResult::Done) {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+    destination.pragma_update(None, "journal_mode", "DELETE")?;
+    drop(destination);
+    file.sync_all()?;
+    Ok(())
+}
+
+/// Capture a consistent SQLite snapshot (including committed WAL pages), then
+/// archive only that snapshot's immutable referenced objects. This is not a
+/// complete CMS compatibility check or a restore implementation.
+pub fn backup(
+    database: &Path,
+    storage: &impl ObjectStorage,
+    store: &StoreId,
+    target: &Path,
+) -> Result<ArchiveReport> {
+    match fs::symlink_metadata(target) {
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        _ => bail!("Archive destination must be new"),
+    }
+    let workspace = SnapshotWorkspace::new()?;
+    let snapshot = workspace.0.join("snapshot.sqlite");
+    snapshot_live(database, &snapshot, Duration::from_secs(60))?;
+    pack_snapshot(&snapshot, storage, store, target)
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -195,16 +306,7 @@ pub fn pack_snapshot(
         database.query_row("PRAGMA integrity_check", [], |row| row.get::<_, String>(0))? == "ok",
         "Snapshot integrity check failed"
     );
-    let mut options = OpenOptions::new();
-    options.write(true).create_new(true);
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::OpenOptionsExt;
-        options.mode(0o600);
-    }
-    let output = options
-        .open(target)
-        .context("Archive destination must be new")?;
+    let output = private_file(target).context("Archive destination must be new")?;
     let result = (|| {
         let mut writer = Writer {
             builder: tar::Builder::new(output),
@@ -370,6 +472,34 @@ pub fn verify(path: &Path) -> Result<ArchiveReport> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn temporary_snapshot_is_private_cleaned_and_timeout_never_becomes_success() {
+        let workspace = SnapshotWorkspace::new().unwrap();
+        let root = workspace.0.clone();
+        let source = root.join("source.sqlite");
+        let connection = Connection::open(&source).unwrap();
+        connection
+            .execute_batch("CREATE TABLE marker(value TEXT); INSERT INTO marker VALUES ('keep')")
+            .unwrap();
+        drop(connection);
+        let target = root.join("snapshot.sqlite");
+        assert!(snapshot_live(&source, &target, Duration::ZERO).is_err());
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(
+                fs::metadata(&root).unwrap().permissions().mode() & 0o777,
+                0o700
+            );
+            assert_eq!(
+                fs::metadata(&target).unwrap().permissions().mode() & 0o777,
+                0o600
+            );
+        }
+        fs::remove_file(&source).unwrap();
+        drop(workspace);
+        assert!(!root.exists());
+    }
     #[test]
     fn manifest_rejects_duplicate_inventory_paths_and_unknown_fields() {
         let record = r#"{"bytes":1,"sha256":"a"}"#;

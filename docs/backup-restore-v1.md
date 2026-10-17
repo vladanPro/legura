@@ -8,7 +8,9 @@ backup whose manifest was also replaced.
 Database-only backup/verify/restore now explicitly refuses databases with media
 references instead of reporting success without their files. Empty media tables
 remain compatible. The read-only [media integrity check](media-integrity-check-v0.md)
-is a separate prerequisite; media-inclusive archives and restore are not ready yet.
+is a separate prerequisite. Experimental media-inclusive archive creation is
+documented in [archive V0](legura-archive-v0.md); restore is not implemented and
+does not replace this database-only V1 workflow.
 
 ## Build and Backup
 

@@ -1,9 +1,10 @@
 # .legura archive V0
 
-Experimental container for a **caller-provided frozen SQLite/media snapshot**.
-It is not a production installer, live-database backup command, CMS updater or
-restore implementation. Existing database-only backup and its refusal of media
-references remain unchanged.
+Source-pilot archive creation using either a SQLite-owned live snapshot or a
+caller-provided frozen SQLite/media snapshot. It is not a production installer,
+CMS updater or restore implementation. Existing database-only backup and its
+refusal of media references remain unchanged. Full product schema/migration
+compatibility certification is still a separate gate.
 
 ## Format decision
 
@@ -30,6 +31,7 @@ database itself remains sensitive: it can contain drafts and password hashes.
 
 ```sh
 cargo build --locked --release --bin legura-maintenance
+./target/release/legura-maintenance archive-backup data/legura.db local-media /private/media backup.legura
 ./target/release/legura-maintenance archive-pack-snapshot frozen.sqlite local-media /private/media backup.legura
 ./target/release/legura-maintenance archive-verify backup.legura
 ```
@@ -38,13 +40,29 @@ Use `.exe` on Windows and the actual Cargo target path if shared. Parent paths
 must exist and remain private/trusted. The output must be NEW; existing files or
 symlinks are never replaced. Unix files are 0600; Windows inherits operator ACLs.
 The commands use explicit arguments, not `.env` or process database configuration.
+The two creation commands above are alternatives, not sequential steps writing
+the same output file.
+
+`archive-backup` opens the supplied database read-only and uses SQLite's online
+backup API in 256-page steps, including committed WAL data. It captures a private
+standalone snapshot before reading its media references. Uploads committed after snapshot completion
+stay in the running database but are not mixed into the earlier archive.
+The current append-only object store must remain immutable; concurrent deletion
+or provider migration is not supported. Missing/changed objects fail the archive.
+
+Snapshots use a random new OS-temporary workspace (Unix directory 0700, file 0600;
+Windows inherits operator ACLs). Known snapshot/sidecar files are removed on normal
+return or error without recursive deletion. Crashes or cleanup failures can leave
+private residue; restrict the OS temporary directory too. No config is switched.
+A 60-second soft deadline, bounded busy waits and 1 GiB database limit refuse
+unbounded snapshot attempts; individual SQLite/OS calls cannot be hard-preempted.
 
 **Never pass the running application's DB file to archive-pack-snapshot.** The
 input must be a trusted standalone immutable snapshot, with the media schema and
 without WAL/SHM/journal sidecars. Sidecar absence alone does not prove that a DB is
 offline. Snapshot acquisition, quiet-period coordination and complete product
 schema compatibility checks are not supplied by this command. Do not improvise
-by copying a live `.db` file. The next slice owns SQLite backup-API integration.
+by copying a live `.db` file. Use `archive-backup` for SQLite-owned acquisition.
 
 Packing streams the database and then visits its referenced immutable objects
 through the existing media audit and bounded storage adapter. It hashes the exact
@@ -93,7 +111,14 @@ dangerous raw headers, oversize declarations, duplicate manifests/inventories,
 altered store/format/version and both operator CLI commands. Both Cargo lockfiles
 carry the archive dependency; no npm/runtime browser dependency is introduced.
 
-Next: create a consistent live SQLite snapshot, validate the full product schema,
-package its referenced objects, then implement recovery into NEW database/media
+Live-source tests keep committed data in WAL, add a second real upload after the
+private snapshot is captured and inspect the archive's SQLite/image set. Only
+the earlier upload is captured while the source retains both. Additional tests
+cover private temporary files, deadline failure/cleanup, live CLI no-clobber and
+missing-source refusal without creation. The HTTP/browser proof now creates and
+verifies an archive while the disposable CMS remains running, then confirms its
+protected library is still usable and row/object counts are unchanged.
+
+Next: validate the full product schema and implement recovery into NEW database/media
 paths with key preservation, semantic validation and no-clobber acceptance.
 Only after recovery is proven should operator media activation be considered.
