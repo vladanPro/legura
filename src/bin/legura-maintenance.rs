@@ -80,6 +80,11 @@ fn run() -> Result<()> {
         [command, archive] if command == "archive-verify" => {
             println!("{}", serde_json::to_string(&legura::backup_archive::verify(Path::new(archive))?)?);
         }
+        [command, archive, destination] if command == "archive-restore" => {
+            let report = legura::backup_archive::restore(Path::new(archive), Path::new(destination))?;
+            println!("{}", serde_json::to_string(&report)?);
+            eprintln!("Recovered to a NEW inactive directory. Full CMS migration compatibility is NOT checked. Do not switch configuration or start this database before that check; use independent session secrets.");
+        }
         [command, snapshot, store, root, archive] if command == "archive-pack-snapshot" => {
             let store = legura::storage::StoreId::parse(store.to_str().context("store ID must be UTF-8")?)?;
             let storage = legura::storage::LocalStorage::open(Path::new(root), store.clone(), legura::storage::MAX_OBJECT_BYTES)?;
@@ -101,7 +106,7 @@ fn run() -> Result<()> {
             " | media-check <database-file> <store-id> <private-media-directory>",
             " | archive-pack-snapshot <frozen-snapshot-file> <store-id> <private-media-directory> <new-archive>",
             " | archive-backup <database-file> <store-id> <private-media-directory> <new-archive>",
-            " | archive-verify <archive>"
+            " | archive-verify <archive> | archive-restore <archive> <new-private-directory>"
         )),
     }
     Ok(())

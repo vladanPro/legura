@@ -82,8 +82,10 @@ file-inclusive recovery remains incomplete. No media is activated here.
 
 An experimental [`.legura` archive container](docs/legura-archive-v0.md) can package
 an explicitly supplied frozen snapshot or capture live SQLite through its backup
-API, including referenced images. Full product compatibility checks, restore and
-operator activation are not included.
+API, including referenced images. Inactive recovery into a NEW private directory
+validates SQLite and exact media references without switching configuration.
+Full product migration/content compatibility checks and operator activation are
+not included; a successful recovery receipt is not startup certification.
 
 ## Product
 

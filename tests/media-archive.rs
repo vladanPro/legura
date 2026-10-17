@@ -521,3 +521,232 @@ fn maintenance_cli_packs_and_verifies_without_reading_environment_configuration(
     assert!(checked.status.success());
     assert_eq!(packed.stdout, checked.stdout);
 }
+
+#[test]
+fn recovery_preserves_keys_bytes_and_source_without_activating_configuration() {
+    let fixture = Fixture::new();
+    let key = fixture.upload();
+    let original_db = fs::read(fixture.0.join("snapshot.sqlite")).unwrap();
+    let original_object = fs::read(fixture.0.join("objects").join(&key)).unwrap();
+    let report = fixture.pack("site.legura").unwrap();
+    let target = fixture.0.join("recovered");
+    assert_eq!(
+        backup_archive::restore(&fixture.0.join("site.legura"), &target).unwrap(),
+        report
+    );
+    assert_eq!(
+        fs::read(target.join("database.sqlite")).unwrap(),
+        original_db
+    );
+    let object = target.join("media/local-media").join(&key);
+    assert_eq!(fs::read(&object).unwrap(), original_object);
+    assert_eq!(
+        fs::read(fixture.0.join("snapshot.sqlite")).unwrap(),
+        original_db
+    );
+    assert_eq!(
+        fs::read(fixture.0.join("objects").join(&key)).unwrap(),
+        original_object
+    );
+    let receipt: serde_json::Value =
+        serde_json::from_slice(&fs::read(target.join("recovery.json")).unwrap()).unwrap();
+    assert_eq!(receipt["status"], "recovered-not-activated");
+    assert_eq!(receipt["cms_compatibility"], "not-checked");
+    assert_eq!(receipt["inventory"]["files"], 2);
+    assert!(!target.join(".env").exists());
+    assert_eq!(fs::read_dir(&target).unwrap().count(), 3);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        for directory in [
+            &target,
+            &target.join("media"),
+            &target.join("media/local-media"),
+        ] {
+            assert_eq!(
+                fs::metadata(directory).unwrap().permissions().mode() & 0o777,
+                0o700
+            );
+        }
+        for file in [
+            &object,
+            &target.join("database.sqlite"),
+            &target.join("recovery.json"),
+        ] {
+            assert_eq!(
+                fs::metadata(file).unwrap().permissions().mode() & 0o777,
+                0o600
+            );
+        }
+    }
+    // Even an empty existing directory is not ours to merge into or clean up.
+    let empty = fixture.0.join("existing-empty");
+    fs::create_dir(&empty).unwrap();
+    for destination in [&empty, &target, &fixture.0.join("snapshot.sqlite")] {
+        assert!(backup_archive::restore(&fixture.0.join("site.legura"), destination).is_err());
+    }
+    assert!(empty.is_dir());
+    assert_eq!(fs::read(object).unwrap(), original_object);
+}
+
+// Recompute every hash so these fixtures pass container verification. Recovery
+// must independently validate the SQLite/media relationship, not trust hashes.
+fn rewritten_bundle(
+    fixture: &Fixture,
+    mutate: impl FnOnce(&mut std::collections::BTreeMap<String, Vec<u8>>),
+) -> PathBuf {
+    use sha2::{Digest, Sha256};
+    let mut payloads = std::collections::BTreeMap::new();
+    let source = fs::read(fixture.0.join("site.legura")).unwrap();
+    for entry in tar::Archive::new(source.as_slice()).entries().unwrap() {
+        let mut entry = entry.unwrap();
+        let path = entry.path().unwrap().to_str().unwrap().to_owned();
+        if path != "manifest.json" {
+            let mut bytes = Vec::new();
+            entry.read_to_end(&mut bytes).unwrap();
+            payloads.insert(path, bytes);
+        }
+    }
+    mutate(&mut payloads);
+    let files: serde_json::Map<String, serde_json::Value> = payloads
+        .iter()
+        .map(|(path, bytes)| {
+            (
+                path.clone(),
+                serde_json::json!({
+                    "bytes": bytes.len(), "sha256": format!("{:x}", Sha256::digest(bytes))
+                }),
+            )
+        })
+        .collect();
+    let manifest = serde_json::to_vec(&serde_json::json!({
+        "format": 1, "product": "legura", "version": env!("CARGO_PKG_VERSION"),
+        "store": "local-media", "files": files,
+    }))
+    .unwrap();
+    let output = fixture.0.join("rewritten.legura");
+    let mut builder = tar::Builder::new(fs::File::create(&output).unwrap());
+    for (path, bytes) in payloads
+        .iter()
+        .map(|(p, b)| (p.as_str(), b.as_slice()))
+        .chain(std::iter::once(("manifest.json", manifest.as_slice())))
+    {
+        let mut header = tar::Header::new_ustar();
+        header.set_size(bytes.len() as u64);
+        header.set_mode(0o600);
+        builder.append_data(&mut header, path, bytes).unwrap();
+    }
+    builder.finish().unwrap();
+    output
+}
+
+#[test]
+fn semantic_recovery_rejects_missing_extra_changed_objects_and_invalid_sqlite() {
+    let fixture = Fixture::new();
+    let key = fixture.upload();
+    fixture.pack("site.legura").unwrap();
+    let object = format!("media/local-media/{key}");
+    for mutation in [
+        "missing",
+        "extra",
+        "changed",
+        "sqlite",
+        "foreign-key",
+        "duplicate-id",
+    ] {
+        let archive = rewritten_bundle(&fixture, |payloads| match mutation {
+            "missing" => {
+                payloads.remove(&object);
+            }
+            "extra" => {
+                payloads.insert(format!("media/local-media/{}", "f".repeat(64)), vec![1]);
+            }
+            "changed" => {
+                payloads.insert(object.clone(), vec![1]);
+            }
+            "sqlite" => {
+                payloads.insert("database.sqlite".into(), b"not SQLite".to_vec());
+            }
+            "foreign-key" | "duplicate-id" => {
+                let path = fixture.0.join("edited.sqlite");
+                fs::write(&path, &payloads["database.sqlite"]).unwrap();
+                let database = Connection::open(&path).unwrap();
+                if mutation == "foreign-key" {
+                    database.execute_batch("PRAGMA foreign_keys=OFF; CREATE TABLE parent(id INTEGER PRIMARY KEY); CREATE TABLE child(parent_id INTEGER REFERENCES parent(id)); INSERT INTO child VALUES(99)").unwrap();
+                } else {
+                    database.execute_batch("CREATE TABLE copied AS SELECT * FROM legura_media; DROP TABLE legura_media; ALTER TABLE copied RENAME TO legura_media; INSERT INTO legura_media SELECT * FROM legura_media").unwrap();
+                    // Keep payload counts equal despite duplicate DB references.
+                    payloads.insert(format!("media/local-media/{}", "f".repeat(64)), vec![1]);
+                }
+                drop(database);
+                payloads.insert("database.sqlite".into(), fs::read(&path).unwrap());
+                fs::remove_file(path).unwrap();
+            }
+            _ => unreachable!(),
+        });
+        assert!(backup_archive::verify(&archive).is_ok(), "{mutation}");
+        let destination = fixture.0.join("refused");
+        assert!(
+            backup_archive::restore(&archive, &destination).is_err(),
+            "{mutation}"
+        );
+        assert!(
+            !destination.exists(),
+            "failed recovery left output: {mutation}"
+        );
+    }
+    assert!(fixture.0.join("objects").join(&key).exists());
+}
+
+#[test]
+fn recovery_cli_supports_empty_media_and_refuses_repeated_or_corrupt_input() {
+    let fixture = Fixture::new();
+    let report = fixture.pack("site.legura").unwrap();
+    let target = fixture.0.join("cli-recovered");
+    let invoke = || {
+        Command::new(env!("CARGO_BIN_EXE_legura-maintenance"))
+            .arg("archive-restore")
+            .arg(fixture.0.join("site.legura"))
+            .arg(&target)
+            .env("AX_SECRET_DB_URL", "must-not-be-used")
+            .output()
+            .unwrap()
+    };
+    let output = invoke();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert_eq!(
+        serde_json::from_slice::<serde_json::Value>(&output.stdout).unwrap()["files"],
+        report.files
+    );
+    assert!(String::from_utf8_lossy(&output.stderr).contains("NOT checked"));
+    assert!(!invoke().status.success());
+    assert!(target.join("recovery.json").exists());
+    let corrupt = fixture.0.join("corrupt.legura");
+    fs::write(
+        &corrupt,
+        raw_archive("../escape", tar::EntryType::Regular, 1),
+    )
+    .unwrap();
+    let destination = fixture.0.join("no-output");
+    assert!(backup_archive::restore(&corrupt, &destination).is_err());
+    assert!(!destination.exists());
+    assert!(!fixture.0.join("escape").exists());
+}
+
+#[cfg(unix)]
+#[test]
+fn recovery_refuses_symlink_destinations_without_touching_their_targets() {
+    let fixture = Fixture::new();
+    fixture.pack("site.legura").unwrap();
+    let target = fixture.0.join("existing");
+    fs::create_dir(&target).unwrap();
+    let link = fixture.0.join("link");
+    std::os::unix::fs::symlink(&target, &link).unwrap();
+    assert!(backup_archive::restore(&fixture.0.join("site.legura"), &link).is_err());
+    assert!(fs::symlink_metadata(link).unwrap().file_type().is_symlink());
+    assert_eq!(fs::read_dir(target).unwrap().count(), 0);
+}

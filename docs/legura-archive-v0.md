@@ -2,7 +2,8 @@
 
 Source-pilot archive creation using either a SQLite-owned live snapshot or a
 caller-provided frozen SQLite/media snapshot. It is not a production installer,
-CMS updater or restore implementation. Existing database-only backup and its
+CMS updater or installation-ready restore. Inactive recovery into a new directory
+is available below. Existing database-only backup and its
 refusal of media references remain unchanged. Full product schema/migration
 compatibility certification is still a separate gate.
 
@@ -34,6 +35,7 @@ cargo build --locked --release --bin legura-maintenance
 ./target/release/legura-maintenance archive-backup data/legura.db local-media /private/media backup.legura
 ./target/release/legura-maintenance archive-pack-snapshot frozen.sqlite local-media /private/media backup.legura
 ./target/release/legura-maintenance archive-verify backup.legura
+./target/release/legura-maintenance archive-restore backup.legura /private/new-recovery
 ```
 
 Use `.exe` on Windows and the actual Cargo target path if shared. Parent paths
@@ -92,9 +94,52 @@ the manifest and TAR overhead.
 SHA-256 detects corruption, not an attacker replacing both payloads and manifest.
 Container verification does not execute or certify SQLite contents, check the
 CMS's complete schema/migration history or establish that a hostile archive's
-database references match its media inventory. Those semantic checks belong to
-trusted snapshot creation and the future restore validator. Treat bundles as
+database references match its media inventory. The recovery command performs
+the SQLite/media semantic checks described below. Treat bundles as
 private, trusted operator material, not authenticated remote input.
+
+## Inactive recovery boundary
+
+`archive-restore` verifies the complete container before creating a NEW private
+directory. It never merges into an existing directory, including an empty one,
+or overwrites an existing file/symlink. The parent directory and source archive
+must be trusted and remain operator-controlled throughout the operation. Unix
+directories use 0700 and payload/receipt files 0600; Windows inherits parent ACLs.
+
+The same open archive handle is scanned again during copying, with all entry
+limits and checksums rechecked. Only the exact database and canonical media paths
+are written with create-new semantics; TAR permissions, links and extraction
+helpers are not used. Object keys and logical store identity are preserved.
+
+Recovered layout:
+
+```text
+new-recovery/
+  database.sqlite
+  media/<store-id>/<original-object-key>
+  recovery.json
+```
+
+Before returning success, the command checks SQLite integrity, foreign keys,
+unique media IDs and every media row against its actual recovered bytes. Missing,
+changed or additional/unreferenced archive objects fail recovery, even when an
+altered archive has self-consistent checksums. The image audit checks metadata
+bounds and stored hashes, not a fresh decode of every image.
+
+`recovery.json` is written last with `status: recovered-not-activated` and
+`cms_compatibility: not-checked`. It is a data recovery receipt, NOT permission to
+start a CMS. Complete product schema/migration history and rich-text compatibility
+remain separate gates; no migrations, executable code, `.env`, service settings
+or session secrets are restored or switched. Do not start this database before
+those compatibility checks. Any later activation requires independent session
+secrets so old sessions cannot resume.
+
+On ordinary failure, cleanup removes only files/directories created by this
+attempt, nonrecursively. Crashes, permission changes or cleanup failures can leave
+a partial private directory; never treat directory existence as success and do
+not retry by overwriting it. The receipt/file syncs are not a full power-loss
+durability guarantee. Protection against a malicious host owner changing the
+parent directory, files or archive in place is outside this local operator tool.
 
 ## Acceptance and next gate
 
@@ -119,6 +164,13 @@ missing-source refusal without creation. The HTTP/browser proof now creates and
 verifies an archive while the disposable CMS remains running, then confirms its
 protected library is still usable and row/object counts are unchanged.
 
-Next: validate the full product schema and implement recovery into NEW database/media
-paths with key preservation, semantic validation and no-clobber acceptance.
-Only after recovery is proven should operator media activation be considered.
+Recovery tests cover byte/key preservation, no-clobber of files and directories,
+empty media, source preservation, Unix permissions/symlinks and CLI output. Bundles
+with recomputed valid checksums but missing/extra/changed objects, duplicate IDs,
+invalid SQLite or foreign key violations are refused and ordinary partial output
+is removed. The disposable HTTP proof also recovers the live archive, independently
+audits recovered images and compares identity, credentials, posts, media and
+migration rows without switching the running application.
+
+Next: full product schema/migration and rich-text compatibility certification,
+then a separately approved activation procedure. Operator media remains inactive.
