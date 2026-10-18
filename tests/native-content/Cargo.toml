@@ -8,9 +8,9 @@ publish = false
 
 [dependencies]
 legura = { path = "../.." }
-axonyx-runtime = "=0.6.11"
+axonyx-runtime = { git = "https://github.com/vladanPro/axonyx-runtime", rev = "3e27ed4c44d54dd3ea6fbaf1e68016f78d32f1dd" }
 serde_json = "1"
 image = { version = "0.25.10", default-features = false, features = ["png"] }
 
 [build-dependencies]
-axonyx-core = "=0.6.9"
+axonyx-core = { git = "https://github.com/vladanPro/axonyx-runtime", rev = "3e27ed4c44d54dd3ea6fbaf1e68016f78d32f1dd" }

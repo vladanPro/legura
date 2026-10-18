@@ -62,6 +62,7 @@
 .legura-hint { color: var(--ax-text-muted); font-size: 0.875rem; overflow-wrap: anywhere; }
 .legura-media-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem; width: 100%; min-height: 8rem; aspect-ratio: 16 / 9; box-sizing: border-box; margin-bottom: 1rem; padding: 1rem; border: 1px dashed var(--ax-border-strong); border-radius: var(--ax-radius-md); background: var(--ax-surface-2); color: var(--ax-text-muted); text-align: center; font-size: 0.875rem; }
 .legura-media-placeholder svg { flex: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.legura-media-preview { display: block; width: 100%; min-height: 8rem; aspect-ratio: 16 / 9; object-fit: contain; box-sizing: border-box; margin-bottom: 1rem; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-md); background: var(--ax-surface-2); }
 .legura-form-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 0.75rem; }
 .legura-form :is(input, textarea, select) { min-width: 0; max-width: 100%; }
 .legura-form .ax-textarea { min-height: 15rem; }

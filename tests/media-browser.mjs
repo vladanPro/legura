@@ -53,10 +53,14 @@ try {
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Expanded technical details overflow');
         await details.locator('summary').click();
         assert.equal(await code.isVisible(), false);
-        const placeholders = page.getByRole('img', { name: 'Preview unavailable', exact: true });
-        assert.equal(await placeholders.count(), 10);
-        assert.ok(await placeholders.first().isVisible());
-        assert.ok(await placeholders.first().evaluate(node => node.getBoundingClientRect().height >= 128));
+        const previews = page.getByRole('img', { name: 'Stored image preview', exact: true });
+        assert.equal(await previews.count(), 10);
+        const preview = card.locator('img');
+        await preview.scrollIntoViewIfNeeded();
+        await preview.evaluate(node => node.decode());
+        assert.equal(await preview.getAttribute('src'), `/api/media/${id}`);
+        assert.ok(await preview.evaluate(node => node.complete && node.naturalWidth === 1 && node.naturalHeight === 1));
+        assert.ok(await preview.evaluate(node => node.getBoundingClientRect().height >= 128));
         const selected = page.locator('a[href="/admin/media"][aria-current="true"]');
         assert.equal(await selected.count(), 1);
         assert.ok(await page.getByLabel('Image', { exact: true }).isVisible());

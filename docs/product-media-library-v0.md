@@ -2,9 +2,9 @@
 
 The protected product route is `/admin/media`. It composes the existing Foundry
 administration shell, empty state, image upload and ten-item paginated grid.
-Technical IDs stay in collapsed details. Images remain private placeholders;
-there is no binary delivery endpoint, post attachment, image deletion or public
-URL in this slice.
+Technical IDs stay in collapsed details. The source-only
+[private HTTP extension](private-media-http-v0.md) supplies authenticated image
+previews. Post attachments, image deletion and public URLs remain separate.
 
 ## Explicit Opt-In
 

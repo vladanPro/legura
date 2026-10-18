@@ -7,6 +7,11 @@ pub fn register(registry: &mut AxNativeRegistry) -> Result<(), AxNativeError> {
         &axonyx_runtime::backend::AxEnv::from_env(),
         &std::env::current_dir().map_err(|_| AxNativeError::Rejected)?,
     )?;
+    legura::media_config::register_private_reads(
+        registry,
+        &axonyx_runtime::backend::AxEnv::from_env(),
+        &std::env::current_dir().map_err(|_| AxNativeError::Rejected)?,
+    )?;
     legura::pagination::register(registry)?;
     legura::content_loading::register(registry)?;
     registry.register(

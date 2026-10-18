@@ -67,8 +67,7 @@ checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 [[package]]
 name = "axonyx-core"
 version = "0.6.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1994ca472d337e264e986db6bbdaee52d8726d92f3511b81e9d8d63b6a829595"
+source = "git+https://github.com/vladanPro/axonyx-runtime?rev=3e27ed4c44d54dd3ea6fbaf1e68016f78d32f1dd#3e27ed4c44d54dd3ea6fbaf1e68016f78d32f1dd"
 dependencies = [
  "axonyx-macros",
  "proc-macro2",
@@ -80,8 +79,7 @@ dependencies = [
 [[package]]
 name = "axonyx-macros"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9fe534e14a95177adc9839034f155fe2d6a1ae0a0a381daf172bb637aa7036f"
+source = "git+https://github.com/vladanPro/axonyx-runtime?rev=3e27ed4c44d54dd3ea6fbaf1e68016f78d32f1dd#3e27ed4c44d54dd3ea6fbaf1e68016f78d32f1dd"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -91,8 +89,7 @@ dependencies = [
 [[package]]
 name = "axonyx-runtime"
 version = "0.6.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5da717e1ecc1b9c28cb42662382f8a3f2728063da142359e556dc18d2ec1485"
+source = "git+https://github.com/vladanPro/axonyx-runtime?rev=3e27ed4c44d54dd3ea6fbaf1e68016f78d32f1dd#3e27ed4c44d54dd3ea6fbaf1e68016f78d32f1dd"
 dependencies = [
  "argon2",
  "axonyx-core",

@@ -4,6 +4,29 @@ $encoded = & $python.Source -c 'import struct,zlib,base64;chunk=lambda k,b:struc
 if ($LASTEXITCODE -ne 0) { throw "Cannot create isolated image bytes" }
 $validImage = [Convert]::FromBase64String($encoded)
 
+function Assert-PrivateMediaRead([string]$Id, [string]$Cookie, [int]$Status = 200, [string]$Query = '') {
+  $request = [Net.Http.HttpRequestMessage]::new([Net.Http.HttpMethod]::Get, "$baseUrl/api/media/$Id$Query")
+  if ($Cookie) { $request.Headers.Add('Cookie', $Cookie) }
+  try {
+    $response = $client.SendAsync($request).GetAwaiter().GetResult()
+    try {
+      if ([int]$response.StatusCode -ne $Status) { throw "Private media expected $Status, got $([int]$response.StatusCode)" }
+      if ($response.Headers.CacheControl.ToString() -notmatch 'private' -or $response.Headers.CacheControl.ToString() -notmatch 'no-store') { throw 'Private image is cacheable' }
+      if (($response.Headers.GetValues('X-Content-Type-Options') -join '') -ne 'nosniff' -or $response.Headers.Contains('Set-Cookie')) { throw 'Private image header policy failed' }
+      if (($response.Headers.GetValues('Cross-Origin-Resource-Policy') -join '') -ne 'same-origin') { throw 'Private image cross-origin policy failed' }
+      $bytes = $response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
+      if ($Status -eq 200) {
+        $expected = [IO.File]::ReadAllBytes((Join-Path $mediaRoot $Id))
+        if ($response.Content.Headers.ContentType.MediaType -ne 'image/png' -or [Convert]::ToBase64String($bytes) -ne [Convert]::ToBase64String($expected)) { throw 'Private image bytes or MIME changed' }
+      } else {
+        $text = [Text.Encoding]::UTF8.GetString($bytes)
+        $expected = switch ($Status) { 403 { 'forbidden' }; 404 { 'not found' }; 500 { 'binary response unavailable' } }
+        if ($text -ne $expected) { throw 'Private image error exposed implementation details' }
+      }
+    } finally { $response.Dispose() }
+  } finally { $request.Dispose() }
+}
+
 function Assert-MediaCounts([int]$Rows, [int]$Files) {
   $count = & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);print(d.execute("select count(*) from legura_media").fetchone()[0]);d.close()' $db
   if ($LASTEXITCODE -ne 0 -or $count -ne "$Rows") { throw "Unexpected media row count: $count != $Rows" }
@@ -63,6 +86,7 @@ try {
   $disabled = Invoke-Request -Path '/admin' -Headers @{ Cookie = $cookie }
   if ($disabled.Body.Contains('href="/admin/media"')) { throw 'Disabled Media leaked into product navigation' }
   Invoke-Request -Path '/admin/media' -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
+  Assert-PrivateMediaRead ('a' * 64) $cookie 403
   $disabledProof = Get-Proof -Cookie $cookie
   Send-Media -Bytes $validImage -Headers $disabledProof -Status 403 | Out-Null
   Send-Media -Bytes $validImage -Headers $disabledProof -Status 403 -Native | Out-Null
@@ -129,6 +153,18 @@ if (!$result.ok -or $result.value.storage -ne 'local-media' -or $result.value.co
 $mediaId = $result.value.id
 Assert-MediaCounts -Rows 1 -Files 1
 Assert-StoredMedia
+Assert-PrivateMediaRead $mediaId '' 403
+Assert-PrivateMediaRead $mediaId 'session=forged' 403 '?subject=owner&role=admin'
+Assert-PrivateMediaRead $mediaId $cookie
+Assert-PrivateMediaRead ('0' * 64) $cookie 404
+Assert-PrivateMediaRead 'not-an-object-key' $cookie 404
+$objectPath = Join-Path $mediaRoot $mediaId
+$canonical = [IO.File]::ReadAllBytes($objectPath)
+try {
+  [IO.File]::WriteAllBytes($objectPath, [Text.Encoding]::UTF8.GetBytes('corrupted-private-image'))
+  Assert-PrivateMediaRead $mediaId $cookie 500
+} finally { [IO.File]::WriteAllBytes($objectPath, $canonical) }
+Assert-PrivateMediaRead $mediaId $cookie
 $page = Invoke-Request -Path '/admin/media' -Headers @{ Cookie = $cookie }
 if (!$page.Body.Contains($mediaId) -or $page.Headers['Cache-Control'] -notmatch 'no-store') { throw "Guarded library rendering/caching failed" }
 Invoke-Request -Path "/private-media/$mediaId" -Status 404 | Out-Null

@@ -92,6 +92,41 @@ pub struct MediaAvailability {
     pub available: bool,
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct MediaReadInput {
+    id: String,
+}
+
+/// The runtime supplies a verified subject, never an input field or browser role.
+pub fn register_private_reads(
+    registry: &mut AxNativeRegistry,
+    env: &AxEnv,
+    base: &Path,
+) -> Result<(), AxNativeError> {
+    use axonyx_runtime::native_response::AxNativeResponseError;
+    let media = configured_media(env, base).map_err(|_| AxNativeError::Rejected)?;
+    registry.register_private_response(
+        "legura.media.read",
+        crate::storage::MAX_OBJECT_BYTES as usize,
+        move |context, input: MediaReadInput| {
+            let media = media.as_ref().ok_or(AxNativeResponseError::Forbidden)?;
+            media
+                .read_for_administrator(context.subject(), &input.id)
+                .map_err(|error| match error {
+                    crate::media_read::MediaReadError::Forbidden => {
+                        AxNativeResponseError::Forbidden
+                    }
+                    crate::media_read::MediaReadError::NotFound => AxNativeResponseError::NotFound,
+                    crate::media_read::MediaReadError::Unavailable => {
+                        AxNativeResponseError::Unavailable
+                    }
+                })?
+                .into_native_response()
+        },
+    )
+}
+
 /// Server-owned startup snapshot for presentation only, never an upload grant.
 /// Invalid configuration aborts registration instead of masquerading as disabled.
 pub fn register_availability(
@@ -265,6 +300,90 @@ mod tests {
             content_type: None,
             bytes,
         }
+    }
+
+    #[test]
+    fn private_native_reads_recheck_real_sessions_authority_and_disabled_storage() {
+        use axonyx_runtime::backend::AxRuntimeEnvAccess;
+        use axonyx_runtime::server::AxHttpRequest;
+        let fixture = Fixture::new();
+        let env = fixture
+            .env()
+            .with_secret("session_key", "isolated-media-read-session-secret")
+            .with_secret("session_cookie_secure", "false");
+        let connection = Connection::open(fixture.0.join("cms.db")).unwrap();
+        connection
+            .execute(
+                "INSERT INTO legura_users VALUES ('owner', 'owner@example.test', 'admin')",
+                [],
+            )
+            .unwrap();
+        let upload = configure(&env, &fixture.0, Arc::new(Fallback::default())).unwrap();
+        let image = upload.save_file(MEDIA_CAPABILITY, &incoming()).unwrap();
+        let bytes = fs::read(fixture.0.join("private-media").join(&image.id)).unwrap();
+        let mut registry = AxNativeRegistry::default();
+        register_private_reads(&mut registry, &env, &fixture.0).unwrap();
+        let runtime = runtime_from_env(env.clone())
+            .unwrap()
+            .with_native_functions(registry);
+        let (_, cookie) = runtime
+            .runtime_create_session("owner", Default::default())
+            .unwrap();
+        let request = AxHttpRequest::new("GET", "/api/media/image")
+            .with_header("Cookie", format!("{}={}", cookie.name, cookie.value));
+        let input = serde_json::json!({"id": image.id});
+        let read = || {
+            runtime
+                .runtime_native_private_response(&request, "legura.media.read", input.clone())
+                .unwrap()
+        };
+        let response = read();
+        assert_eq!(response.status, 200);
+        assert_eq!(response.body.into_bytes(), bytes);
+        assert!(runtime
+            .runtime_native_private_response(
+                &request,
+                "legura.media.read",
+                serde_json::json!({"id": image.id, "subject": "owner"})
+            )
+            .is_err());
+        connection
+            .execute("DELETE FROM legura_users WHERE id='owner'", [])
+            .unwrap();
+        assert_eq!(read().status, 403);
+        connection
+            .execute(
+                "INSERT INTO legura_users VALUES ('owner', 'owner@example.test', 'admin')",
+                [],
+            )
+            .unwrap();
+        assert_eq!(read().status, 200);
+        runtime.runtime_destroy_session(&request).unwrap();
+        assert_eq!(read().status, 403);
+
+        let mut disabled = env;
+        disabled
+            .secret
+            .insert("media_driver".into(), "disabled".into());
+        disabled.secret.remove("media_root");
+        disabled.secret.remove("media_store_id");
+        let mut registry = AxNativeRegistry::default();
+        register_private_reads(&mut registry, &disabled, Path::new("unused")).unwrap();
+        let runtime = runtime_from_env(disabled)
+            .unwrap()
+            .with_native_functions(registry);
+        let (_, cookie) = runtime
+            .runtime_create_session("owner", Default::default())
+            .unwrap();
+        let request = AxHttpRequest::new("GET", "/api/media/image")
+            .with_header("Cookie", format!("{}={}", cookie.name, cookie.value));
+        assert_eq!(
+            runtime
+                .runtime_native_private_response(&request, "legura.media.read", input)
+                .unwrap()
+                .status,
+            403
+        );
     }
 
     #[test]
