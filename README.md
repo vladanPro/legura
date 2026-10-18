@@ -71,6 +71,9 @@ The [opt-in Media library](docs/product-media-library-v0.md) adds private image
 uploads and bounded listing at `/admin/media`, using the existing local storage
 foundation. It stays disabled until an operator configures valid private storage.
 Private image delivery, post attachments and deletion are separate work.
+The [private read service](docs/private-media-read-v0.md) validates referenced
+images and constructs binary responses in Rust; the `.ax` HTTP bridge is not yet
+implemented, so library previews remain placeholders.
 The [Media availability contract](docs/media-availability-v0.md) supplies a
 validated, server-owned boolean for product navigation, not an upload grant.
 
