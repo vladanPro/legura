@@ -4,6 +4,7 @@ import { AdminFrame } from "@/components/AdminFrame"
 
 page EditPost() {
   data post: PostForEditor = loadEditablePost(params.id)
+  data mediaAvailable: Bool = loadAdminMediaAvailability()
   return ASX {
     <Head>
       <Link
@@ -12,7 +13,7 @@ page EditPost() {
       />
       <Script src="/content-editor/host.js" type="module" />
     </Head>
-    <AdminFrame section="posts">
+    <AdminFrame section="posts" mediaAvailable={mediaAvailable}>
       <Card title="Edit post">
         <form
           method="post"

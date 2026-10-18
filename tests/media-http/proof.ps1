@@ -1,5 +1,5 @@
 # Dot-sourced only inside smoke-auth's disposable, session-backed HTTP fixture.
-$mediaAction = "/__axonyx/action?path=%2Fadmin%2Fmedia-proof&name=UploadLibraryImage"
+$mediaAction = "/__axonyx/action?path=%2Fadmin%2Fmedia&name=UploadLibraryImage"
 $encoded = & $python.Source -c 'import struct,zlib,base64;chunk=lambda k,b:struct.pack(">I",len(b))+k+b+struct.pack(">I",zlib.crc32(k+b));data=b"\x89PNG\r\n\x1a\n"+chunk(b"IHDR",struct.pack(">IIBBBBB",1,1,8,6,0,0,0))+chunk(b"IDAT",zlib.compress(bytes([0,70,120,200,255])))+chunk(b"IEND",b"")+b"<script>not-an-image-payload</script>";print(base64.b64encode(data).decode())'
 if ($LASTEXITCODE -ne 0) { throw "Cannot create isolated image bytes" }
 $validImage = [Convert]::FromBase64String($encoded)
@@ -52,7 +52,32 @@ for key, store, mime, size, width, height, digest in rows:
   if ($LASTEXITCODE -ne 0) { throw "Stored media metadata/hash/canonical bytes mismatch" }
 }
 
-Invoke-Request -Path "/admin/media-proof" -Status 403 | Out-Null
+Invoke-Request -Path "/admin/media" -Status 403 | Out-Null
+# Fresh migrated installation remains unavailable until explicit local opt-in.
+Stop-Fixture
+$env:AX_SECRET_MEDIA_DRIVER = 'disabled'
+Remove-Item -LiteralPath 'Env:AX_SECRET_MEDIA_ROOT' -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath 'Env:AX_SECRET_MEDIA_STORE_ID' -ErrorAction SilentlyContinue
+try {
+  Start-Fixture
+  $disabled = Invoke-Request -Path '/admin' -Headers @{ Cookie = $cookie }
+  if ($disabled.Body.Contains('href="/admin/media"')) { throw 'Disabled Media leaked into product navigation' }
+  Invoke-Request -Path '/admin/media' -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
+  $disabledProof = Get-Proof -Cookie $cookie
+  Send-Media -Bytes $validImage -Headers $disabledProof -Status 403 | Out-Null
+  Send-Media -Bytes $validImage -Headers $disabledProof -Status 403 -Native | Out-Null
+  Assert-MediaCounts -Rows 0 -Files 0
+} finally {
+  Stop-Fixture
+  $env:AX_SECRET_MEDIA_DRIVER = 'local'
+  $env:AX_SECRET_MEDIA_ROOT = $mediaRoot
+  $env:AX_SECRET_MEDIA_STORE_ID = 'local-media'
+  Start-Fixture
+}
+foreach ($path in @('/admin', '/admin/posts', '/admin/posts/new', '/admin/posts/new/plain')) {
+  $navigation = Invoke-Request -Path $path -Headers @{ Cookie = $cookie }
+  if (!$navigation.Body.Contains('href="/admin/media"')) { throw "Enabled Media missing from $path navigation" }
+}
 $anonymous = Get-Proof
 Send-Media -Bytes $validImage -Headers $anonymous -Status 403 | Out-Null
 Send-Media -Bytes $validImage -Headers $anonymous -Status 403 -Native | Out-Null
@@ -61,14 +86,14 @@ Send-Media -Bytes $validImage -Headers @{ Cookie = $cookie; Origin = $baseUrl } 
 Send-Media -Bytes $validImage -Headers @{ Cookie = $cookie; Origin = $baseUrl; 'X-Axonyx-CSRF' = 'forged' } -Status 403 | Out-Null
 Send-Media -Bytes $validImage -Headers @{ Cookie = $cookie; Origin = 'https://attacker.example'; 'X-Axonyx-CSRF' = $sessionProof['X-Axonyx-CSRF'] } -Status 403 | Out-Null
 Assert-MediaCounts -Rows 0 -Files 0
-$empty = Invoke-Request -Path '/admin/media-proof?page=999' -Headers @{ Cookie = $cookie }
+$empty = Invoke-Request -Path '/admin/media?page=999' -Headers @{ Cookie = $cookie }
 if (!$empty.Body.Contains('No images yet') -or !$empty.Body.Contains('data-media-page="1"') -or !$empty.Body.Contains('data-media-total="0"')) { throw "Empty media library is not bounded" }
 if (!$empty.Body.Contains('data-media-available="true"')) { throw 'Validated Media availability did not reach the guarded compiled page' }
 foreach ($private in @($mediaRoot, $db, $env:AX_SECRET_SESSION_KEY, $env:AX_SECRET_SETUP_TOKEN)) {
   if ($private -and ($empty.Body.Contains($private) -or $empty.Body.Contains($private.Replace('\', '/')))) { throw 'Media availability leaked private configuration' }
 }
 if (!$empty.Body.Contains('aria-label="No image selected"')) { throw "Empty media library has no accessible image placeholder" }
-if ($empty.Body -notmatch 'href="/admin/media-proof"[^>]*aria-current="true"|aria-current="true"[^>]*href="/admin/media-proof"') { throw "Media sidebar item is not selected" }
+if ($empty.Body -notmatch 'href="/admin/media"[^>]*aria-current="true"|aria-current="true"[^>]*href="/admin/media"') { throw "Media sidebar item is not selected" }
 
 foreach ($bytes in @([Text.Encoding]::UTF8.GetBytes('<svg onload="alert(1)"/>'), [byte[]]::new(0), [byte[]]::new(8388609))) {
   $response = Send-Media -Bytes $bytes -Headers $sessionProof -Status 422
@@ -83,7 +108,7 @@ $padding = 0
 if ($ScopedMedia) {
   foreach ($target in @(
     '/__axonyx/action?path=%2Flogin&name=SignIn',
-    '/__axonyx/action?path=%2Fadmin%2Fmedia-proof&name=Missing',
+    '/__axonyx/action?path=%2Fadmin%2Fmedia&name=Missing',
     "$mediaAction&name=SignIn",
     "$mediaAction&%6Eame=SignIn",
     "$mediaAction&path=%2Flogin"
@@ -104,13 +129,13 @@ if (!$result.ok -or $result.value.storage -ne 'local-media' -or $result.value.co
 $mediaId = $result.value.id
 Assert-MediaCounts -Rows 1 -Files 1
 Assert-StoredMedia
-$page = Invoke-Request -Path '/admin/media-proof' -Headers @{ Cookie = $cookie }
+$page = Invoke-Request -Path '/admin/media' -Headers @{ Cookie = $cookie }
 if (!$page.Body.Contains($mediaId) -or $page.Headers['Cache-Control'] -notmatch 'no-store') { throw "Guarded library rendering/caching failed" }
 Invoke-Request -Path "/private-media/$mediaId" -Status 404 | Out-Null
 Stop-Fixture
 Start-Fixture
 Assert-StoredMedia
-$page = Invoke-Request -Path '/admin/media-proof' -Headers @{ Cookie = $cookie }
+$page = Invoke-Request -Path '/admin/media' -Headers @{ Cookie = $cookie }
 if (!$page.Body.Contains($mediaId)) { throw "Library state did not survive server restart" }
 Send-Media -Bytes $validImage -Headers $sessionProof -Status 200 | Out-Null
 Assert-MediaCounts -Rows 2 -Files 2
@@ -137,13 +162,13 @@ try {
 
 # Ten items per page, populated through real uploads rather than fake metadata.
 $native = Send-Media -Bytes $validImage -Headers $sessionProof -Status 303 -Native -Padding $padding
-if ($native.Headers['Location'] -ne '/admin/media-proof') { throw "Native upload did not return to the library" }
+if ($native.Headers['Location'] -ne '/admin/media') { throw "Native upload did not return to the library" }
 for ($index = 0; $index -lt 8; $index++) { Send-Media -Bytes $validImage -Headers $sessionProof -Status 200 | Out-Null }
 Assert-MediaCounts -Rows 11 -Files 12
 Assert-StoredMedia
 
 function Get-MediaPageIds([string]$Query, [int]$Page, [int]$Count) {
-  $response = Invoke-Request -Path "/admin/media-proof$Query" -Headers @{ Cookie = $cookie }
+  $response = Invoke-Request -Path "/admin/media$Query" -Headers @{ Cookie = $cookie }
   if ($response.Headers['Cache-Control'] -notmatch 'no-store') { throw "Media pagination response was cacheable" }
   if (!$response.Body.Contains("data-media-page=`"$Page`"") -or !$response.Body.Contains('data-media-total="11"')) { throw "Incorrect media page/total" }
   $ids = @([regex]::Matches($response.Body, 'data-media-id="([0-9a-f]{64})"') | ForEach-Object { $_.Groups[1].Value })
@@ -234,6 +259,6 @@ if ($LASTEXITCODE -eq 0) { throw "Repeated recovery overwrote an existing destin
 & $python.Source -c $comparison $db $recoveredDb $recoveryRoot
 if ($LASTEXITCODE -ne 0) { throw "Refused overwrite damaged recovered data" }
 Assert-MediaCounts -Rows $mediaExpectedRows -Files $mediaExpectedFiles
-Invoke-Request -Path '/admin/media-proof' -Headers @{ Cookie = $cookie } | Out-Null
+Invoke-Request -Path '/admin/media' -Headers @{ Cookie = $cookie } | Out-Null
 Write-Host 'Live media archive/recovery proof passed without stopping or changing the running disposable CMS; recovery remains inactive.'
 . (Join-Path $root 'tests/media-http/recovery-activation.ps1')

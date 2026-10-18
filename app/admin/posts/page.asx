@@ -15,8 +15,9 @@ import { TableCell } from "@axonyx/ui/foundry/TableCell"
 page ManagePosts() {
   data listing: AdminPostPage = loadAdminPosts(query.status ?? "all", query.page ?? "1", query.q ?? "")
   const posts = listing.posts
+  data mediaAvailable: Bool = loadAdminMediaAvailability()
   return ASX {
-    <AdminFrame section="posts">
+    <AdminFrame section="posts" mediaAvailable={mediaAvailable}>
       <section class="legura-posts">
         <header class="legura-page-heading">
           <div>

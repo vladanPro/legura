@@ -4,8 +4,8 @@ Legura now owns `src/native_storage.rs` and `src/media_config.rs`. The compiled
 server startup hook uses this product adapter; tests no longer substitute a
 different adapter or supply `AX_TEST_MEDIA_*` database/storage settings.
 
-The storage startup hook is published in `cargo-axonyx 0.6.15`. The media CI job
-installs that exact registry version with `--locked`, without a framework Git
+The storage startup hook was published in `cargo-axonyx 0.6.15`. The media CI job
+now installs CLI 0.6.16 with `--locked`, without a framework Git
 checkout. Preview mode is not a supported native-storage host. Do not assume an
 older global CLI wires this hook. This remains an isolated product pilot, not
 operator media activation.
@@ -80,14 +80,16 @@ Configuration is read once per process startup, not hot-reloaded. A wrong root o
 schema stops the reviewed compiled server before readiness. There is no new HTTP
 file-serving route, authorization exemption or JSON upload protocol.
 
-## Not An Operator Activation Yet
+## Product Page, Explicit Operator Activation
 
-The product still defaults to the 64 KiB request budget, and media navigation and
-upload pages remain inactive. The HTTP fixture alone raises its budget and
-installs its protected media proof route. Explicit operator activation, upload
-budget/quotas, safe media delivery, thumbnails, attachments and service/traffic
-management remain separate gates. New-only private recovery configuration is
-available through `config-recovery`; it does not activate the service.
+The product retains the 64 KiB ordinary-request budget and grants 9 MiB only to
+the two known upload actions at `/admin/media`. Navigation and the page are
+available only with validated local settings and current administrator authority.
+See [Product Media Library V0](product-media-library-v0.md). Tests now exercise
+that actual route, without injecting a separate page or a global size increase.
+Operator activation, quotas, safe binary delivery, thumbnails, attachments and
+service/traffic management remain separate. New-only private recovery settings
+are available through `config-recovery`; this does not activate the service.
 
 The full isolated HTTP/browser/recovery test now exercises the product hook,
 including recovered-only writes, disabled authorized uploads, invalid-root startup

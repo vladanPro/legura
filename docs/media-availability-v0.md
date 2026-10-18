@@ -1,5 +1,9 @@
 # Media Availability V0
 
+The foundation below is now consumed by
+[Product Media Library V0](product-media-library-v0.md); its historical acceptance
+used a fixture route before promotion to the actual product page.
+
 This is a server-side foundation for the later product Media opt-in. It does not
 add a product route, sidebar link, upload grant or private image response.
 

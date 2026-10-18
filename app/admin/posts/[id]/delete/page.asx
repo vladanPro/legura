@@ -7,8 +7,9 @@ import { AdminFrame } from "@/components/AdminFrame"
 
 page DeletePostConfirmation() {
   data post: Post = loadDeletablePost(params.id)
+  data mediaAvailable: Bool = loadAdminMediaAvailability()
   return ASX {
-    <AdminFrame section="posts">
+    <AdminFrame section="posts" mediaAvailable={mediaAvailable}>
       <Card title="Delete post">
         <div class="legura-identity">
           <h2>{post.title}</h2>

@@ -1,4 +1,4 @@
-export type MediaProofItem {
+export type AdminMediaItem {
   id: String
   content_type: String
   byte_size: Number
@@ -6,15 +6,15 @@ export type MediaProofItem {
   height: Number
 }
 
-export type MediaProofPage {
+export type AdminMediaPage {
   available: Bool
-  items: MediaProofItem[]
+  items: AdminMediaItem[]
   total: Number
   page: Number
   total_pages: Number
 }
 
-export query loadMediaProof(page: String = "1") -> MediaProofPage {
+export query loadMediaLibrary(page: String = "1") -> AdminMediaPage {
   require Auth.subject else forbidden()
   data administrator = db.legura_users.where({ id: Auth.subject }).first()
   require administrator else forbidden()

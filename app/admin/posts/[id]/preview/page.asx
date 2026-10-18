@@ -4,8 +4,9 @@ import { PostStory } from "@/components/PostStory"
 
 page PreviewPost() {
   data post: SavedPostPreview = loadSavedPostPreview(params.id)
+  data mediaAvailable: Bool = loadAdminMediaAvailability()
   return ASX {
-    <AdminFrame section="posts">
+    <AdminFrame section="posts" mediaAvailable={mediaAvailable}>
       <section class="legura-preview-notice" aria-label="Private saved preview">
         <p><strong>Private preview</strong> <Badge>{post.status}</Badge></p>
         <p>This shows the last saved version, not unsaved changes in the editor. Viewing it does not publish the post.</p>

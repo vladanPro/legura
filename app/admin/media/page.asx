@@ -5,10 +5,10 @@ import { Grid } from "@axonyx/ui/foundry/Grid"
 import { Button } from "@axonyx/ui/foundry/Button"
 import { CodeBlock } from "@axonyx/ui/foundry/CodeBlock"
 
-page MediaProof() {
-  data listing: MediaProofPage = loadMediaProof(query.page ?? "1")
+page MediaLibrary() {
+  data listing: AdminMediaPage = loadMediaLibrary(query.page ?? "1")
   return ASX {
-    <AdminFrame section="media" mediaHref="/admin/media-proof">
+    <AdminFrame section="media" mediaAvailable={listing.available}>
       <section aria-labelledby="media-heading" data-media-available={listing.available}>
         <header class="legura-page-heading">
           <div>
@@ -17,7 +17,7 @@ page MediaProof() {
           </div>
           <p class="legura-hint" data-media-total={listing.total}>{listing.total + " stored images"}</p>
         </header>
-        <p class="legura-preview-notice">Isolated pilot: files stay private. Image previews and post attachments are not enabled.</p>
+        <p class="legura-preview-notice">Files stay private. Image previews and post attachments are not enabled.</p>
         <Card title="Upload an image">
           <form
             method="post"
@@ -25,10 +25,10 @@ page MediaProof() {
             action={action UploadLibraryImageAndReturn}
             class="legura-form"
           >
-            <label for="proof-image">Image</label>
+            <label for="media-image">Image</label>
             <input
               type="file"
-              id="proof-image"
+              id="media-image"
               name="image"
               accept="image/jpeg,image/png,image/webp"
               required="true"
@@ -67,7 +67,7 @@ page MediaProof() {
             <a
               class="ax-button"
               data-variant="secondary"
-              href={"/admin/media-proof?page=" + (listing.page - 1)}
+              href={"/admin/media?page=" + (listing.page - 1)}
             >Previous page</a>
           </If>
           <span data-media-page={listing.page}>{"Page " + listing.page + " of " + listing.total_pages}</span>
@@ -75,7 +75,7 @@ page MediaProof() {
             <a
               class="ax-button"
               data-variant="secondary"
-              href={"/admin/media-proof?page=" + (listing.page + 1)}
+              href={"/admin/media?page=" + (listing.page + 1)}
             >Next page</a>
           </If>
         </nav>
