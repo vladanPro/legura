@@ -1,8 +1,17 @@
-# Scoped Media Transport V0 - Source Acceptance
+# Scoped Media Transport V0
 
-This is an isolated acceptance mode, not product Media activation or a package
-release. Product manifests, operator settings, database and running CMS are not
-changed. The existing registry Media job still proves its pinned packages.
+This is an isolated acceptance mode, not product Media activation. Legura now
+selects published runtime 0.6.11, with CLI 0.6.16 in executable acceptance jobs.
+Operator settings, database and running CMS are not changed. UI and the pinned
+editor are unchanged. The native proof uses core 0.6.9 to match this runtime.
+
+The existing Media job now runs ScopedMedia plus its browser checks against
+registry packages. The separate framework-source build job is retired rather
+than duplicating the same upload/recovery proof. Native editor retry also uses
+the published runtime and the product's pinned Git editor, without path patches.
+The source-format job retains its independent formatter pin.
+
+## Historical Source Gate
 
 Framework PR #362 is merged into dev at `be84f76`. The source CI job checks out
 that exact framework revision and its runtime submodule, builds a private test
@@ -11,13 +20,23 @@ The framework repository does not track Cargo.lock: CI first generates a test
 lockfile and then builds with `--locked`. Framework source is pinned; transitive
 dependency resolution is not claimed to be identical across future CI runs.
 No developer global CLI is replaced. This must not be described as registry-only
-acceptance; compatible runtime/tooling publication is still a separate gate.
+acceptance. Compatible packages have since been published after green main CI.
 
 ## Reproduce
 
 ```text
 pwsh -File scripts/smoke-auth.ps1 -Media -ScopedMedia -ToolPath <source-CLI-binary> -RuntimeSource <runtime-crate-directory> -Port 3964
 ```
+
+Current registry reproduction (install the CLI in an isolated root if a global
+toolchain must remain unchanged):
+
+```text
+cargo install cargo-axonyx --version '=0.6.16' --locked --debug
+pwsh -File scripts/smoke-auth.ps1 -Media -ScopedMedia -ToolPath <installed-CLI-binary> -Port 3964
+```
+
+Do not pass RuntimeSource, ToolManifest, UiSource or EditorSource in this gate.
 
 `ScopedMedia` requires `Media`. The fixture retains the product's 64 KiB default
 and grants 9 MiB only to `UploadLibraryImage` and `UploadLibraryImageAndReturn`
@@ -47,8 +66,8 @@ No private image delivery, product route, metadata migration or plugin API is
 introduced. Optional existing browser acceptance may be added with `MediaBrowser`;
 the source CI job here is HTTP/native acceptance, not a new browser certification.
 
-Before operator activation, publish compatible framework packages and repeat this
-proof without source overrides, then implement the separate explicit Media opt-in
+Before operator activation, pass this proof without source overrides, then
+implement the separate explicit Media opt-in
 and authenticated delivery gates from the activation plan in axonyx-notes.
 
 ## Local Evidence

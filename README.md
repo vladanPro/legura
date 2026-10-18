@@ -29,7 +29,7 @@ is integrated into dev.
 Posts V0 adds private create/edit, draft/published status, public published pages
 and plain-text rendering. Its typed not-found framework fixes are published in
 core 0.6.6/runtime 0.6.5/CLI 0.6.9/scaffold 0.6.7 after green release CI.
-This branch uses registry runtime 0.6.9 and CI CLI 0.6.13; required acceptance now
+This branch uses registry runtime 0.6.11 and CI CLI 0.6.16; required acceptance now
 includes HTTP posts and both browser modes alongside the original auth tests.
 The Posts acceptance/integration gate is recorded in docs/posts-v0.md.
 
