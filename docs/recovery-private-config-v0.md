@@ -38,9 +38,10 @@ so clear conflicting overrides first. Keep the old installation stopped before
 an actual cutover, retain its configuration for rollback, and expect existing
 sessions to be invalidated by the new key. Rollback does not merge later writes.
 
-This is source-pilot functionality: the reviewed CLI startup hook is still
-required, and publishing that CLI is a separate gate. No operator activation,
-automatic update, public media delivery or historical schema upgrade is implied.
+The required startup hook is published in `cargo-axonyx 0.6.15`; the isolated
+Media CI uses that exact registry CLI. Legura itself is still a product pilot.
+No operator activation, automatic update, public media delivery or historical
+schema upgrade is implied.
 
 ## Acceptance
 
