@@ -59,6 +59,7 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo test --locked --lib
       - run: cargo test --locked --test media-check
+      - run: cargo test --locked --test private-media-read
       - run: cargo test --locked --test media-archive
       - run: cargo test --locked --bin legura-maintenance
       - run: cargo clippy --locked --lib --tests -- -D warnings
