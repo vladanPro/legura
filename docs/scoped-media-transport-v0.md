@@ -84,3 +84,18 @@ Fixture sources, SQLite/media storage and Cargo target were created under a
 randomized temporary root and removed afterward. Operator checkout changes,
 global CLI, environment and running CMS were not modified. Linux CI and future
 registry acceptance are separate evidence gates, not inferred from this run.
+
+### Published Registry Acceptance
+
+On 2026-10-18 the current registry command passed on Windows, port 3964, using
+the isolated crates.io installation of CLI 0.6.16 and runtime 0.6.11. No source
+overrides were supplied. Both tracked lockfiles select registry core 0.6.9 and
+runtime 0.6.11. This passed all scoped HTTP/native checks above, archive/recovery,
+isolated recovery activation and revoked-administrator denial. The expected
+second-restore refusal is a negative assertion, not a failed overall command.
+
+The randomized fixture legura-auth-2305a9d571c449dd9cfea6d217ba05f6 and its private
+Cargo target were removed. The 63 library tests and separate locked native-content
+proof also passed. Local browser certification is not claimed by this HTTP run;
+the seven Linux/Windows CI gates, including existing browser checks, remain the
+merge boundary for the adoption PR.
