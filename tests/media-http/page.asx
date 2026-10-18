@@ -9,7 +9,7 @@ page MediaProof() {
   data listing: MediaProofPage = loadMediaProof(query.page ?? "1")
   return ASX {
     <AdminFrame section="media" mediaHref="/admin/media-proof">
-      <section aria-labelledby="media-heading">
+      <section aria-labelledby="media-heading" data-media-available={listing.available}>
         <header class="legura-page-heading">
           <div>
             <h1 id="media-heading">Media library</h1>
