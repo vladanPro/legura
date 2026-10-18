@@ -38,6 +38,11 @@ the current pilot intentionally uses explicit 403 guards.
 
 ## 1. First End-to-End CMS
 
+Product Media Library V0 promotes the tested route into `/admin/media` with
+server-owned conditional navigation and default-off storage. See
+product-media-library-v0.md for opt-in and acceptance boundaries. Private binary
+delivery, post attachments, deletion and operator activation remain separate.
+
 Rich-text Migration V1 is integrated into dev: migration 003 preserves legacy
 plain rows, blocks destructive rich rollback, and supports old/new snapshots.
 See richtext-migration-v1.md. Public rich rendering is integrated into dev;

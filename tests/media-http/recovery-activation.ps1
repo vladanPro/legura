@@ -74,7 +74,7 @@ function Invoke-RecoveryActivationProof {
     Invoke-Request -Path '/setup' -Status 403 | Out-Null
     Invoke-Request -Path '/admin' -Status 403 | Out-Null
     Invoke-Request -Path '/admin' -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
-    Invoke-Request -Path '/admin/media-proof' -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
+    Invoke-Request -Path '/admin/media' -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
     Send-Media -Bytes $validImage -Headers $sessionProof -Status 403 | Out-Null
     Assert-RecoveredMedia $mediaExpectedRows
 
@@ -85,13 +85,13 @@ function Invoke-RecoveryActivationProof {
     $recoveryCookie = ([string]$login.Headers['Set-Cookie']).Split(';')[0]
     if (!$recoveryCookie) { throw 'Recovered credentials did not establish a fresh session' }
     Invoke-Request -Path '/admin' -Headers @{ Cookie = $recoveryCookie } | Out-Null
-    Invoke-Request -Path '/admin/media-proof' -Headers @{ Cookie = $recoveryCookie } | Out-Null
+    Invoke-Request -Path '/admin/media' -Headers @{ Cookie = $recoveryCookie } | Out-Null
     $freshProof = Get-Proof -Cookie $recoveryCookie
     Send-Media -Bytes $validImage -Headers $freshProof -Status 200 | Out-Null
     Assert-RecoveredMedia ($mediaExpectedRows + 1)
     Stop-Fixture
     Start-Fixture
-    Invoke-Request -Path '/admin/media-proof' -Headers @{ Cookie = $recoveryCookie } | Out-Null
+    Invoke-Request -Path '/admin/media' -Headers @{ Cookie = $recoveryCookie } | Out-Null
     Assert-RecoveredMedia ($mediaExpectedRows + 1)
 
     # The shipped adapter must deny even an authorized upload when disabled,
@@ -101,6 +101,9 @@ function Invoke-RecoveryActivationProof {
     Remove-Item -LiteralPath 'Env:AX_SECRET_MEDIA_ROOT' -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath 'Env:AX_SECRET_MEDIA_STORE_ID' -ErrorAction SilentlyContinue
     Start-Fixture
+    $disabled = Invoke-Request -Path '/admin' -Headers @{ Cookie = $recoveryCookie }
+    if ($disabled.Body.Contains('href="/admin/media"')) { throw 'Disabled recovered Media remained in navigation' }
+    Invoke-Request -Path '/admin/media' -Headers @{ Cookie = $recoveryCookie } -Status 403 | Out-Null
     Send-Media -Bytes $validImage -Headers (Get-Proof -Cookie $recoveryCookie) -Status 403 | Out-Null
     Assert-RecoveredMedia ($mediaExpectedRows + 1)
     Stop-Fixture
@@ -135,7 +138,7 @@ function Invoke-RecoveryActivationProof {
   if ((Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash -ne $archiveHash) { throw 'Recovery activation changed the original archive' }
   if ((Get-FileHash -LiteralPath (Join-Path $recoveryRoot 'recovery.json') -Algorithm SHA256).Hash -ne $receiptHash) { throw 'Activation proof rewrote the historical recovery receipt' }
   if ((Get-FileHash -LiteralPath $configPath -Algorithm SHA256).Hash -ne $configHash) { throw 'Generated private configuration changed during startup/recovery' }
-  Invoke-Request -Path '/admin/media-proof' -Headers @{ Cookie = $cookie } | Out-Null
+  Invoke-Request -Path '/admin/media' -Headers @{ Cookie = $cookie } | Out-Null
   Invoke-Request -Path '/admin' -Headers @{ Cookie = $recoveryCookie } -Status 403 | Out-Null
   Assert-MediaCounts -Rows $mediaExpectedRows -Files $mediaExpectedFiles
   Write-Host 'Isolated recovery activation passed: offline gate, independent session key, fresh login, separate upload/restart, failed-start refusal and source rollback.'

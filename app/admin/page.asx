@@ -5,9 +5,10 @@ import { AdminFrame } from "@/components/AdminFrame"
 
 page Administration() {
   data overview: AdminOverview = loadAdminOverview()
+  data mediaAvailable: Bool = loadAdminMediaAvailability()
   const administrator = overview.administrator
   return ASX {
-    <AdminFrame>
+    <AdminFrame mediaAvailable={mediaAvailable}>
       <header class="legura-page-heading">
         <div>
           <h1>Administration</h1>

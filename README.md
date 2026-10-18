@@ -67,16 +67,18 @@ pilots, not an installable product release.
 The [posts table contract](docs/posts-table-v1.md) explains published Foundry UI
 adoption and why search and pagination remain server-owned.
 
-The inactive [media storage foundation](docs/media-storage-v0.md) defines local
-object storage; upload routes, a media library and post images are not added yet.
+The [opt-in Media library](docs/product-media-library-v0.md) adds private image
+uploads and bounded listing at `/admin/media`, using the existing local storage
+foundation. It stays disabled until an operator configures valid private storage.
+Private image delivery, post attachments and deletion are separate work.
 The [Media availability contract](docs/media-availability-v0.md) supplies a
-validated, server-owned boolean for future product navigation, not an upload grant.
+validated, server-owned boolean for product navigation, not an upload grant.
 
 An isolated protected-upload proof is merged in `dev` (PR #48), after all seven
 CI gates passed. Its startup hook (framework PR #357) is published in CLI 0.6.15,
-now pinned from crates.io in Media CI. The [library view pilot](docs/media-library-view-v0.md) stays
-isolated until product opt-in, versioned migration and media-aware recovery are
-ready. Existing operator installations still have no active media library.
+first adopted from crates.io in Media CI, which now uses CLI 0.6.16. The
+[library view pilot](docs/media-library-view-v0.md) is the basis of the opt-in
+product page. Existing operator installations are not automatically activated.
 
 The read-only [media integrity check](docs/media-integrity-check-v0.md) prepares
 the backup boundary. Database-only backup refuses media references; coordinated

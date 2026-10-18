@@ -26,7 +26,7 @@ try {
       page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
       for (const width of [1440, 390]) {
         await page.setViewportSize({ width, height: 960 });
-        const response = await page.goto(`${baseUrl}/admin/media-proof`);
+        const response = await page.goto(`${baseUrl}/admin/media`);
         assert.equal(response.status(), 200);
         assert.match(response.headers()['cache-control'], /no-store/);
         assert.ok(await page.getByRole('heading', { name: 'Media library', exact: true }).isVisible());
@@ -57,20 +57,20 @@ try {
         assert.equal(await placeholders.count(), 10);
         assert.ok(await placeholders.first().isVisible());
         assert.ok(await placeholders.first().evaluate(node => node.getBoundingClientRect().height >= 128));
-        const selected = page.locator('a[href="/admin/media-proof"][aria-current="true"]');
+        const selected = page.locator('a[href="/admin/media"][aria-current="true"]');
         assert.equal(await selected.count(), 1);
         assert.ok(await page.getByLabel('Image', { exact: true }).isVisible());
         assert.ok(await page.getByRole('button', { name: 'Upload image', exact: true }).isVisible());
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Library overflow at ${width}px`);
         const first = await page.locator('[data-media-id]').evaluateAll(nodes => nodes.map(node => node.dataset.mediaId));
         await page.getByRole('link', { name: 'Next page', exact: true }).click();
-        await page.waitForURL(`${baseUrl}/admin/media-proof?page=2`);
+        await page.waitForURL(`${baseUrl}/admin/media?page=2`);
         assert.equal(await page.locator('[data-media-id]').count(), 1);
         assert.equal(await page.getByRole('link', { name: 'Next page', exact: true }).count(), 0);
         const last = await page.locator('[data-media-id]').getAttribute('data-media-id');
         assert.ok(!first.includes(last));
         await page.getByRole('link', { name: 'Previous page', exact: true }).click();
-        await page.waitForURL(`${baseUrl}/admin/media-proof?page=1`);
+        await page.waitForURL(`${baseUrl}/admin/media?page=1`);
         assert.equal(await page.locator('[data-media-id]').count(), 10);
         assert.equal(await page.getByRole('link', { name: 'Previous page', exact: true }).count(), 0);
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
@@ -90,10 +90,10 @@ try {
     try {
       await context.addCookies([sessionCookie]);
       const page = await context.newPage();
-      await page.goto(`${baseUrl}/admin/media-proof`);
+      await page.goto(`${baseUrl}/admin/media`);
       await page.getByLabel('Image', { exact: true }).setInputFiles({ name: 'image.png', mimeType: 'image/png', buffer: Buffer.from(image, 'base64') });
       const response = page.waitForResponse(value => value.url().includes('name=UploadLibraryImageAndReturn') && value.request().method() === 'POST');
-      const navigation = waitForDocumentNavigation(page, `${baseUrl}/admin/media-proof`);
+      const navigation = waitForDocumentNavigation(page, `${baseUrl}/admin/media`);
       await page.getByRole('button', { name: 'Upload image', exact: true }).click();
       assert.ok([200, 303].includes((await response).status()));
       await navigation;

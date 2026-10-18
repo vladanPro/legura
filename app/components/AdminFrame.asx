@@ -4,7 +4,7 @@ import { SidebarHeader } from "@axonyx/ui/foundry/SidebarHeader"
 import { SidebarSection } from "@axonyx/ui/foundry/SidebarSection"
 import { SidebarItem } from "@axonyx/ui/foundry/SidebarItem"
 
-component AdminFrame(section = "overview", mediaHref = "") {
+component AdminFrame(section = "overview", mediaAvailable = false) {
   return ASX {
     <AppShell class="legura-admin-shell" mode="embedded" railWidth="sm">
       <Sidebar slot="sidebar" label="Administration navigation" collapsible="true" open="true">
@@ -15,8 +15,8 @@ component AdminFrame(section = "overview", mediaHref = "") {
           <SidebarSection title="Content">
             <SidebarItem href="/admin" active={section == "overview"}>Overview</SidebarItem>
             <SidebarItem href="/admin/posts" active={section == "posts"}>Manage posts</SidebarItem>
-            <If when={mediaHref}>
-              <SidebarItem href={mediaHref} active={section == "media"}>Media library</SidebarItem>
+            <If when={mediaAvailable}>
+              <SidebarItem href="/admin/media" active={section == "media"}>Media library</SidebarItem>
             </If>
           </SidebarSection>
           <SidebarSection title="Website">

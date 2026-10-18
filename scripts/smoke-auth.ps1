@@ -21,6 +21,7 @@ param(
 $ErrorActionPreference = "Stop"
 if ($MediaBrowser -and !$Media) { throw "MediaBrowser requires the isolated Media fixture" }
 if ($ScopedMedia -and !$Media) { throw "ScopedMedia requires the isolated Media fixture" }
+if ($Media) { $ScopedMedia = $true }
 if ($Media -and ($Mode -ne "http" -or $Posts -or $Content -or $ContentEditor -or $PostEditor -or $ActiveEditor -or $RefreshSchema)) { throw "Media requires isolated HTTP mode without other content/browser switches" }
 if ($ToolPath -and $ToolManifest) { throw "Choose ToolPath or ToolManifest, not both" }
 if ($ActiveEditor) {
@@ -147,20 +148,10 @@ try {
   }
   Set-Location $fixture
   if ($Media) {
-    $mediaRoute = Join-Path $fixture "app/admin/media-proof"
-    New-Item -ItemType Directory -Path $mediaRoute -Force | Out-Null
-    foreach ($name in @("actions.ax", "loader.ax", "page.asx")) { Copy-Item -LiteralPath (Join-Path $root "tests/media-http/$name") -Destination $mediaRoute }
-    # Scoped acceptance preserves the ordinary form cap. The legacy mode remains
-    # available for historical toolchain comparisons outside the registry CI gate.
+    # Exercise the actual product route/config, not a copied test-only page.
     $configPath = Join-Path $fixture "Axonyx.toml"
     $config = [IO.File]::ReadAllText($configPath)
-    if ($ScopedMedia) {
-      if (!$config.Contains('max_body_bytes = "64kb"')) { throw "Scoped Media proof requires the product's 64 KiB default" }
-      foreach ($action in @('UploadLibraryImage', 'UploadLibraryImageAndReturn')) {
-        $config += "`n[[server.action_body_limits]]`npath = `"/admin/media-proof`"`naction = `"$action`"`nmax_body_bytes = `"9mb`"`n"
-      }
-    } else { $config = $config.Replace('max_body_bytes = "64kb"', 'max_body_bytes = "9mb"') }
-    [IO.File]::WriteAllText($configPath, $config)
+    if (!$config.Contains('max_body_bytes = "64kb"')) { throw "Media proof requires the product's 64 KiB default" }
     $mediaRoot = Join-Path $fixture "private-media"
     New-Item -ItemType Directory -Path $mediaRoot | Out-Null
   }
@@ -264,8 +255,8 @@ try {
   if ($ScopedMedia) {
     $hostSource = [IO.File]::ReadAllText((Join-Path $fixture 'src/bin/axonyx-production.rs'))
     if (!$hostSource.Contains('serve_compiled_axum_with_body_limits(bind, 65536, handler, resolver)') -or
-        !$hostSource.Contains('("/admin/media-proof", "UploadLibraryImage", 9437184)') -or
-        !$hostSource.Contains('("/admin/media-proof", "UploadLibraryImageAndReturn", 9437184)')) {
+        !$hostSource.Contains('("/admin/media", "UploadLibraryImage", 9437184)') -or
+        !$hostSource.Contains('("/admin/media", "UploadLibraryImageAndReturn", 9437184)')) {
       throw 'Selected toolchain did not compile the required scoped Media body policy'
     }
   }
@@ -367,7 +358,7 @@ try {
   }
   if ($Media) {
     Send-Media -Bytes $validImage -Headers $revokedProof -Status 403 | Out-Null
-    Invoke-Request -Path "/admin/media-proof" -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
+    Invoke-Request -Path "/admin/media" -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
     Send-Media -Bytes $validImage -Headers $revokedProof -Status 403 -Native | Out-Null
     Assert-MediaCounts -Rows $mediaExpectedRows -Files $mediaExpectedFiles
   }

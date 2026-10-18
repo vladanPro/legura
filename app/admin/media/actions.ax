@@ -1,11 +1,15 @@
 action UploadLibraryImage(image: File) {
   data administrator = loadAdministrator()
+  data media = Native.call("legura.media.availability", null)
+  require media.available else forbidden()
   data saved = Storage.save("legura-media", input.image)
   return json(saved)
 }
 
 action UploadLibraryImageAndReturn(image: File) {
   data administrator = loadAdministrator()
+  data media = Native.call("legura.media.availability", null)
+  require media.available else forbidden()
   data saved = Storage.save("legura-media", input.image)
-  return redirect("/admin/media-proof")
+  return redirect("/admin/media")
 }

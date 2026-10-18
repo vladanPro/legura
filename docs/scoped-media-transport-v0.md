@@ -1,5 +1,10 @@
 # Scoped Media Transport V0
 
+This records source/registry acceptance before product-route promotion. Current
+acceptance runs [Product Media Library V0](product-media-library-v0.md) directly
+at `/admin/media`, without copying the historical `media-proof` page. `-Media`
+always uses product scoped limits; `-ScopedMedia` is retained for compatibility.
+
 This is an isolated acceptance mode, not product Media activation. Legura now
 selects published runtime 0.6.11, with CLI 0.6.16 in executable acceptance jobs.
 Operator settings, database and running CMS are not changed. UI and the pinned

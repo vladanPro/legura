@@ -2,9 +2,9 @@ import { Card } from "@axonyx/ui/foundry/Card"
 import { PostFields } from "@/components/PostFields"
 import { AdminFrame } from "@/components/AdminFrame"
 
-component NewPostForm(title = "New post", format = "legura-richtext", submitAction = "") {
+component NewPostForm(title = "New post", format = "legura-richtext", submitAction = "", mediaAvailable = false) {
   return ASX {
-    <AdminFrame section="posts">
+    <AdminFrame section="posts" mediaAvailable={mediaAvailable}>
       <Card title={title}>
         <p>A draft is visible only to the administrator.</p>
         <nav class="legura-links" aria-label="Content editor">

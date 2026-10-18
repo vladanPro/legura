@@ -2,6 +2,7 @@ import { NewPostForm } from "@/components/NewPostForm"
 
 page NewPost() {
   data title: String = loadNewPostTitle()
+  data mediaAvailable: Bool = loadAdminMediaAvailability()
   return ASX {
     <Head>
       <Link
@@ -10,6 +11,11 @@ page NewPost() {
       />
       <Script src="/content-editor/host.js" type="module" />
     </Head>
-    <NewPostForm title={title} format="legura-richtext" submitAction={action CreatePost} />
+    <NewPostForm
+      title={title}
+      format="legura-richtext"
+      submitAction={action CreatePost}
+      mediaAvailable={mediaAvailable}
+    />
   }
 }
