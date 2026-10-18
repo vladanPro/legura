@@ -7,6 +7,9 @@ changed. The existing registry Media job still proves its pinned packages.
 Framework PR #362 is merged into dev at `be84f76`. The source CI job checks out
 that exact framework revision and its runtime submodule, builds a private test
 CLI and applies a runtime path override only to the disposable application.
+The framework repository does not track Cargo.lock: CI first generates a test
+lockfile and then builds with `--locked`. Framework source is pinned; transitive
+dependency resolution is not claimed to be identical across future CI runs.
 No developer global CLI is replaced. This must not be described as registry-only
 acceptance; compatible runtime/tooling publication is still a separate gate.
 

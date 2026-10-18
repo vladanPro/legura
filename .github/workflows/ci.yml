@@ -65,6 +65,9 @@ jobs:
         shell: pwsh
         run: |
           $manifest = Join-Path $PWD '.test-toolchain/Cargo.toml'
+          # Framework does not track Cargo.lock; resolve once, then build locked.
+          & cargo generate-lockfile --manifest-path $manifest
+          if ($LASTEXITCODE -ne 0) { throw 'Source CLI test lockfile generation failed' }
           & cargo build --locked --manifest-path $manifest -p cargo-axonyx --bin cargo-axonyx
           if ($LASTEXITCODE -ne 0) { throw 'Source CLI build failed' }
           $metadata = & cargo metadata --manifest-path $manifest --no-deps --format-version 1 | ConvertFrom-Json
