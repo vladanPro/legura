@@ -5,8 +5,10 @@ use crate::storage::StoreId;
 use axonyx_runtime::backend::{
     AxDataTransport, AxDatabaseDriver, AxEnv, AxRuntimeError, AxRuntimeResult,
 };
+use axonyx_runtime::native::{AxNativeError, AxNativeRegistry};
 use axonyx_runtime::server::{AxFileRef, AxFileStorage, AxIncomingFile};
 use rusqlite::{Connection, OpenFlags};
+use serde::{Deserialize, Serialize};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -80,6 +82,35 @@ pub fn configure(
     base: &Path,
     fallback: Arc<dyn AxFileStorage>,
 ) -> Result<Arc<dyn AxFileStorage>, MediaConfigurationError> {
+    let media = configured_media(env, base)?;
+    Ok(Arc::new(ConfiguredStorage { media, fallback }))
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct MediaAvailability {
+    pub available: bool,
+}
+
+/// Server-owned startup snapshot for presentation only, never an upload grant.
+/// Invalid configuration aborts registration instead of masquerading as disabled.
+pub fn register_availability(
+    registry: &mut AxNativeRegistry,
+    env: &AxEnv,
+    base: &Path,
+) -> Result<(), AxNativeError> {
+    let available = configured_media(env, base)
+        .map_err(|_| AxNativeError::Rejected)?
+        .is_some();
+    registry.register("legura.media.availability", move |_: ()| {
+        Ok::<_, ()>(MediaAvailability { available })
+    })
+}
+
+fn configured_media(
+    env: &AxEnv,
+    base: &Path,
+) -> Result<Option<MediaLibraryStorage>, MediaConfigurationError> {
     const KEYS: [&str; 3] = ["media_driver", "media_root", "media_store_id"];
     if env
         .secret
@@ -158,7 +189,7 @@ pub fn configure(
         }
         _ => return Err(MediaConfigurationError),
     };
-    Ok(Arc::new(ConfiguredStorage { media, fallback }))
+    Ok(media)
 }
 
 #[cfg(test)]
@@ -249,6 +280,96 @@ mod tests {
             assert!(configured.save_file("other", &incoming()).is_err());
             assert_eq!(fallback.0.load(Ordering::SeqCst), 1);
         }
+    }
+
+    #[test]
+    fn availability_is_disabled_without_touching_paths_or_accepting_client_flags() {
+        for env in [
+            AxEnv::new(),
+            AxEnv::new().with_secret("media_driver", "disabled"),
+        ] {
+            let mut registry = AxNativeRegistry::default();
+            register_availability(&mut registry, &env, Path::new("unused")).unwrap();
+            assert_eq!(
+                registry
+                    .call("legura.media.availability", serde_json::Value::Null)
+                    .unwrap(),
+                serde_json::json!({"available": false})
+            );
+            for input in [
+                serde_json::json!({"available": true}),
+                serde_json::json!({"media_root": "secret"}),
+                serde_json::json!({}),
+            ] {
+                assert_eq!(
+                    registry.call("legura.media.availability", input),
+                    Err(AxNativeError::InvalidInput)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn availability_uses_validated_configuration_and_exposes_only_a_boolean() {
+        let fixture = Fixture::new();
+        let mut registry = AxNativeRegistry::default();
+        register_availability(&mut registry, &fixture.env(), &fixture.0).unwrap();
+        assert_eq!(
+            registry
+                .call("legura.media.availability", serde_json::Value::Null)
+                .unwrap(),
+            serde_json::json!({"available": true})
+        );
+        assert_eq!(
+            fs::read_dir(fixture.0.join("private-media"))
+                .unwrap()
+                .count(),
+            0
+        );
+        let connection = Connection::open(fixture.0.join("cms.db")).unwrap();
+        assert_eq!(
+            connection
+                .query_row("SELECT COUNT(*) FROM legura_media", [], |row| row
+                    .get::<_, i64>(0))
+                .unwrap(),
+            0
+        );
+    }
+
+    #[test]
+    fn unavailable_or_unmigrated_storage_never_registers_a_positive_snapshot() {
+        let fixture = Fixture::new();
+        let mut partial = fixture.env();
+        partial.secret.remove("media_store_id");
+        let old_database = fixture.0.join("old.db");
+        Connection::open(&old_database).unwrap();
+        for env in [
+            partial,
+            fixture.env().with_secret("media_driver", "disabled"),
+            fixture.env().with_public("media_root", "private"),
+            fixture.env().with_secret("media_root", "missing"),
+            fixture.env().with_secret("db_url", "sqlite:missing.db"),
+            fixture.env().with_secret("db_url", "sqlite:old.db"),
+        ] {
+            let mut registry = AxNativeRegistry::default();
+            assert_eq!(
+                register_availability(&mut registry, &env, &fixture.0),
+                Err(AxNativeError::Rejected)
+            );
+            assert_eq!(
+                registry.call("legura.media.availability", serde_json::Value::Null),
+                Err(AxNativeError::UnknownFunction)
+            );
+        }
+        assert!(!fixture.0.join("missing").exists());
+        assert!(!fixture.0.join("missing.db").exists());
+        let old = Connection::open(old_database).unwrap();
+        assert_eq!(
+            old.query_row("SELECT COUNT(*) FROM sqlite_master", [], |row| row
+                .get::<_, i64>(0))
+                .unwrap(),
+            0
+        );
     }
 
     #[test]

@@ -69,6 +69,8 @@ adoption and why search and pagination remain server-owned.
 
 The inactive [media storage foundation](docs/media-storage-v0.md) defines local
 object storage; upload routes, a media library and post images are not added yet.
+The [Media availability contract](docs/media-availability-v0.md) supplies a
+validated, server-owned boolean for future product navigation, not an upload grant.
 
 An isolated protected-upload proof is merged in `dev` (PR #48), after all seven
 CI gates passed. Its startup hook (framework PR #357) is published in CLI 0.6.15,

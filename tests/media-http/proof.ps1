@@ -63,6 +63,10 @@ Send-Media -Bytes $validImage -Headers @{ Cookie = $cookie; Origin = 'https://at
 Assert-MediaCounts -Rows 0 -Files 0
 $empty = Invoke-Request -Path '/admin/media-proof?page=999' -Headers @{ Cookie = $cookie }
 if (!$empty.Body.Contains('No images yet') -or !$empty.Body.Contains('data-media-page="1"') -or !$empty.Body.Contains('data-media-total="0"')) { throw "Empty media library is not bounded" }
+if (!$empty.Body.Contains('data-media-available="true"')) { throw 'Validated Media availability did not reach the guarded compiled page' }
+foreach ($private in @($mediaRoot, $db, $env:AX_SECRET_SESSION_KEY, $env:AX_SECRET_SETUP_TOKEN)) {
+  if ($private -and ($empty.Body.Contains($private) -or $empty.Body.Contains($private.Replace('\', '/')))) { throw 'Media availability leaked private configuration' }
+}
 if (!$empty.Body.Contains('aria-label="No image selected"')) { throw "Empty media library has no accessible image placeholder" }
 if ($empty.Body -notmatch 'href="/admin/media-proof"[^>]*aria-current="true"|aria-current="true"[^>]*href="/admin/media-proof"') { throw "Media sidebar item is not selected" }
 
