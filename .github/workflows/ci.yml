@@ -24,8 +24,8 @@ jobs:
         with:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
-      - name: Install pinned private-binary source CLI
-        run: cargo install cargo-axonyx --git https://github.com/vladanPro/axonyx-framework --rev 965b7fa06ef3f77f0aac75f1df7960bd2cf50a4a --locked --debug --force
+      - name: Install published private-binary CLI
+        run: cargo install cargo-axonyx --version '=0.7.0' --locked --debug --force
       - name: Check storage hook formatting
         shell: pwsh
         run: |
@@ -86,8 +86,8 @@ jobs:
         with:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
-      - name: Install pinned private-binary source CLI
-        run: cargo install cargo-axonyx --git https://github.com/vladanPro/axonyx-framework --rev 965b7fa06ef3f77f0aac75f1df7960bd2cf50a4a --locked --debug
+      - name: Install published private-binary CLI
+        run: cargo install cargo-axonyx --version '=0.7.0' --locked --debug
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -96,7 +96,7 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps chromium
-      - name: Verify native 422 recovery with pinned source runtime and editor
+      - name: Verify native 422 recovery with registry runtime and pinned editor
         shell: pwsh
         run: |
           ./scripts/smoke-auth.ps1 -PostEditor -NativeRetry -Mode javascript -Port 3948
@@ -112,8 +112,8 @@ jobs:
         with:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
-      - name: Install pinned private-binary source CLI
-        run: cargo install cargo-axonyx --git https://github.com/vladanPro/axonyx-framework --rev 965b7fa06ef3f77f0aac75f1df7960bd2cf50a4a --locked --debug
+      - name: Install published private-binary CLI
+        run: cargo install cargo-axonyx --version '=0.7.0' --locked --debug
       - name: Verify compiled native content with disposable SQLite
         shell: pwsh
         run: |
@@ -139,7 +139,6 @@ jobs:
           ./scripts/smoke-auth.ps1 -ActiveEditor -NativeRetry -Mode javascript -Port 3946
           ./scripts/smoke-auth.ps1 -ActiveEditor -Mode native -Port 3946
   compiled-auth:
-    # Keep the required-check identity; source pins are temporary until 0.7.
     name: Registry Compiled Auth
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -150,8 +149,8 @@ jobs:
         with:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
-      - name: Install pinned private-binary source CLI
-        run: cargo install cargo-axonyx --git https://github.com/vladanPro/axonyx-framework --rev 965b7fa06ef3f77f0aac75f1df7960bd2cf50a4a --locked --debug
+      - name: Install published private-binary CLI
+        run: cargo install cargo-axonyx --version '=0.7.0' --locked --debug
       - name: Verify SQLite maintenance safety
         run: |
           cargo fmt --all -- --check

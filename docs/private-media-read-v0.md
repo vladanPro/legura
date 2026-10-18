@@ -2,7 +2,7 @@
 
 This document describes the tested product read service and response builder.
 The subsequent [private HTTP extension](private-media-http-v0.md) connects it to
-source-pinned compiled routes. No public storage directory, JSON/base64 image
+compiled routes using registry 0.7.0. No public storage directory, JSON/base64 image
 payload or generated-host edit is introduced.
 
 `media_read::read_for_administrator` takes an explicit database connection,
@@ -47,7 +47,7 @@ Clippy with warnings denied and diff checks pass; all PR CI gates remain require
 ## Compiler/Runtime HTTP Bridge
 
 Existing `Native.call` deliberately uses bounded JSON. Image bytes must not be
-smuggled through it. The source HTTP extension uses a separate typed private
+smuggled through it. The HTTP extension uses a separate typed private
 binary channel with verified request context, safe errors and response validation.
-Registry publication is still gated on a coordinated 0.7 release. Streaming,
-range/conditional responses and public post images remain separate contracts.
+Registry adoption follows the coordinated 0.7 release and isolated acceptance.
+Streaming, range/conditional responses and public post images remain separate contracts.

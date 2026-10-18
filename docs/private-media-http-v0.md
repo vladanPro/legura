@@ -1,4 +1,4 @@
-# Private Media HTTP V0 - Source Pilot
+# Private Media HTTP V0
 
 `GET /api/media/:id` is a compiled `.ax` route returning `Binary` through
 `Native.privateResponse("legura.media.read", { id: params.id })`. It does not
@@ -6,21 +6,21 @@ use a public directory, base64 JSON, browser-provided identity or a handwritten
 generated server. Gallery images use this endpoint without client JavaScript.
 The empty-library placeholder remains; post images/attachments are not enabled.
 
-## Unpublished Dependencies
+## Registry Dependencies
 
-Runtime is pinned to `3e27ed4c44d54dd3ea6fbaf1e68016f78d32f1dd` from
-vladanPro/axonyx-runtime. CI CLI is pinned to
-`965b7fa06ef3f77f0aac75f1df7960bd2cf50a4a` from vladanPro/axonyx-framework:
+The application uses registry runtime 0.7.0. The nested generated-consumer proof
+pins registry core/runtime exactly to 0.7.0, and CI installs registry CLI 0.7.0:
 
 ```sh
-cargo install cargo-axonyx --git https://github.com/vladanPro/axonyx-framework --rev 965b7fa06ef3f77f0aac75f1df7960bd2cf50a4a --locked --debug
+cargo install cargo-axonyx --version '=0.7.0' --locked
 ```
 
-These are temporary exact source pins, NOT a new published 0.6.x feature. Public
-enum additions require coordinated core/runtime/CLI 0.7 publication and registry
-consumer acceptance before returning to registry dependencies. The historical
-required CI label "Registry Compiled Auth" is kept to preserve branch protection;
-its steps explicitly install pinned source tooling during this pilot.
+This follows source-pinned PR 64 and the coordinated 0.7 compatibility boundary;
+the new enum cases were deliberately not published as a compatible 0.6.x patch.
+No framework/runtime source override is required. The editor's independent Git
+pin is unchanged. Installing/updating the application runtime does not update
+your global CLI: old CLI 0.6.x cannot compile these routes. Required CI remains
+authoritative for adoption; package publication alone is not CMS acceptance.
 
 ## Authority And Storage
 
@@ -59,15 +59,27 @@ on desktop/mobile with JavaScript enabled and disabled. Browser plugin is absent
 in CI, so the existing test-only Playwright is used; it is not a CMS dependency.
 Optional screenshots are written only to LEGURA_MEDIA_SCREENSHOTS when set.
 
-Required CI and coordinated release remain separate gates; no operator database,
+Required CI and operator activation remain separate gates; no operator database,
 configuration, global CLI or running CMS is updated by these tests.
 
-Local Windows evidence (2026-10-18): the complete scoped Media HTTP/browser/archive
-and recovery-activation proof passes with these exact pins. Chromium desktop
-1440px and mobile 390px pass with JS on/off, including decoded-image checks,
+Historical source evidence (2026-10-18, PR 64): the complete scoped Media HTTP/browser/archive
+and recovery-activation proof passed with the preceding exact Git pins. Chromium desktop
+1440px and mobile 390px passed with JS on/off, including decoded-image checks,
 pagination, technical details, native uploads and no console errors/overflow.
 The read callback's unit test also proves rejected forged input, current-user
 revocation/reinstatement, destroyed-session denial and disabled-storage denial.
 Rust library/media/archive/maintenance tests, the nested generated native-content
-consumer, formatting and strict product Clippy pass. Remote required CI remains
-authoritative; this is not a production security audit or registry release.
+consumer, formatting and strict product Clippy passed. The registry-adoption PR
+repeats those checks using published Axonyx packages; historical source results
+are not a substitute. This is not a production security audit.
+
+Registry acceptance (2026-10-19): core/runtime/CLI 0.7.0 were published and
+the CLI was freshly installed from crates.io into an isolated tool directory.
+The complete command above passed with that installed ToolPath and without
+RuntimeSource or ToolManifest overrides. Exact image responses, private/security
+headers, scoped uploads, anonymous/forged/revoked authority, disabled/missing/
+corrupt storage, JS/no-JS desktop/mobile image decoding and archive/recovery
+activation passed again. Root tests (107), the nested generated native-content
+consumer, formatting and strict product Clippy also passed against registry
+dependencies. Required remote CI remains a separate PR merge gate. No operator
+database, configuration, running process or global CLI was modified.
