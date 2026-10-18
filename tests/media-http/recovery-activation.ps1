@@ -13,7 +13,7 @@ function Invoke-RecoveryActivationProof {
   $maintenance = Join-Path (Split-Path $script:binary) $maintenanceName
   if (!(Test-Path -LiteralPath $maintenance -PathType Leaf)) { throw 'Fixture native maintenance binary is missing' }
   $saved = @{}
-  foreach ($name in @('AX_SECRET_DB_URL', 'AX_SECRET_SESSION_KEY', 'AX_SECRET_SETUP_TOKEN', 'AX_SECRET_MEDIA_DRIVER', 'AX_SECRET_MEDIA_ROOT', 'AX_SECRET_MEDIA_STORE_ID')) {
+  foreach ($name in @('AX_SECRET_DB_URL', 'AX_SECRET_DB_DIALECT', 'AX_SECRET_SESSION_KEY', 'AX_SECRET_SETUP_TOKEN', 'AX_SECRET_SESSION_COOKIE_SECURE', 'AX_SECRET_MEDIA_DRIVER', 'AX_SECRET_MEDIA_ROOT', 'AX_SECRET_MEDIA_STORE_ID')) {
     $saved[$name] = [Environment]::GetEnvironmentVariable($name)
   }
   $sourceFingerprint = $null
@@ -49,14 +49,28 @@ function Invoke-RecoveryActivationProof {
     & $maintenance archive-check-recovery $archivePath $recoveryRoot | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Offline compatibility gate refused recovery activation' }
 
-    $newKey = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
-    $newSetup = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+    $configPackage = Join-Path $fixture 'recovered-package'
+    New-Item -ItemType Directory -Path $configPackage | Out-Null
+    Copy-Item -LiteralPath (Join-Path $fixture 'dist') -Destination (Join-Path $configPackage 'dist') -Recurse
+    & $maintenance config-recovery $archivePath $recoveryRoot $configPackage local-http | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Native private recovery configuration generation failed' }
+    $configPath = Join-Path $configPackage '.env'
+    $configHash = (Get-FileHash -LiteralPath $configPath -Algorithm SHA256).Hash
+    $generated = @{}
+    foreach ($line in [IO.File]::ReadAllLines($configPath)) {
+      $parts = $line.Split('=', 2)
+      if ($parts.Length -ne 2 -or $generated.ContainsKey($parts[0])) { throw 'Generated dotenv structure is invalid' }
+      $generated[$parts[0]] = $parts[1]
+    }
+    if ($generated.Count -ne 8) { throw 'Generated configuration has unexpected settings' }
+    $newKey = $generated['AX_SECRET_SESSION_KEY']
+    $newSetup = $generated['AX_SECRET_SETUP_TOKEN']
     if ($newKey -eq $saved['AX_SECRET_SESSION_KEY'] -or $newSetup -eq $saved['AX_SECRET_SETUP_TOKEN'] -or $newSetup -eq $newKey) { throw 'Recovery secrets must be independent' }
-    $env:AX_SECRET_DB_URL = 'sqlite://' + $recoveredDb.Replace('\', '/')
-    $env:AX_SECRET_SESSION_KEY = $newKey
-    $env:AX_SECRET_SETUP_TOKEN = $newSetup
-    $env:AX_SECRET_MEDIA_ROOT = $recoveredMedia
-    Start-Fixture
+    # The first recovered startup must read the real generated .env through the
+    # runtime parser, not a test-only reconstruction of its secret settings.
+    foreach ($name in $saved.Keys) { Remove-Item -LiteralPath "Env:$name" -ErrorAction SilentlyContinue }
+    Start-Fixture -WorkingDirectory $configPackage
+    foreach ($name in $generated.Keys) { [Environment]::SetEnvironmentVariable($name, $generated[$name]) }
     Invoke-Request -Path '/setup' -Status 403 | Out-Null
     Invoke-Request -Path '/admin' -Status 403 | Out-Null
     Invoke-Request -Path '/admin' -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
@@ -120,6 +134,7 @@ function Invoke-RecoveryActivationProof {
   if (!$sourceUnchanged) { throw 'Recovery activation altered the stopped source database/sidecars or objects' }
   if ((Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash -ne $archiveHash) { throw 'Recovery activation changed the original archive' }
   if ((Get-FileHash -LiteralPath (Join-Path $recoveryRoot 'recovery.json') -Algorithm SHA256).Hash -ne $receiptHash) { throw 'Activation proof rewrote the historical recovery receipt' }
+  if ((Get-FileHash -LiteralPath $configPath -Algorithm SHA256).Hash -ne $configHash) { throw 'Generated private configuration changed during startup/recovery' }
   Invoke-Request -Path '/admin/media-proof' -Headers @{ Cookie = $cookie } | Out-Null
   Invoke-Request -Path '/admin' -Headers @{ Cookie = $recoveryCookie } -Status 403 | Out-Null
   Assert-MediaCounts -Rows $mediaExpectedRows -Files $mediaExpectedFiles
