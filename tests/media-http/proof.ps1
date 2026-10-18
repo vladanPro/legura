@@ -10,14 +10,17 @@ function Assert-MediaCounts([int]$Rows, [int]$Files) {
   if (@(Get-ChildItem -LiteralPath $mediaRoot -File).Count -ne $Files) { throw "Unexpected media object count" }
 }
 
-function Send-Media([byte[]]$Bytes, [hashtable]$Headers, [int]$Status, [switch]$Native) {
-  $action = if ($Native) { $mediaAction + 'AndReturn' } else { $mediaAction }
+function Send-Media([byte[]]$Bytes, [hashtable]$Headers, [int]$Status, [switch]$Native, [switch]$Chunked, [int]$Padding = 0, [string]$Target = '') {
+  $action = if ($Target) { $Target } elseif ($Native) { $mediaAction + 'AndReturn' } else { $mediaAction }
   $request = [Net.Http.HttpRequestMessage]::new([Net.Http.HttpMethod]::Post, "$baseUrl$action")
   $multipart = [Net.Http.MultipartFormDataContent]::new()
   $part = [Net.Http.ByteArrayContent]::new($Bytes)
   $part.Headers.ContentType = [Net.Http.Headers.MediaTypeHeaderValue]::new("text/html")
   $multipart.Add($part, "image", "../../untrusted.svg")
+  if ($Padding -gt 0) { $multipart.Add([Net.Http.ByteArrayContent]::new([byte[]]::new($Padding)), 'padding', 'padding.bin') }
   $request.Content = $multipart
+  if ($ScopedMedia) { $request.Headers.ExpectContinue = $true }
+  if ($Chunked) { $request.Headers.TransferEncodingChunked = $true }
   foreach ($key in $Headers.Keys) {
     if ($key -ne 'Accept') { $request.Headers.Add($key, [string]$Headers[$key]) }
   }
@@ -68,10 +71,31 @@ foreach ($bytes in @([Text.Encoding]::UTF8.GetBytes('<svg onload="alert(1)"/>'),
   if ($response.Body -match 'untrusted.svg|onload|private-media') { throw "Invalid upload echoed untrusted or private input" }
   Assert-MediaCounts -Rows 0 -Files 0
 }
-Send-Media -Bytes ([byte[]]::new(9437185)) -Headers $sessionProof -Status 400 | Out-Null
+$oversizeStatus = if ($ScopedMedia) { 413 } else { 400 }
+Send-Media -Bytes ([byte[]]::new(9437185)) -Headers $sessionProof -Status $oversizeStatus | Out-Null
 Assert-MediaCounts -Rows 0 -Files 0
 
-$result = (Send-Media -Bytes $validImage -Headers $sessionProof -Status 200).Body | ConvertFrom-Json
+$padding = 0
+if ($ScopedMedia) {
+  foreach ($target in @(
+    '/__axonyx/action?path=%2Flogin&name=SignIn',
+    '/__axonyx/action?path=%2Fadmin%2Fmedia-proof&name=Missing',
+    "$mediaAction&name=SignIn",
+    "$mediaAction&%6Eame=SignIn",
+    "$mediaAction&path=%2Flogin"
+  )) {
+    Send-Media -Bytes $validImage -Headers $sessionProof -Status 413 -Padding 70000 -Target $target | Out-Null
+    Send-Media -Bytes $validImage -Headers $sessionProof -Status 413 -Padding 70000 -Target $target -Chunked | Out-Null
+    Assert-MediaCounts -Rows 0 -Files 0
+  }
+  Send-Media -Bytes ([byte[]]::new(9437185)) -Headers $sessionProof -Status 413 -Chunked | Out-Null
+  Send-Media -Bytes $validImage -Headers $anonymous -Status 403 -Padding 70000 | Out-Null
+  Send-Media -Bytes $validImage -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 -Padding 70000 | Out-Null
+  Assert-MediaCounts -Rows 0 -Files 0
+  $padding = 70000
+}
+
+$result = (Send-Media -Bytes $validImage -Headers $sessionProof -Status 200 -Padding $padding -Chunked:$ScopedMedia).Body | ConvertFrom-Json
 if (!$result.ok -or $result.value.storage -ne 'local-media' -or $result.value.content_type -ne 'image/png' -or $result.value.file_name -ne "$($result.value.id).png") { throw "Uploaded FileRef is not canonical" }
 $mediaId = $result.value.id
 Assert-MediaCounts -Rows 1 -Files 1
@@ -108,7 +132,7 @@ try {
 }
 
 # Ten items per page, populated through real uploads rather than fake metadata.
-$native = Send-Media -Bytes $validImage -Headers $sessionProof -Status 303 -Native
+$native = Send-Media -Bytes $validImage -Headers $sessionProof -Status 303 -Native -Padding $padding
 if ($native.Headers['Location'] -ne '/admin/media-proof') { throw "Native upload did not return to the library" }
 for ($index = 0; $index -lt 8; $index++) { Send-Media -Bytes $validImage -Headers $sessionProof -Status 200 | Out-Null }
 Assert-MediaCounts -Rows 11 -Files 12
