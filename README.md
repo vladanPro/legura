@@ -94,6 +94,10 @@ The [native media configuration](docs/native-media-config-v0.md) now uses Legura
 own startup hook and the application DB settings, disabled by default. Operator
 media pages and delivery remain inactive; source CLI integration is still required.
 
+The native tool can now generate a NEW [private recovery configuration](docs/recovery-private-config-v0.md)
+with independent session/setup secrets after archive compatibility checks. It
+never replaces an existing `.env` or activates a service.
+
 ## Product
 
 - Own your server, content, files, and database.

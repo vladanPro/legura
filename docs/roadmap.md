@@ -191,6 +191,9 @@ activation; see recovery-activation-proof-v0.md.
 Native media configuration now uses the product startup hook, shared application
 DB settings and explicit disabled/local modes rather than a test-only adapter.
 Operator activation and CLI publication remain separate; see native-media-config-v0.md.
+New-only private recovery configuration generation now prepares validated paths
+and independent secrets without switching services or replacing settings; see
+recovery-private-config-v0.md. Published CLI integration remains a separate gate.
 
 Media Library View V0 builds on the isolated upload proof with Foundry admin
 navigation, empty state, processed metadata, bounded pagination and a native

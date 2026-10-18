@@ -110,7 +110,8 @@ function Get-Proof {
 }
 
 function Start-Fixture {
-  $options = @{ FilePath = $script:binary; WorkingDirectory = $fixture; PassThru = $true; RedirectStandardOutput = (Join-Path $fixture "server.out"); RedirectStandardError = (Join-Path $fixture "server.err") }
+  param([string]$WorkingDirectory = $fixture)
+  $options = @{ FilePath = $script:binary; WorkingDirectory = $WorkingDirectory; PassThru = $true; RedirectStandardOutput = (Join-Path $fixture "server.out"); RedirectStandardError = (Join-Path $fixture "server.err") }
   if ($IsWindows) { $options.WindowStyle = "Hidden" }
   $script:process = Start-Process @options
   for ($attempt = 0; $attempt -lt 60; $attempt++) {

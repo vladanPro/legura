@@ -39,6 +39,15 @@ fn run() -> Result<()> {
             configure_local(Path::new(root))?;
             println!("New local HTTP configuration created. Read the setup token from the private .env file; secrets were not printed.");
         }
+        [command, archive, recovery, package, mode] if command == "config-recovery" => {
+            let mode = match mode.to_str() {
+                Some("https") => legura::recovery_config::CookieMode::Https,
+                Some("local-http") => legura::recovery_config::CookieMode::LocalHttp,
+                _ => bail!("Choose https or local-http explicitly; no configuration was created"),
+            };
+            legura::recovery_config::generate(Path::new(archive), Path::new(recovery), Path::new(package), mode)?;
+            println!("NEW private recovery .env created with independent secrets; secret values were not printed. No service or existing configuration was changed. Clear conflicting process overrides before startup; cookie mode does not configure TLS or network binding.");
+        }
         [command, destination] if command == "init" => {
             initialize(Path::new(destination))?;
             println!("Empty database initialized with compatible migrations. Configure independent secrets before starting browser setup.");
@@ -97,7 +106,8 @@ fn run() -> Result<()> {
             " | archive-pack-snapshot <frozen-snapshot-file> <store-id> <private-media-directory> <new-archive>",
             " | archive-backup <database-file> <store-id> <private-media-directory> <new-archive>",
             " | archive-verify <archive> | archive-restore <archive> <new-private-directory>",
-            " | archive-check-recovery <archive> <inactive-recovery-directory>"
+            " | archive-check-recovery <archive> <inactive-recovery-directory>",
+            " | config-recovery <archive> <inactive-recovery-directory> <package-directory> <https|local-http>"
         )),
     }
     Ok(())

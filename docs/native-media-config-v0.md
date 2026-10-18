@@ -9,6 +9,11 @@ native storage startup hook, as pinned in the media CI job. That framework chang
 has not yet been published as a new Cargo CLI release. Preview mode is not a
 supported native-storage host. Do not assume an older global CLI wires this hook.
 
+For an already verified inactive archive recovery, the maintenance tool can
+generate NEW private settings instead of copying old secrets. See
+[Private Recovery Configuration V0](recovery-private-config-v0.md); service
+activation and CLI publication remain separate.
+
 ## Disabled By Default
 
 With no media settings, or only the following setting, media writes are disabled:

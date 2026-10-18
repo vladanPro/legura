@@ -14,4 +14,5 @@ pub mod media_image;
 pub mod media_library;
 pub mod media_upload;
 pub mod pagination;
+pub mod recovery_config;
 pub mod storage;

@@ -614,6 +614,13 @@ struct RecoveryReceipt {
 /// Read-only, point-in-time compatibility check against the original archive.
 /// Never upgrades the database, rewrites the receipt or activates a service.
 pub fn check_recovery(archive: &Path, root: &Path) -> Result<ArchiveReport> {
+    Ok(check_recovery_with_store(archive, root)?.0)
+}
+
+pub(crate) fn check_recovery_with_store(
+    archive: &Path,
+    root: &Path,
+) -> Result<(ArchiveReport, StoreId)> {
     // Strip trailing separators/`.` before lstat so a final symlink cannot be
     // treated as a directory merely because the supplied path ends in `/`.
     let root = root.components().collect::<PathBuf>();
@@ -689,7 +696,7 @@ pub fn check_recovery(archive: &Path, root: &Path) -> Result<ArchiveReport> {
         inventory.objects == (report.files - 1) as u64,
         "Recovered media inventory differs from archive"
     );
-    Ok(report)
+    Ok((report, store))
 }
 
 #[cfg(test)]

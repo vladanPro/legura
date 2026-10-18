@@ -920,3 +920,125 @@ fn runtime_session_shape_drift_is_not_ignored_by_compatibility_checks() {
         assert!(legura::database_contract::validate_current(&database).is_err(), "{sql}");
     }
 }
+
+#[test]
+fn private_recovery_config_is_new_only_secret_safe_and_compatible_with_product_settings() {
+    use axonyx_runtime::backend::AxEnv;
+    use axonyx_runtime::server::AxUnavailableFileStorage;
+    use std::sync::Arc;
+    let fixture = Fixture::product();
+    fixture.upload();
+    fixture.pack("site.legura").unwrap();
+    let archive = fixture.0.join("site.legura");
+    let recovery = fixture.0.join("recovery");
+    backup_archive::restore(&archive, &recovery).unwrap();
+    let before = fs::read(recovery.join("database.sqlite")).unwrap();
+    let mut secrets = Vec::new();
+    for mode in ["https", "local-http"] {
+        let package = fixture.0.join(format!("package-{mode}"));
+        fs::create_dir(&package).unwrap();
+        let invoke = || {
+            Command::new(env!("CARGO_BIN_EXE_legura-maintenance"))
+                .arg("config-recovery")
+                .arg(&archive)
+                .arg(&recovery)
+                .arg(&package)
+                .arg(mode)
+                .env("AX_SECRET_DB_URL", "must-not-be-read")
+                .env("AX_SECRET_SESSION_KEY", "old-secret-must-not-be-copied")
+                .output()
+                .unwrap()
+        };
+        let output = invoke();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let path = package.join(".env");
+        let content = fs::read_to_string(&path).unwrap();
+        let values: std::collections::BTreeMap<_, _> = content
+            .lines()
+            .map(|line| line.split_once('=').unwrap())
+            .collect();
+        assert_eq!(values.len(), 8);
+        assert_eq!(
+            values["AX_SECRET_SESSION_COOKIE_SECURE"],
+            if mode == "https" { "true" } else { "false" }
+        );
+        assert_eq!(values["AX_SECRET_MEDIA_DRIVER"], "local");
+        for name in ["AX_SECRET_SESSION_KEY", "AX_SECRET_SETUP_TOKEN"] {
+            let secret = values[name];
+            assert_eq!(secret.len(), 64);
+            assert!(secret.bytes().all(|c| c.is_ascii_hexdigit()));
+            assert!(!String::from_utf8_lossy(&output.stdout).contains(secret));
+            assert!(!String::from_utf8_lossy(&output.stderr).contains(secret));
+            assert!(!secrets.contains(&secret.to_owned()));
+            secrets.push(secret.to_owned());
+        }
+        assert!(!content.contains("old-secret-must-not-be-copied"));
+        let env = values.iter().fold(AxEnv::new(), |env, (key, value)| {
+            env.with_secret(
+                key.strip_prefix("AX_SECRET_").unwrap().to_ascii_lowercase(),
+                *value,
+            )
+        });
+        legura::media_config::configure(&env, &package, Arc::new(AxUnavailableFileStorage))
+            .unwrap();
+        assert!(!invoke().status.success());
+        assert_eq!(fs::read_to_string(&path).unwrap(), content);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(
+                fs::metadata(path).unwrap().permissions().mode() & 0o777,
+                0o600
+            );
+        }
+    }
+    assert_eq!(fs::read(recovery.join("database.sqlite")).unwrap(), before);
+    backup_archive::check_recovery(&archive, &recovery).unwrap();
+}
+
+#[test]
+fn private_config_refuses_invalid_profile_recovery_public_paths_and_empty_existing_files() {
+    use legura::recovery_config::{generate, CookieMode};
+    let fixture = Fixture::product();
+    fixture.upload();
+    fixture.pack("site.legura").unwrap();
+    let archive = fixture.0.join("site.legura");
+    let recovery = fixture.0.join("recovery");
+    backup_archive::restore(&archive, &recovery).unwrap();
+    let package = fixture.0.join("package");
+    fs::create_dir(&package).unwrap();
+    let invalid = Command::new(env!("CARGO_BIN_EXE_legura-maintenance"))
+        .arg("config-recovery")
+        .arg(&archive)
+        .arg(&recovery)
+        .arg(&package)
+        .arg("automatic")
+        .output()
+        .unwrap();
+    assert!(!invalid.status.success());
+    assert!(!package.join(".env").exists());
+    let exposed = fixture.0.join("dist");
+    fs::create_dir(&exposed).unwrap();
+    assert!(generate(&archive, &recovery, &exposed, CookieMode::Https).is_err());
+    assert!(!exposed.join(".env").exists());
+    // A working directory that exposes the recovered data through its web root
+    // must not receive an otherwise valid configuration.
+    assert!(generate(&archive, &recovery, &fixture.0, CookieMode::Https).is_ok());
+    fs::remove_file(fixture.0.join(".env")).unwrap();
+    let public = fixture.0.join("public");
+    fs::rename(&recovery, &public).unwrap();
+    assert!(generate(&archive, &public, &fixture.0, CookieMode::Https).is_err());
+    assert!(!fixture.0.join(".env").exists());
+    fs::rename(&public, &recovery).unwrap();
+    fs::write(package.join(".env"), b"").unwrap();
+    assert!(generate(&archive, &recovery, &package, CookieMode::Https).is_err());
+    assert_eq!(fs::read(package.join(".env")).unwrap(), b"");
+    fs::remove_file(package.join(".env")).unwrap();
+    fs::write(recovery.join("database.sqlite"), b"damaged").unwrap();
+    assert!(generate(&archive, &recovery, &package, CookieMode::Https).is_err());
+    assert!(!package.join(".env").exists());
+}
