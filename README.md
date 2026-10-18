@@ -90,6 +90,9 @@ Operator activation remains separate; a recovery receipt is not startup certific
 An [isolated activation proof](docs/recovery-activation-proof-v0.md) exercises
 stop/check/switch/start with new session secrets and source rollback, without
 changing the developer's running CMS or claiming an operator activation command.
+The [native media configuration](docs/native-media-config-v0.md) now uses Legura's
+own startup hook and the application DB settings, disabled by default. Operator
+media pages and delivery remain inactive; source CLI integration is still required.
 
 ## Product
 

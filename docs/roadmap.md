@@ -188,6 +188,9 @@ The isolated media smoke now exercises recovery activation with independent
 session secrets, fresh login, separate writes/restart, failed-start refusal and
 return to the untouched source. This is acceptance only, not operator/service
 activation; see recovery-activation-proof-v0.md.
+Native media configuration now uses the product startup hook, shared application
+DB settings and explicit disabled/local modes rather than a test-only adapter.
+Operator activation and CLI publication remain separate; see native-media-config-v0.md.
 
 Media Library View V0 builds on the isolated upload proof with Foundry admin
 navigation, empty state, processed metadata, bounded pagination and a native
