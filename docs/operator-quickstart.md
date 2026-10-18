@@ -2,8 +2,8 @@
 
 This is the SQLite development pilot, not a production installation guide.
 Run commands from the Legura repository. PowerShell 7.4+, Rust/Cargo and
-the [pinned source CLI](private-media-http-v0.md) are required for the current
-private-image pilot. Published CLI 0.6.16 cannot compile its Binary routes.
+the [registry CLI 0.7.0](private-media-http-v0.md) are required for the current
+private-image pilot. CLI 0.6.x cannot compile its Binary routes.
 Git Bash can run the same `pwsh` commands.
 
 ## First Start
