@@ -1,4 +1,4 @@
-//! Inactive media persistence service. The caller must enforce administrator/CSRF policy.
+//! Media persistence and private reads; HTTP mutations require administrator/CSRF policy.
 use crate::media_upload::{MediaUploadError, MediaUploadStorage, StoredMedia};
 use crate::storage::{LocalStorage, StoreId, MAX_OBJECT_BYTES};
 use axonyx_runtime::backend::{AxRuntimeError, AxRuntimeResult};
@@ -19,6 +19,7 @@ impl std::error::Error for MediaLibraryUnavailable {}
 pub struct MediaLibraryStorage {
     images: MediaUploadStorage<LocalStorage>,
     database: PathBuf,
+    store_id: StoreId,
 }
 
 impl MediaLibraryStorage {
@@ -29,16 +30,42 @@ impl MediaLibraryStorage {
         store_id: StoreId,
         database: &Path,
     ) -> Result<Self, MediaLibraryUnavailable> {
-        let images = LocalStorage::open(root, store_id, MAX_OBJECT_BYTES)
+        let images = LocalStorage::open(root, store_id.clone(), MAX_OBJECT_BYTES)
             .map_err(|_| MediaLibraryUnavailable)?;
         let service = Self {
             images: MediaUploadStorage::new(images),
             database: database.to_owned(),
+            store_id,
         };
         let connection = service.connect()?;
         connection.prepare("SELECT id, store_id, content_type, byte_size, width, height, sha256 FROM legura_media LIMIT 0")
             .map_err(|_| MediaLibraryUnavailable)?;
         Ok(service)
+    }
+
+    /// Read-only DB authority is rechecked for every request, before object access.
+    pub fn read_for_administrator(
+        &self,
+        subject: &str,
+        id: &str,
+    ) -> Result<crate::media_read::PrivateMedia, crate::media_read::MediaReadError> {
+        use crate::media_read::MediaReadError;
+        let connection =
+            Connection::open_with_flags(&self.database, OpenFlags::SQLITE_OPEN_READ_ONLY)
+                .map_err(|_| MediaReadError::Unavailable)?;
+        connection
+            .busy_timeout(Duration::from_secs(5))
+            .map_err(|_| MediaReadError::Unavailable)?;
+        connection
+            .execute_batch("PRAGMA trusted_schema=OFF; PRAGMA query_only=ON;")
+            .map_err(|_| MediaReadError::Unavailable)?;
+        crate::media_read::read_for_administrator(
+            &connection,
+            self.images.store(),
+            &self.store_id,
+            Some(subject),
+            id,
+        )
     }
 
     fn connect(&self) -> Result<Connection, MediaLibraryUnavailable> {

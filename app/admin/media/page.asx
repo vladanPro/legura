@@ -17,7 +17,7 @@ page MediaLibrary() {
           </div>
           <p class="legura-hint" data-media-total={listing.total}>{listing.total + " stored images"}</p>
         </header>
-        <p class="legura-preview-notice">Files stay private. Image previews and post attachments are not enabled.</p>
+        <p class="legura-preview-notice">Image previews are private to administrators. Post attachments are not enabled.</p>
         <Card title="Upload an image">
           <form
             method="post"
@@ -49,7 +49,13 @@ page MediaLibrary() {
             <Each items={listing.items} as="image">
               <Card>
                 <article data-media-id={image.id} aria-label="Stored image details">
-                  <MediaPlaceholder label="Preview unavailable" />
+                  <img
+                    class="legura-media-preview"
+                    src={"/api/media/" + image.id}
+                    alt="Stored image preview"
+                    loading="lazy"
+                    decoding="async"
+                  />
                   <h2>{image.content_type}</h2>
                   <p>{image.width + " x " + image.height + " pixels"}</p>
                   <p>{image.byte_size + " bytes"}</p>

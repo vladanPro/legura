@@ -358,6 +358,7 @@ try {
   }
   if ($Media) {
     Send-Media -Bytes $validImage -Headers $revokedProof -Status 403 | Out-Null
+    Assert-PrivateMediaRead $mediaId $cookie 403
     Invoke-Request -Path "/admin/media" -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
     Send-Media -Bytes $validImage -Headers $revokedProof -Status 403 -Native | Out-Null
     Assert-MediaCounts -Rows $mediaExpectedRows -Files $mediaExpectedFiles

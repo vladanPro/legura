@@ -53,6 +53,10 @@ impl<S: ObjectStorage> MediaUploadStorage<S> {
         }
     }
 
+    pub(crate) fn store(&self) -> &S {
+        &self.store
+    }
+
     /// No filename, declared MIME or client path becomes a storage identifier.
     /// This method grants no administrator, session or CSRF authority.
     pub fn save_image(

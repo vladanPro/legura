@@ -4,9 +4,9 @@ Legura now owns `src/native_storage.rs` and `src/media_config.rs`. The compiled
 server startup hook uses this product adapter; tests no longer substitute a
 different adapter or supply `AX_TEST_MEDIA_*` database/storage settings.
 
-The storage startup hook was published in `cargo-axonyx 0.6.15`. The media CI job
-now installs CLI 0.6.16 with `--locked`, without a framework Git
-checkout. Preview mode is not a supported native-storage host. Do not assume an
+The storage startup hook was published in `cargo-axonyx 0.6.15`. The private-image
+extension temporarily uses exact [source pins](private-media-http-v0.md) for its
+unpublished binary route contract. Preview mode is not a supported native-storage host. Do not assume an
 older global CLI wires this hook. This remains an isolated product pilot, not
 operator media activation.
 

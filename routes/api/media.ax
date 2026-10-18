@@ -1,0 +1,3 @@
+route GET "/api/media/:id" -> Binary {
+  return Native.privateResponse("legura.media.read", { id: params.id })
+}

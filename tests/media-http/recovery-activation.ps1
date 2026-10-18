@@ -75,6 +75,7 @@ function Invoke-RecoveryActivationProof {
     Invoke-Request -Path '/admin' -Status 403 | Out-Null
     Invoke-Request -Path '/admin' -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
     Invoke-Request -Path '/admin/media' -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
+    Assert-PrivateMediaRead $mediaId $cookie 403
     Send-Media -Bytes $validImage -Headers $sessionProof -Status 403 | Out-Null
     Assert-RecoveredMedia $mediaExpectedRows
 
@@ -86,6 +87,7 @@ function Invoke-RecoveryActivationProof {
     if (!$recoveryCookie) { throw 'Recovered credentials did not establish a fresh session' }
     Invoke-Request -Path '/admin' -Headers @{ Cookie = $recoveryCookie } | Out-Null
     Invoke-Request -Path '/admin/media' -Headers @{ Cookie = $recoveryCookie } | Out-Null
+    Assert-PrivateMediaRead $mediaId $recoveryCookie
     $freshProof = Get-Proof -Cookie $recoveryCookie
     Send-Media -Bytes $validImage -Headers $freshProof -Status 200 | Out-Null
     Assert-RecoveredMedia ($mediaExpectedRows + 1)
@@ -104,6 +106,7 @@ function Invoke-RecoveryActivationProof {
     $disabled = Invoke-Request -Path '/admin' -Headers @{ Cookie = $recoveryCookie }
     if ($disabled.Body.Contains('href="/admin/media"')) { throw 'Disabled recovered Media remained in navigation' }
     Invoke-Request -Path '/admin/media' -Headers @{ Cookie = $recoveryCookie } -Status 403 | Out-Null
+    Assert-PrivateMediaRead $mediaId $recoveryCookie 403
     Send-Media -Bytes $validImage -Headers (Get-Proof -Cookie $recoveryCookie) -Status 403 | Out-Null
     Assert-RecoveredMedia ($mediaExpectedRows + 1)
     Stop-Fixture

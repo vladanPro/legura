@@ -1,5 +1,10 @@
 # Media library view V0
 
+Historical isolated pilot. The current product route and private source-pinned
+previews are described in [Product Media Library](product-media-library-v0.md)
+and [Private Media HTTP](private-media-http-v0.md); the scope below records the
+earlier acceptance step, not the current product's complete feature set.
+
 This is an isolated acceptance pilot, not operator media activation. The root
 application still has no media route, storage hook, media migration or larger
 request budget. SQLite backup/restore still does not include media files.

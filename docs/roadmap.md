@@ -40,8 +40,10 @@ the current pilot intentionally uses explicit 403 guards.
 
 Product Media Library V0 promotes the tested route into `/admin/media` with
 server-owned conditional navigation and default-off storage. See
-product-media-library-v0.md for opt-in and acceptance boundaries. Private binary
-delivery, post attachments, deletion and operator activation remain separate.
+product-media-library-v0.md for opt-in and acceptance boundaries. The source-only
+private-media-http-v0.md extension adds protected image previews; coordinated
+registry publication, post attachments, deletion and operator activation remain
+separate gates.
 
 Rich-text Migration V1 is integrated into dev: migration 003 preserves legacy
 plain rows, blocks destructive rich rollback, and supports old/new snapshots.

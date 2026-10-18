@@ -1,8 +1,9 @@
 # Private Media Read V0 - Rust Boundary Only
 
-This is a tested product read service and response builder, NOT an HTTP endpoint.
-The Media grid still uses placeholders. No public storage directory, JSON/base64
-image payload, generated-host edit or operator setting is introduced.
+This document describes the tested product read service and response builder.
+The subsequent [private HTTP extension](private-media-http-v0.md) connects it to
+source-pinned compiled routes. No public storage directory, JSON/base64 image
+payload or generated-host edit is introduced.
 
 `media_read::read_for_administrator` takes an explicit database connection,
 startup-validated object-storage capability/store, a server-verified session
@@ -43,12 +44,10 @@ The filesystem tests create randomized disposable roots and remove only those
 roots. No operator DB, media, environment or process is involved. Rust formatting,
 Clippy with warnings denied and diff checks pass; all PR CI gates remain required.
 
-## Next: Compiler/Runtime HTTP Bridge
+## Compiler/Runtime HTTP Bridge
 
 Existing `Native.call` deliberately uses bounded JSON. Image bytes must not be
-smuggled through it. Axonyx needs a typed binary-response path from compiled
-backend routes to application-owned Rust capabilities with verified request
-context, safe errors, correct response-validation contracts and unchanged JSON
-behavior. Only after that compiled HTTP proof should the product grid use image
-URLs. Streaming, range/conditional responses and public post images are separate
-contracts, not implied by this read service.
+smuggled through it. The source HTTP extension uses a separate typed private
+binary channel with verified request context, safe errors and response validation.
+Registry publication is still gated on a coordinated 0.7 release. Streaming,
+range/conditional responses and public post images remain separate contracts.

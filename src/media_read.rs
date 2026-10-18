@@ -28,6 +28,21 @@ pub struct PrivateMedia {
 }
 
 impl PrivateMedia {
+    pub fn into_native_response(
+        self,
+    ) -> Result<
+        axonyx_runtime::native_response::AxNativeBinaryResponse,
+        axonyx_runtime::native_response::AxNativeResponseError,
+    > {
+        use axonyx_runtime::native_response::{AxNativeBinaryResponse, AxNativeBinaryType};
+        let kind = match self.content_type {
+            "image/png" => AxNativeBinaryType::Png,
+            "image/jpeg" => AxNativeBinaryType::Jpeg,
+            _ => return Err(axonyx_runtime::native_response::AxNativeResponseError::Unavailable),
+        };
+        AxNativeBinaryResponse::new(kind, self.bytes)
+    }
+
     pub fn into_response(self) -> AxHttpResponse {
         AxHttpResponse::bytes(200, self.content_type, self.bytes)
             .with_header("Cache-Control", "private, no-store")

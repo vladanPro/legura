@@ -29,8 +29,10 @@ is integrated into dev.
 Posts V0 adds private create/edit, draft/published status, public published pages
 and plain-text rendering. Its typed not-found framework fixes are published in
 core 0.6.6/runtime 0.6.5/CLI 0.6.9/scaffold 0.6.7 after green release CI.
-This branch uses registry runtime 0.6.11 and CI CLI 0.6.16; required acceptance now
-includes HTTP posts and both browser modes alongside the original auth tests.
+The private-image source pilot temporarily pins runtime commit `3e27ed4` and
+CLI commit `965b7fa`; these changes are NOT published as 0.6.x packages.
+See [Private Media HTTP](docs/private-media-http-v0.md) for the coordinated 0.7
+release gate. Acceptance includes HTTP posts and both browser modes alongside auth.
 The Posts acceptance/integration gate is recorded in docs/posts-v0.md.
 
 Editor validation adds field-level duplicate-slug feedback and preserves long
@@ -70,16 +72,18 @@ adoption and why search and pagination remain server-owned.
 The [opt-in Media library](docs/product-media-library-v0.md) adds private image
 uploads and bounded listing at `/admin/media`, using the existing local storage
 foundation. It stays disabled until an operator configures valid private storage.
-Private image delivery, post attachments and deletion are separate work.
+Private image previews use a session-verified endpoint in this source pilot;
+post attachments and deletion are separate work.
 The [private read service](docs/private-media-read-v0.md) validates referenced
-images and constructs binary responses in Rust; the `.ax` HTTP bridge is not yet
-implemented, so library previews remain placeholders.
+images and constructs binary responses in Rust. The [HTTP bridge](docs/private-media-http-v0.md)
+rechecks the current administrator and exposes no public filesystem directory.
 The [Media availability contract](docs/media-availability-v0.md) supplies a
 validated, server-owned boolean for product navigation, not an upload grant.
 
 An isolated protected-upload proof is merged in `dev` (PR #48), after all seven
 CI gates passed. Its startup hook (framework PR #357) is published in CLI 0.6.15,
-first adopted from crates.io in Media CI, which now uses CLI 0.6.16. The
+first adopted from crates.io; the current private-image CI temporarily uses the
+source pins above. The
 [library view pilot](docs/media-library-view-v0.md) is the basis of the opt-in
 product page. Existing operator installations are not automatically activated.
 
@@ -99,8 +103,8 @@ stop/check/switch/start with new session secrets and source rollback, without
 changing the developer's running CMS or claiming an operator activation command.
 The [native media configuration](docs/native-media-config-v0.md) now uses Legura's
 own startup hook and the application DB settings, disabled by default. Operator
-media pages and delivery remain inactive; compiled builds require the published
-CLI 0.6.15 startup hook or a compatible newer version.
+media pages and delivery remain inactive; the current source pilot requires the
+exact CLI/runtime pins documented above, pending coordinated 0.7 publication.
 
 The native tool can now generate a NEW [private recovery configuration](docs/recovery-private-config-v0.md)
 with independent session/setup secrets after archive compatibility checks. It
