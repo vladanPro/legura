@@ -31,6 +31,28 @@ try {
         assert.match(response.headers()['cache-control'], /no-store/);
         assert.ok(await page.getByRole('heading', { name: 'Media library', exact: true }).isVisible());
         assert.equal(await page.locator('[data-media-id]').count(), 10);
+        const card = page.locator('[data-media-id]').first();
+        const id = await card.getAttribute('data-media-id');
+        const details = card.locator('details');
+        const code = details.locator('code');
+        assert.equal(await details.getAttribute('open'), null);
+        assert.equal(await code.isVisible(), false, 'Media ID must be hidden by default');
+        assert.ok(!(await card.innerText()).includes(id), 'Media ID leaked into the visible card');
+        await details.locator('summary').click();
+        assert.ok(await code.isVisible(), 'Technical details must open without JavaScript too');
+        assert.equal((await code.innerText()).trim(), id);
+        const copy = details.getByRole('button', { name: 'Copy', exact: true });
+        if (javaScriptEnabled) {
+          await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+          await copy.click();
+          await details.getByRole('button', { name: 'Copied', exact: true }).waitFor();
+          assert.equal((await page.evaluate(() => navigator.clipboard.readText())).trim(), id);
+        } else {
+          assert.equal(await copy.isVisible(), false, 'No-JS mode must not show a dead Copy button');
+        }
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Expanded technical details overflow');
+        await details.locator('summary').click();
+        assert.equal(await code.isVisible(), false);
         const placeholders = page.getByRole('img', { name: 'Preview unavailable', exact: true });
         assert.equal(await placeholders.count(), 10);
         assert.ok(await placeholders.first().isVisible());

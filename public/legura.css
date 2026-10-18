@@ -15,6 +15,11 @@
   :scope:not([data-legura-js='true']) .ax-layout-sidebar__toggle { display: none; }
 }
 .legura-admin-shell .ax-sidebar-item { min-height: 2.75rem; }
+.legura-media-details { min-width: 0; margin-top: 0.75rem; }
+.legura-media-details summary { padding-block: 0.75rem; color: var(--ax-text-muted); cursor: pointer; }
+.legura-media-details summary:focus-visible { outline: 2px solid var(--ax-accent); outline-offset: 3px; border-radius: var(--ax-radius-md); }
+.legura-media-details .ax-code-block__code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.legura-media-details [data-ax-copy-code]:not([data-ax-copy-ready='true']) { display: none; }
 .legura-form { display: grid; gap: 0.75rem; --ax-input-min-height: 2.75rem; --ax-button-min-height: 2.75rem; }
 .legura-app .legura-form input.ax-input { min-height: 2.75rem; font-size: 1rem; }
 .legura-form .ax-button { min-height: 2.75rem; }
