@@ -7,10 +7,12 @@ change its `.env`, migrate its database or register an operating-system service.
 
 ## Reproduce
 
-Use the reviewed source CLI containing the native storage startup hook:
+Use published CLI 0.6.15 containing the native storage startup hook. Install it
+in a separate test directory if the developer's global CLI must stay unchanged:
 
 ```powershell
-pwsh -File scripts/smoke-auth.ps1 -Media -MediaBrowser -ToolPath <source-cargo-axonyx-binary> -Port 3963
+cargo install cargo-axonyx --version '=0.6.15' --locked --debug --root <test-tool-dir>
+pwsh -File scripts/smoke-auth.ps1 -Media -MediaBrowser -ToolPath <test-tool-dir>/bin/cargo-axonyx -Port 3963
 ```
 
 The normal media proof creates an isolated SQLite installation, administrator,

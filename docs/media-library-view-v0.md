@@ -45,9 +45,10 @@ selection, alt text, post attachment or media-inclusive backup in this slice.
 pwsh -File scripts/smoke-auth.ps1 -Media -MediaBrowser -ToolPath <reviewed-cli> -Port 3963
 ```
 
-Uses the pinned storage-startup CLI source from framework PR #357. The fixture
-alone contains the 004 media schema, explicit private directory and 9 MiB request
-limit. It creates disposable SQLite, uploads eleven real images, preserves the
+Uses published storage-startup CLI 0.6.15 from crates.io. Migration 004 is now a
+versioned product migration; the fixture alone enables its protected library
+route, explicit private directory and 9 MiB request limit. It creates disposable
+SQLite, uploads eleven real images, preserves the
 intentional orphan from its metadata-failure test, and verifies:
 
 - Anonymous, invalid-CSRF, cross-origin and revoked access remain denied.
@@ -64,6 +65,7 @@ Playwright is the existing test-only browser dependency, not a product runtime
 dependency. The isolated session cookie goes to the test process on stdin.
 Optional `LEGURA_MEDIA_SCREENSHOTS` writes local screenshots outside the repo.
 
-Before product activation: publish the startup hook, introduce the versioned
-product migration and explicit operator opt-in, and prove media-aware backup,
-restore and upgrade behavior. No active operator configuration is changed here.
+The startup hook is published, and versioned migration plus isolated media-aware
+backup/recovery are available. Before product activation: explicit operator
+opt-in, upload budget, delivery and upgrade policy remain. No active operator
+configuration is changed here.

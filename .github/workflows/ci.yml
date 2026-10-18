@@ -24,8 +24,8 @@ jobs:
         with:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
-      - name: Install reviewed storage-startup CLI source
-        run: cargo install cargo-axonyx --git https://github.com/vladanPro/axonyx-framework --rev 5f432509ece94b01eff8f00327e5715d2b9dae82 --locked --debug --force
+      - name: Install published storage-startup CLI
+        run: cargo install cargo-axonyx --version '=0.6.15' --locked --debug --force
       - name: Check storage hook formatting
         shell: pwsh
         run: |

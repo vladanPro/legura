@@ -39,17 +39,17 @@ Product max_body_bytes remains 64 KiB. Only the disposable proof uses a 9 MiB
 transport budget for the 8 MiB image payload budget plus multipart overhead.
 The native registration hook is copied into that fixture only, never src/ in
 the operator checkout. All product Cargo dependencies remain registry/pinned.
-The CLI hook is from the exact reviewed framework dev commit, not a claimed
-published CLI version. No global developer CLI installation is replaced locally.
+The CLI hook is published in cargo-axonyx 0.6.15; CI now installs that exact
+registry release. No global developer CLI installation is replaced locally.
 
 ```text
-pwsh -File scripts/smoke-auth.ps1 -Media -ToolPath <reviewed-cargo-axonyx-binary> -Port 3963
+pwsh -File scripts/smoke-auth.ps1 -Media -ToolPath <registry-0.6.15-cargo-axonyx-binary> -Port 3963
 ```
 
 The source CLI may also be selected by ToolManifest; prefer a built ToolPath so
 the app-only isolated target does not rebuild the CLI. ToolPath and ToolManifest
-are mutually exclusive. CI installs exact framework commit
-5f432509ece94b01eff8f00327e5715d2b9dae82 in its disposable runner.
+are mutually exclusive. CI uses `cargo install cargo-axonyx --version '=0.6.15'
+--locked --debug --force` in its disposable runner.
 
 ## Acceptance
 
@@ -64,13 +64,14 @@ without existing DB/schema. New CI Isolated Media Upload HTTP runs the real serv
 Windows local acceptance passed the complete HTTP proof, all 52 library tests,
 strict library/test Clippy, Rust and Axonyx fixture format checks. The isolated
 server was stopped and its temporary fixture cleaned. Linux and the existing
-broader gates must pass before dev integration; this is not registry-only CLI
-acceptance or operator activation.
+broader gates passed before the original source-pilot integration. Registry CLI
+adoption is checked separately by the current Media CI; neither is operator activation.
 
 ## Remaining before activation
 
-Publish/promote the reviewed CLI; promote a versioned product media schema with
-backup policy; add the real administrative library, accessible browser selection
-and explicit operator configuration. Public media serving, alt text, post image
-selection, cleanup, media backups and independent provider migration remain open.
+The startup CLI is now published, the versioned product migration exists and
+isolated media-aware archive/recovery tests are available. Before activation,
+finish explicit operator opt-in, upload budget and delivery policy. Public media
+serving, alt text, post image selection, cleanup and independent provider migration
+remain open. See native-media-config-v0.md and legura-archive-v0.md for current scope.
 The initial implementation is local SQLite/disk only, not cloud storage or hosting.

@@ -4,15 +4,16 @@ Legura now owns `src/native_storage.rs` and `src/media_config.rs`. The compiled
 server startup hook uses this product adapter; tests no longer substitute a
 different adapter or supply `AX_TEST_MEDIA_*` database/storage settings.
 
-This is still source-pilot integration: use the reviewed Axonyx CLI with the
-native storage startup hook, as pinned in the media CI job. That framework change
-has not yet been published as a new Cargo CLI release. Preview mode is not a
-supported native-storage host. Do not assume an older global CLI wires this hook.
+The storage startup hook is published in `cargo-axonyx 0.6.15`. The media CI job
+installs that exact registry version with `--locked`, without a framework Git
+checkout. Preview mode is not a supported native-storage host. Do not assume an
+older global CLI wires this hook. This remains an isolated product pilot, not
+operator media activation.
 
 For an already verified inactive archive recovery, the maintenance tool can
 generate NEW private settings instead of copying old secrets. See
 [Private Recovery Configuration V0](recovery-private-config-v0.md); service
-activation and CLI publication remain separate.
+activation remains separate from preparing configuration.
 
 ## Disabled By Default
 
@@ -84,8 +85,9 @@ file-serving route, authorization exemption or JSON upload protocol.
 The product still defaults to the 64 KiB request budget, and media navigation and
 upload pages remain inactive. The HTTP fixture alone raises its budget and
 installs its protected media proof route. Explicit operator activation, upload
-budget/quotas, safe media delivery, thumbnails, attachments, private config
-generation and service/traffic management remain separate gates.
+budget/quotas, safe media delivery, thumbnails, attachments and service/traffic
+management remain separate gates. New-only private recovery configuration is
+available through `config-recovery`; it does not activate the service.
 
 The full isolated HTTP/browser/recovery test now exercises the product hook,
 including recovered-only writes, disabled authorized uploads, invalid-root startup

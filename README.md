@@ -71,8 +71,8 @@ The inactive [media storage foundation](docs/media-storage-v0.md) defines local
 object storage; upload routes, a media library and post images are not added yet.
 
 An isolated protected-upload proof is merged in `dev` (PR #48), after all seven
-CI gates passed. Its startup hook is on framework `dev` (PR #357), not yet in a
-published CLI. The [library view pilot](docs/media-library-view-v0.md) stays
+CI gates passed. Its startup hook (framework PR #357) is published in CLI 0.6.15,
+now pinned from crates.io in Media CI. The [library view pilot](docs/media-library-view-v0.md) stays
 isolated until product opt-in, versioned migration and media-aware recovery are
 ready. Existing operator installations still have no active media library.
 
@@ -92,7 +92,8 @@ stop/check/switch/start with new session secrets and source rollback, without
 changing the developer's running CMS or claiming an operator activation command.
 The [native media configuration](docs/native-media-config-v0.md) now uses Legura's
 own startup hook and the application DB settings, disabled by default. Operator
-media pages and delivery remain inactive; source CLI integration is still required.
+media pages and delivery remain inactive; compiled builds require the published
+CLI 0.6.15 startup hook or a compatible newer version.
 
 The native tool can now generate a NEW [private recovery configuration](docs/recovery-private-config-v0.md)
 with independent session/setup secrets after archive compatibility checks. It
