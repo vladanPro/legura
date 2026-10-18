@@ -69,3 +69,19 @@ The startup hook is published, and versioned migration plus isolated media-aware
 backup/recovery are available. Before product activation: explicit operator
 opt-in, upload budget, delivery and upgrade policy remain. No active operator
 configuration is changed here.
+
+## Card Details
+
+Cards keep the media type, dimensions and byte size visible. The internal Media
+ID is not a user-facing filename or the SHA-256 integrity checksum. It is now in
+a collapsed native `details` disclosure, labeled Technical details, rather than
+always occupying the card. IDs remain in the data contract and pagination keys;
+storage checksums, object bytes and schema are unchanged. Original upload names
+are not persisted yet; no invented filename is presented as an original name.
+
+The disclosure works without JavaScript. Its existing Foundry CodeBlock can copy
+the ID when the shared UI runtime is initialized; no extra product JavaScript or
+dependency is added. Without that enhancement the inactive Copy button is hidden
+and the revealed text can still be selected/copied normally. Browser acceptance
+checks the initial hidden ID, open/close behavior, actual clipboard contents and
+mobile width in both JS/no-JS modes.

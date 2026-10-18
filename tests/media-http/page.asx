@@ -3,6 +3,7 @@ import { MediaPlaceholder } from "@/components/MediaPlaceholder"
 import { Card } from "@axonyx/ui/foundry/Card"
 import { Grid } from "@axonyx/ui/foundry/Grid"
 import { Button } from "@axonyx/ui/foundry/Button"
+import { CodeBlock } from "@axonyx/ui/foundry/CodeBlock"
 
 page MediaProof() {
   data listing: MediaProofPage = loadMediaProof(query.page ?? "1")
@@ -52,7 +53,10 @@ page MediaProof() {
                   <h2>{image.content_type}</h2>
                   <p>{image.width + " x " + image.height + " pixels"}</p>
                   <p>{image.byte_size + " bytes"}</p>
-                  <p class="legura-hint">{image.id}</p>
+                  <details class="legura-media-details">
+                    <summary>Technical details</summary>
+                    <CodeBlock title="Media ID" language="text" copy="true">{image.id}</CodeBlock>
+                  </details>
                 </article>
               </Card>
             </Each>
