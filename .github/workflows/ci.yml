@@ -42,6 +42,36 @@ jobs:
       - name: Prove media library recovery and isolated activation
         shell: pwsh
         run: ./scripts/smoke-auth.ps1 -Media -MediaBrowser -ToolPath (Get-Command cargo-axonyx).Source -Port 3963
+  scoped-media-source:
+    name: Scoped Media Source Acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: vladanPro/axonyx-framework
+          ref: be84f76e2754d41ab5d13642ff840d7511a46966
+          submodules: recursive
+          path: .test-toolchain
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: .test-toolchain -> target
+      - name: Build pinned source CLI and prove narrow Media budgets
+        shell: pwsh
+        run: |
+          $manifest = Join-Path $PWD '.test-toolchain/Cargo.toml'
+          & cargo build --locked --manifest-path $manifest -p cargo-axonyx --bin cargo-axonyx
+          if ($LASTEXITCODE -ne 0) { throw 'Source CLI build failed' }
+          $metadata = & cargo metadata --manifest-path $manifest --no-deps --format-version 1 | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'Source CLI metadata failed' }
+          $tool = Join-Path $metadata.target_directory 'debug/cargo-axonyx'
+          $runtime = Join-Path $PWD '.test-toolchain/vendor/axonyx-runtime/crates/axonyx-runtime'
+          ./scripts/smoke-auth.ps1 -Media -ScopedMedia -ToolPath $tool -RuntimeSource $runtime -Port 3964
   media-storage:
     name: Local Media Storage (${{ matrix.os }})
     strategy:
