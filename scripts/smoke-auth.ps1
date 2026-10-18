@@ -150,8 +150,8 @@ try {
     $mediaRoute = Join-Path $fixture "app/admin/media-proof"
     New-Item -ItemType Directory -Path $mediaRoute -Force | Out-Null
     foreach ($name in @("actions.ax", "loader.ax", "page.asx")) { Copy-Item -LiteralPath (Join-Path $root "tests/media-http/$name") -Destination $mediaRoute }
-    # Legacy registry proof keeps its old fixture-only budget. Source acceptance
-    # can instead prove narrow allowances without raising the ordinary form cap.
+    # Scoped acceptance preserves the ordinary form cap. The legacy mode remains
+    # available for historical toolchain comparisons outside the registry CI gate.
     $configPath = Join-Path $fixture "Axonyx.toml"
     $config = [IO.File]::ReadAllText($configPath)
     if ($ScopedMedia) {

@@ -1,8 +1,17 @@
-# Scoped Media Transport V0 - Source Acceptance
+# Scoped Media Transport V0
 
-This is an isolated acceptance mode, not product Media activation or a package
-release. Product manifests, operator settings, database and running CMS are not
-changed. The existing registry Media job still proves its pinned packages.
+This is an isolated acceptance mode, not product Media activation. Legura now
+selects published runtime 0.6.11, with CLI 0.6.16 in executable acceptance jobs.
+Operator settings, database and running CMS are not changed. UI and the pinned
+editor are unchanged. The native proof uses core 0.6.9 to match this runtime.
+
+The existing Media job now runs ScopedMedia plus its browser checks against
+registry packages. The separate framework-source build job is retired rather
+than duplicating the same upload/recovery proof. Native editor retry also uses
+the published runtime and the product's pinned Git editor, without path patches.
+The source-format job retains its independent formatter pin.
+
+## Historical Source Gate
 
 Framework PR #362 is merged into dev at `be84f76`. The source CI job checks out
 that exact framework revision and its runtime submodule, builds a private test
@@ -11,13 +20,23 @@ The framework repository does not track Cargo.lock: CI first generates a test
 lockfile and then builds with `--locked`. Framework source is pinned; transitive
 dependency resolution is not claimed to be identical across future CI runs.
 No developer global CLI is replaced. This must not be described as registry-only
-acceptance; compatible runtime/tooling publication is still a separate gate.
+acceptance. Compatible packages have since been published after green main CI.
 
 ## Reproduce
 
 ```text
 pwsh -File scripts/smoke-auth.ps1 -Media -ScopedMedia -ToolPath <source-CLI-binary> -RuntimeSource <runtime-crate-directory> -Port 3964
 ```
+
+Current registry reproduction (install the CLI in an isolated root if a global
+toolchain must remain unchanged):
+
+```text
+cargo install cargo-axonyx --version '=0.6.16' --locked --debug
+pwsh -File scripts/smoke-auth.ps1 -Media -ScopedMedia -ToolPath <installed-CLI-binary> -Port 3964
+```
+
+Do not pass RuntimeSource, ToolManifest, UiSource or EditorSource in this gate.
 
 `ScopedMedia` requires `Media`. The fixture retains the product's 64 KiB default
 and grants 9 MiB only to `UploadLibraryImage` and `UploadLibraryImageAndReturn`
@@ -47,8 +66,8 @@ No private image delivery, product route, metadata migration or plugin API is
 introduced. Optional existing browser acceptance may be added with `MediaBrowser`;
 the source CI job here is HTTP/native acceptance, not a new browser certification.
 
-Before operator activation, publish compatible framework packages and repeat this
-proof without source overrides, then implement the separate explicit Media opt-in
+Before operator activation, pass this proof without source overrides, then
+implement the separate explicit Media opt-in
 and authenticated delivery gates from the activation plan in axonyx-notes.
 
 ## Local Evidence
@@ -65,3 +84,18 @@ Fixture sources, SQLite/media storage and Cargo target were created under a
 randomized temporary root and removed afterward. Operator checkout changes,
 global CLI, environment and running CMS were not modified. Linux CI and future
 registry acceptance are separate evidence gates, not inferred from this run.
+
+### Published Registry Acceptance
+
+On 2026-10-18 the current registry command passed on Windows, port 3964, using
+the isolated crates.io installation of CLI 0.6.16 and runtime 0.6.11. No source
+overrides were supplied. Both tracked lockfiles select registry core 0.6.9 and
+runtime 0.6.11. This passed all scoped HTTP/native checks above, archive/recovery,
+isolated recovery activation and revoked-administrator denial. The expected
+second-restore refusal is a negative assertion, not a failed overall command.
+
+The randomized fixture legura-auth-2305a9d571c449dd9cfea6d217ba05f6 and its private
+Cargo target were removed. The 63 library tests and separate locked native-content
+proof also passed. Local browser certification is not claimed by this HTTP run;
+the seven Linux/Windows CI gates, including existing browser checks, remain the
+merge boundary for the adoption PR.
