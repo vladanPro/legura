@@ -776,6 +776,7 @@ fn current_product_recovery_check_is_read_only_and_checks_original_payloads() {
     drop(axonyx_runtime::session::AxSqliteSessionStore::open(&db_path).unwrap());
     let database = Connection::open(&db_path).unwrap();
     database.execute_batch("INSERT INTO legura_posts(id,title,slug,body,status) VALUES('post','Title','title','Original body','published')").unwrap();
+    database.execute("INSERT INTO legura_post_images(post_id,media_id,alt) VALUES('post',?,'Restored image')", [&key]).unwrap();
     let rich = legura::content::PostContent::rich(
         &serde_json::json!({"format":"legura-richtext","version":1,"blocks":[
             {"type":"paragraph","children":[{"text":"Rich body","marks":["bold"]}]}
@@ -794,6 +795,16 @@ fn current_product_recovery_check_is_read_only_and_checks_original_payloads() {
     let archive = fixture.0.join("site.legura");
     let root = fixture.0.join("recovery");
     backup_archive::restore(&archive, &root).unwrap();
+    let recovered = Connection::open(root.join("database.sqlite")).unwrap();
+    let selection: (String, String) = recovered
+        .query_row(
+            "SELECT media_id, alt FROM legura_post_images WHERE post_id='post'",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(selection, (key.clone(), "Restored image".into()));
+    drop(recovered);
     let db_before = fs::read(root.join("database.sqlite")).unwrap();
     let receipt_before = fs::read(root.join("recovery.json")).unwrap();
     for _ in 0..2 {
@@ -876,9 +887,13 @@ fn media_migration_rollback_preserves_referenced_rows_then_allows_empty_table() 
     )
     .unwrap();
     let migrations = legura::database_contract::embedded_migrations();
+    AxMigrationExecutor::rollback_migration(&runtime, &migrations[4]).unwrap();
     assert!(AxMigrationExecutor::rollback_migration(&runtime, &migrations[3]).is_err());
     let database = Connection::open(path).unwrap();
-    legura::database_contract::validate_current(&database).unwrap();
+    assert_eq!(
+        legura::database_contract::validate_structure(&database).unwrap(),
+        4
+    );
     assert_eq!(
         database
             .query_row("SELECT COUNT(*) FROM legura_media", [], |row| row
@@ -900,6 +915,63 @@ fn media_migration_rollback_preserves_referenced_rows_then_allows_empty_table() 
     AxMigrationExecutor::rollback_migration(&runtime, &migrations[3]).unwrap();
     legura::database_contract::validate(&database).unwrap();
     assert!(legura::database_contract::validate_current(&database).is_err());
+}
+
+#[test]
+fn post_image_rollback_refuses_editorial_loss_and_preserves_media_after_detach() {
+    use axonyx_runtime::backend::{runtime_from_env, AxEnv, AxMigrationExecutor};
+    let fixture = Fixture::product();
+    let id = fixture.upload();
+    let path = fixture.0.join("snapshot.sqlite");
+    let database = Connection::open(&path).unwrap();
+    database.execute_batch("INSERT INTO legura_posts(id,title,slug,body,status) VALUES('post','Title','title','Body','draft')").unwrap();
+    database
+        .execute(
+            "INSERT INTO legura_post_images VALUES('post',?,'Keep alt')",
+            [&id],
+        )
+        .unwrap();
+    let runtime = runtime_from_env(
+        AxEnv::new()
+            .with_secret("db_url", format!("sqlite:{}", path.to_str().unwrap()))
+            .with_secret("db_dialect", "sqlite"),
+    )
+    .unwrap();
+    let migration = legura::database_contract::embedded_migrations()
+        .pop()
+        .unwrap();
+    assert!(AxMigrationExecutor::rollback_migration(&runtime, &migration).is_err());
+    legura::database_contract::validate_current(&database).unwrap();
+    assert_eq!(
+        database
+            .query_row("SELECT alt FROM legura_post_images", [], |row| row
+                .get::<_, String>(0))
+            .unwrap(),
+        "Keep alt"
+    );
+    assert_eq!(database.query_row("SELECT count(*) FROM sqlite_schema WHERE name='_legura_post_images_rollback_guard'", [], |row| row.get::<_, u64>(0)).unwrap(), 0);
+    database
+        .execute("DELETE FROM legura_post_images", [])
+        .unwrap();
+    AxMigrationExecutor::rollback_migration(&runtime, &migration).unwrap();
+    assert_eq!(
+        legura::database_contract::validate_structure(&database).unwrap(),
+        4
+    );
+    assert_eq!(
+        database
+            .query_row("SELECT count(*) FROM legura_posts", [], |row| row
+                .get::<_, u64>(0))
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        database
+            .query_row("SELECT count(*) FROM legura_media", [], |row| row
+                .get::<_, u64>(0))
+            .unwrap(),
+        1
+    );
 }
 
 #[test]
