@@ -38,6 +38,11 @@ the current pilot intentionally uses explicit 403 guards.
 
 ## 1. First End-to-End CMS
 
+Post Image Foundation V0 adds an optional per-post featured-image association,
+post-specific alt text, guarded transactional selection and lossless rollback.
+See post-image-foundation-v0.md. This persistence phase does not yet add an
+editor picker, registered HTTP mutation or public delivery of draft/private media.
+
 Product Media Library V0 promotes the tested route into `/admin/media` with
 server-owned conditional navigation and default-off storage. See
 product-media-library-v0.md for opt-in and acceptance boundaries. The
