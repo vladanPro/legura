@@ -29,7 +29,7 @@ is integrated into dev.
 Posts V0 adds private create/edit, draft/published status, public published pages
 and plain-text rendering. Its typed not-found framework fixes are published in
 core 0.6.6/runtime 0.6.5/CLI 0.6.9/scaffold 0.6.7 after green release CI.
-This branch adopts registry runtime/core and CLI `0.7.0` for private images,
+This branch adopts registry runtime/core and CLI `0.7.1` for private images,
 replacing the temporary source pins. See
 [Private Media HTTP](docs/private-media-http-v0.md) for registry acceptance and
 boundaries. The editor remains on its independent locked Git revision.
@@ -84,7 +84,7 @@ validated, server-owned boolean for product navigation, not an upload grant.
 An isolated protected-upload proof is merged in `dev` (PR #48), after all seven
 CI gates passed. Its startup hook (framework PR #357) is published in CLI 0.6.15,
 first adopted from crates.io; the current private-image CI uses registry CLI
-0.7.0. The
+0.7.1. The
 [library view pilot](docs/media-library-view-v0.md) is the basis of the opt-in
 product page. Existing operator installations are not automatically activated.
 
@@ -105,7 +105,7 @@ changing the developer's running CMS or claiming an operator activation command.
 The [native media configuration](docs/native-media-config-v0.md) now uses Legura's
 own startup hook and the application DB settings, disabled by default. Operator
 media pages and delivery remain inactive; the current private-image feature requires the
-registry CLI/runtime 0.7.0 documented above.
+registry CLI/runtime 0.7.1 documented above.
 
 The native tool can now generate a NEW [private recovery configuration](docs/recovery-private-config-v0.md)
 with independent session/setup secrets after archive compatibility checks. It
