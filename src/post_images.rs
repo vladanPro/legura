@@ -2,6 +2,8 @@
 use crate::media_read::{read_for_administrator, MediaReadError};
 use crate::storage::{ObjectStorage, StoreId};
 use rusqlite::{params, Connection, OptionalExtension, TransactionBehavior};
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 pub const MAX_ALT_CHARACTERS: usize = 300;
 
@@ -30,6 +32,59 @@ impl std::error::Error for PostImageError {}
 pub struct ImageSelection<'a> {
     pub media_id: &'a str,
     pub alt: &'a str,
+}
+
+/// Internal native-call input. The .ax action supplies administrator_id from its
+/// guarded loader, never from an action parameter or a client-provided subject.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct SetImageInput {
+    pub administrator_id: String,
+    pub post_id: String,
+    pub media_id: String,
+    pub alt: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct RemoveImageInput {
+    pub administrator_id: String,
+    pub post_id: String,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct ImageMutationResult {
+    authorized: bool,
+    found: bool,
+    saved: bool,
+    errors: BTreeMap<String, String>,
+}
+
+pub(crate) fn mutation_result(
+    result: Result<(), PostImageError>,
+) -> Result<ImageMutationResult, axonyx_runtime::native::AxNativeError> {
+    let mut output = ImageMutationResult {
+        authorized: true,
+        found: true,
+        saved: false,
+        errors: BTreeMap::new(),
+    };
+    match result {
+        Ok(()) => output.saved = true,
+        Err(PostImageError::Forbidden) => output.authorized = false,
+        Err(PostImageError::PostNotFound) => output.found = false,
+        Err(error @ PostImageError::InvalidAlt) => {
+            output.errors.insert("alt".into(), error.to_string());
+        }
+        Err(error @ PostImageError::InvalidImage) => {
+            output.errors.insert("media_id".into(), error.to_string());
+        }
+        Err(PostImageError::Unavailable) => {
+            return Err(axonyx_runtime::native::AxNativeError::Rejected);
+        }
+    }
+    Ok(output)
 }
 
 /// `subject` must come from the runtime's verified session, never request input.

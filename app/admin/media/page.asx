@@ -17,7 +17,7 @@ page MediaLibrary() {
           </div>
           <p class="legura-hint" data-media-total={listing.total}>{listing.total + " stored images"}</p>
         </header>
-        <p class="legura-preview-notice">Image previews are private to administrators. Post attachments are not enabled.</p>
+        <p class="legura-preview-notice">Image previews and featured-image selections are private to administrators. Public post images are not enabled yet.</p>
         <Card title="Upload an image">
           <form
             method="post"

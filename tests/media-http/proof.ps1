@@ -237,6 +237,7 @@ if ($MediaBrowser) {
   Assert-StoredMedia
 }
 Write-Host 'Media HTTP proof passed: protected uploads, native redirect, Foundry library, bounded pagination, persistence and orphan-on-DB-failure policy.'
+. (Join-Path $root 'tests/post-image-http.ps1')
 
 # Run the operator boundary against the real uploaded objects and live SQLite.
 # Media's target is disposable; this never replaces the operator maintenance tool.
@@ -271,7 +272,7 @@ if ($recoveredInventory.objects -ne $inventory.objects -or $recoveredInventory.b
 $comparison = @'
 import json, pathlib, sqlite3, sys
 with sqlite3.connect(sys.argv[1]) as source, sqlite3.connect(sys.argv[2]) as recovered:
-    for table in ("legura_users", "legura_credentials", "legura_installation", "legura_posts", "legura_media", "_axonyx_migrations"):
+    for table in ("legura_users", "legura_credentials", "legura_installation", "legura_posts", "legura_media", "legura_post_images", "_axonyx_migrations"):
         assert source.execute(f'SELECT * FROM "{table}" ORDER BY 1').fetchall() == recovered.execute(f'SELECT * FROM "{table}" ORDER BY 1').fetchall(), table
 root = pathlib.Path(sys.argv[3])
 receipt = json.loads((root / "recovery.json").read_text())
