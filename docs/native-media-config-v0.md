@@ -5,7 +5,7 @@ server startup hook uses this product adapter; tests no longer substitute a
 different adapter or supply `AX_TEST_MEDIA_*` database/storage settings.
 
 The storage startup hook was published in `cargo-axonyx 0.6.15`. The private-image
-extension uses registry [core/runtime/CLI 0.7.0](private-media-http-v0.md) for its
+extension uses registry [core/runtime/CLI 0.7.1](private-media-http-v0.md) for its
 binary route contract. Preview mode is not a supported native-storage host. Do not assume an
 older global CLI wires this hook. This remains an isolated product pilot, not
 operator media activation.

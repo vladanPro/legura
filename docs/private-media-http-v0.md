@@ -8,11 +8,11 @@ The empty-library placeholder remains; post images/attachments are not enabled.
 
 ## Registry Dependencies
 
-The application uses registry runtime 0.7.0. The nested generated-consumer proof
-pins registry core/runtime exactly to 0.7.0, and CI installs registry CLI 0.7.0:
+The application uses registry runtime 0.7.1. The nested generated-consumer proof
+pins registry core/runtime exactly to 0.7.1, and CI installs registry CLI 0.7.1:
 
 ```sh
-cargo install cargo-axonyx --version '=0.7.0' --locked
+cargo install cargo-axonyx --version '=0.7.1' --locked
 ```
 
 This follows source-pinned PR 64 and the coordinated 0.7 compatibility boundary;
@@ -83,3 +83,17 @@ activation passed again. Root tests (107), the nested generated native-content
 consumer, formatting and strict product Clippy also passed against registry
 dependencies. Required remote CI remains a separate PR merge gate. No operator
 database, configuration, running process or global CLI was modified.
+
+## Axonyx 0.7.1 Adoption
+
+The application and nested native-content lockfiles now resolve registry
+core/runtime 0.7.1. All CI CLI installations, including source formatting, use
+published cargo-axonyx 0.7.1 instead of a historical source revision. The editor
+Git revision and UI version are unchanged. This patch adds compound request/auth
+guard fixes and a Tokio dependency bound that preserves the declared Rust 1.82
+floor; it does not introduce another browser/WASM ABI or product migration.
+
+Adoption acceptance must repeat the existing isolated product tests with the
+installed registry CLI. Publication of Axonyx itself is not a substitute for
+Legura's required CI gates. No operator configuration, database, running process
+or global toolchain is changed by this source update.

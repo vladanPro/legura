@@ -2,7 +2,7 @@
 
 This document describes the tested product read service and response builder.
 The subsequent [private HTTP extension](private-media-http-v0.md) connects it to
-compiled routes using registry 0.7.0. No public storage directory, JSON/base64 image
+compiled routes using registry 0.7.1. No public storage directory, JSON/base64 image
 payload or generated-host edit is introduced.
 
 `media_read::read_for_administrator` takes an explicit database connection,

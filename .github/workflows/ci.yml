@@ -25,7 +25,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.7.0' --locked --debug --force
+        run: cargo install cargo-axonyx --version '=0.7.1' --locked --debug --force
       - name: Check storage hook formatting
         shell: pwsh
         run: |
@@ -70,7 +70,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo install cargo-axonyx --git https://github.com/vladanPro/axonyx-framework --rev 79c58a2968307b4fd4301c33b31b751d6e94b823 --force
+      - run: cargo install cargo-axonyx --version '=0.7.1' --locked --debug
       - run: bash scripts/format-sources.sh --check
       - name: Check staged-source hook safety
         shell: pwsh
@@ -87,7 +87,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.7.0' --locked --debug
+        run: cargo install cargo-axonyx --version '=0.7.1' --locked --debug
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -113,7 +113,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.7.0' --locked --debug
+        run: cargo install cargo-axonyx --version '=0.7.1' --locked --debug
       - name: Verify compiled native content with disposable SQLite
         shell: pwsh
         run: |
@@ -150,7 +150,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.7.0' --locked --debug
+        run: cargo install cargo-axonyx --version '=0.7.1' --locked --debug
       - name: Verify SQLite maintenance safety
         run: |
           cargo fmt --all -- --check
