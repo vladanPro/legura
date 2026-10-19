@@ -2,6 +2,8 @@
 
 This is a product persistence boundary, not a shipped editor control or public
 image endpoint. Existing media remain private and disabled unless configured.
+The subsequent [private picker](post-image-picker-v0.md) consumes this service;
+this document records the narrower foundation boundary.
 
 ## Editorial Model
 

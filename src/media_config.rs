@@ -142,6 +142,47 @@ pub fn register_availability(
     })
 }
 
+/// These internal callbacks are not HTTP handlers. Only guarded .ax actions may
+/// supply administrator_id, after session verification and CSRF admission.
+pub fn register_post_images(
+    registry: &mut AxNativeRegistry,
+    env: &AxEnv,
+    base: &Path,
+) -> Result<(), AxNativeError> {
+    use crate::post_images::{
+        mutation_result, ImageSelection, PostImageError, RemoveImageInput, SetImageInput,
+    };
+    let media = Arc::new(configured_media(env, base).map_err(|_| AxNativeError::Rejected)?);
+    let setter = media.clone();
+    registry.register("legura.post.image.set", move |input: SetImageInput| {
+        let result = match setter.as_ref() {
+            Some(media) => media.set_post_image_for_administrator(
+                &input.administrator_id,
+                &input.post_id,
+                Some(ImageSelection {
+                    media_id: &input.media_id,
+                    alt: &input.alt,
+                }),
+            ),
+            None => Err(PostImageError::Forbidden),
+        };
+        mutation_result(result)
+    })?;
+    registry.register(
+        "legura.post.image.remove",
+        move |input: RemoveImageInput| {
+            mutation_result(match media.as_ref() {
+                Some(media) => media.set_post_image_for_administrator(
+                    &input.administrator_id,
+                    &input.post_id,
+                    None,
+                ),
+                None => Err(PostImageError::Forbidden),
+            })
+        },
+    )
+}
+
 fn configured_media(
     env: &AxEnv,
     base: &Path,
@@ -299,6 +340,105 @@ mod tests {
             file_name: "ignored.svg".into(),
             content_type: None,
             bytes,
+        }
+    }
+
+    #[test]
+    fn post_image_callbacks_validate_inputs_authority_and_independent_mutations() {
+        let fixture = Fixture::new();
+        let database = Connection::open(fixture.0.join("cms.db")).unwrap();
+        database.execute_batch("INSERT INTO legura_users VALUES('owner','owner@example.test','admin'); INSERT INTO legura_posts(id,title,slug,body,status) VALUES('post','Title','title','Body','draft');").unwrap();
+        let upload = configure(&fixture.env(), &fixture.0, Arc::new(Fallback::default())).unwrap();
+        let image = upload.save_file(MEDIA_CAPABILITY, &incoming()).unwrap();
+        let mut registry = AxNativeRegistry::default();
+        register_post_images(&mut registry, &fixture.env(), &fixture.0).unwrap();
+        let input = serde_json::json!({"administrator_id":"owner","post_id":"post","media_id":image.id,"alt":"Useful alt"});
+        assert_eq!(
+            registry
+                .call("legura.post.image.set", input.clone())
+                .unwrap()["saved"],
+            true
+        );
+        let mut invalid = input.clone();
+        invalid["alt"] = "x".repeat(301).into();
+        assert!(
+            registry.call("legura.post.image.set", invalid).unwrap()["errors"]["alt"].is_string()
+        );
+        let mut extra = input.clone();
+        extra["subject"] = "forged".into();
+        assert_eq!(
+            registry.call("legura.post.image.set", extra),
+            Err(AxNativeError::InvalidInput)
+        );
+        let mut missing = input.clone();
+        missing["post_id"] = "missing".into();
+        assert_eq!(
+            registry.call("legura.post.image.set", missing).unwrap()["found"],
+            false
+        );
+        database
+            .execute("DELETE FROM legura_users WHERE id='owner'", [])
+            .unwrap();
+        assert_eq!(
+            registry
+                .call("legura.post.image.set", input.clone())
+                .unwrap()["authorized"],
+            false
+        );
+        assert_eq!(
+            registry
+                .call(
+                    "legura.post.image.remove",
+                    serde_json::json!({"administrator_id":"owner","post_id":"post"})
+                )
+                .unwrap()["authorized"],
+            false
+        );
+        database
+            .execute(
+                "INSERT INTO legura_users VALUES('owner','owner@example.test','admin')",
+                [],
+            )
+            .unwrap();
+        registry
+            .call(
+                "legura.post.image.remove",
+                serde_json::json!({"administrator_id":"owner","post_id":"post"}),
+            )
+            .unwrap();
+        assert_eq!(
+            database
+                .query_row("SELECT count(*) FROM legura_post_images", [], |row| row
+                    .get::<_, u64>(0))
+                .unwrap(),
+            0
+        );
+        assert_eq!(
+            database
+                .query_row("SELECT count(*) FROM legura_media", [], |row| row
+                    .get::<_, u64>(0))
+                .unwrap(),
+            1
+        );
+    }
+
+    #[test]
+    fn disabled_post_image_callbacks_never_become_a_write_capability() {
+        let mut registry = AxNativeRegistry::default();
+        register_post_images(&mut registry, &AxEnv::new(), Path::new("unused")).unwrap();
+        for (name, input) in [
+            (
+                "legura.post.image.set",
+                serde_json::json!({"administrator_id":"owner","post_id":"post","media_id":"a".repeat(64),"alt":""}),
+            ),
+            (
+                "legura.post.image.remove",
+                serde_json::json!({"administrator_id":"owner","post_id":"post"}),
+            ),
+        ] {
+            let result = registry.call(name, input).unwrap();
+            assert_eq!(result["authorized"], false);
+            assert_eq!(result["saved"], false);
         }
     }
 

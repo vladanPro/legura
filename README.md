@@ -76,8 +76,9 @@ foundation. It stays disabled until an operator configures valid private storage
 Private image previews use a session-verified endpoint;
 post attachments and deletion are separate work.
 The [post image foundation](docs/post-image-foundation-v0.md) establishes the
-optional featured-image relation and transactional selection rules; its editor
-controls and public delivery remain separate steps.
+optional featured-image relation and transactional selection rules. The
+[private image picker](docs/post-image-picker-v0.md) adds separate image/alt
+settings to saved posts; public delivery remains a separate step.
 The [private read service](docs/private-media-read-v0.md) validates referenced
 images and constructs binary responses in Rust. The [HTTP bridge](docs/private-media-http-v0.md)
 rechecks the current administrator and exposes no public filesystem directory.

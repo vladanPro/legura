@@ -331,6 +331,10 @@ try {
   Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } | Out-Null
   Invoke-Request -Path $logoutPath -Method POST -Headers $sessionProof -Status 303 | Out-Null
   Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
+  if ($Media) {
+    Invoke-Request -Path $postImageSetPath -Method POST -Body $postImageForm -Headers $sessionProof -Status 403 | Out-Null
+    Invoke-Request -Path $postImageRemovePath -Method POST -Body "id=$postImagePostId" -Headers $sessionProof -Status 403 | Out-Null
+  }
   $proof = Get-Proof
   $loginPath = "/__axonyx/action?path=%2Flogin&name=SignIn"
   $email = [Uri]::EscapeDataString($identity.email)
@@ -359,6 +363,8 @@ try {
   if ($Media) {
     Send-Media -Bytes $validImage -Headers $revokedProof -Status 403 | Out-Null
     Assert-PrivateMediaRead $mediaId $cookie 403
+    Invoke-Request -Path $postImageSetPath -Method POST -Body $postImageForm -Headers $revokedProof -Status 403 | Out-Null
+    Invoke-Request -Path $postImageRemovePath -Method POST -Body "id=$postImagePostId" -Headers $revokedProof -Status 403 | Out-Null
     Invoke-Request -Path "/admin/media" -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
     Send-Media -Bytes $validImage -Headers $revokedProof -Status 403 -Native | Out-Null
     Assert-MediaCounts -Rows $mediaExpectedRows -Files $mediaExpectedFiles

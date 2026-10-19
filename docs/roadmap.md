@@ -42,6 +42,9 @@ Post Image Foundation V0 adds an optional per-post featured-image association,
 post-specific alt text, guarded transactional selection and lossless rollback.
 See post-image-foundation-v0.md. This persistence phase does not yet add an
 editor picker, registered HTTP mutation or public delivery of draft/private media.
+Private Post Image Picker V0 subsequently adds a saved-post image screen,
+guarded save/remove actions and JS/no-JS forms. See post-image-picker-v0.md.
+Public delivery and inline rich-text images remain separate gates.
 
 Product Media Library V0 promotes the tested route into `/admin/media` with
 server-owned conditional navigation and default-off storage. See

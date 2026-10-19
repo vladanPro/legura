@@ -4,7 +4,9 @@
 `Native.privateResponse("legura.media.read", { id: params.id })`. It does not
 use a public directory, base64 JSON, browser-provided identity or a handwritten
 generated server. Gallery images use this endpoint without client JavaScript.
-The empty-library placeholder remains; post images/attachments are not enabled.
+The empty-library placeholder remains. Saved posts can use the
+[private image picker](post-image-picker-v0.md); public delivery and inline
+rich-text images are not enabled.
 
 ## Registry Dependencies
 

@@ -1,0 +1,111 @@
+import { AdminFrame } from "@/components/AdminFrame"
+import { Card } from "@axonyx/ui/foundry/Card"
+import { Grid } from "@axonyx/ui/foundry/Grid"
+import { Button } from "@axonyx/ui/foundry/Button"
+import { Input } from "@axonyx/ui/foundry/Input"
+
+page PostImagePicker() {
+  data post: PostImageTarget = loadPostImageTarget(params.id)
+  data listing: AdminMediaPage = loadMediaLibrary(query.page ?? "1")
+  return ASX {
+    <AdminFrame section="posts" mediaAvailable={listing.available}>
+      <header class="legura-page-heading">
+        <div>
+          <h1>Featured image</h1>
+          <p>{post.title}</p>
+        </div>
+        <a href={"/admin/posts/" + post.id + "/edit"}>Back to post</a>
+      </header>
+      <p class="legura-preview-notice">Image settings are saved separately from content. Previews remain private; public post images are not enabled yet.</p>
+      <If when={post.image_id != ""}>
+        <Card title="Current image">
+          <img
+            class="legura-media-preview"
+            src={"/api/media/" + post.image_id}
+            alt={post.image_alt}
+            data-post-image-preview="true"
+          />
+          <form method="post" action={action RemovePostImage} class="legura-form-actions">
+            <input type="hidden" name="id" value={post.id} />
+            <Button type="submit" variant="secondary">Remove featured image</Button>
+          </form>
+          <p class="legura-hint">Removing the selection keeps the original image in your library.</p>
+        </Card>
+      </If>
+      <If when={post.image_id == ""}>
+        <Card title="No featured image selected">
+          <p>Choose an image below. It will not change your post content or publication status.</p>
+        </Card>
+      </If>
+      <If when={listing.total == 0}>
+        <Card title="Your library is empty">
+          <a href="/admin/media">Upload an image in the media library</a>
+        </Card>
+      </If>
+      <If when={listing.total > 0}>
+        <Card title="Image settings">
+          <form
+            method="post"
+            action={action SetPostImage}
+            class="legura-form"
+            data-ax-retain-fields="media_id,alt"
+          >
+            <input type="hidden" name="id" value={post.id} />
+            <If when={post.image_id != ""}>
+              <label class="ax-radio">
+                <input type="radio" name="media_id" value={post.image_id} checked="true" />
+                <span>Keep current image</span>
+              </label>
+            </If>
+            <details class="legura-media-details" open={post.image_id == ""}>
+              <summary>Choose a library image</summary>
+              <fieldset class="legura-image-options">
+                <legend>Available images</legend>
+                <Grid cols="2" colsMobile="1" gap="lg">
+                  <Each items={listing.items} as="image">
+                    <label class="legura-image-choice">
+                      <input
+                        type="radio"
+                        name="media_id"
+                        value={image.id}
+                        required="true"
+                      />
+                      <img
+                        class="legura-media-preview"
+                        src={"/api/media/" + image.id}
+                        alt="Library image preview"
+                        loading="lazy"
+                      />
+                      <span>{image.content_type + " - " + image.width + " x " + image.height}</span>
+                    </label>
+                  </Each>
+                </Grid>
+              </fieldset>
+            </details>
+            <p class="ax-field__error" data-ax-field-error="media_id" aria-live="polite"></p>
+            <label for="chosen-image-alt">Alternative text</label>
+            <Input
+              id="chosen-image-alt"
+              name="alt"
+              value={post.image_alt}
+              maxlength="300"
+              describedBy="chosen-image-alt-hint"
+            />
+            <p id="chosen-image-alt-hint" class="legura-hint">Describe meaningful content. Leave empty only for a decorative image.</p>
+            <p class="ax-field__error" data-ax-field-error="alt" aria-live="polite"></p>
+            <Button type="submit">Save featured image</Button>
+          </form>
+        </Card>
+      </If>
+      <nav class="legura-post-pagination" aria-label="Image library pages">
+        <If when={listing.page > 1}>
+          <a href={"/admin/posts/" + post.id + "/image?page=" + (listing.page - 1)}>Previous page</a>
+        </If>
+        <span>{"Page " + listing.page + " of " + listing.total_pages}</span>
+        <If when={listing.page < listing.total_pages}>
+          <a href={"/admin/posts/" + post.id + "/image?page=" + (listing.page + 1)}>Next page</a>
+        </If>
+      </nav>
+    </AdminFrame>
+  }
+}

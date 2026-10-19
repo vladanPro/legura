@@ -68,6 +68,28 @@ impl MediaLibraryStorage {
         )
     }
 
+    pub fn set_post_image_for_administrator(
+        &self,
+        subject: &str,
+        post_id: &str,
+        selection: Option<crate::post_images::ImageSelection<'_>>,
+    ) -> Result<(), crate::post_images::PostImageError> {
+        let mut connection = self
+            .connect()
+            .map_err(|_| crate::post_images::PostImageError::Unavailable)?;
+        connection
+            .execute_batch("PRAGMA trusted_schema=OFF;")
+            .map_err(|_| crate::post_images::PostImageError::Unavailable)?;
+        crate::post_images::set_for_administrator(
+            &mut connection,
+            self.images.store(),
+            &self.store_id,
+            Some(subject),
+            post_id,
+            selection,
+        )
+    }
+
     fn connect(&self) -> Result<Connection, MediaLibraryUnavailable> {
         let connection = Connection::open_with_flags(
             &self.database,

@@ -5,6 +5,7 @@ import { AdminFrame } from "@/components/AdminFrame"
 page EditPost() {
   data post: PostForEditor = loadEditablePost(params.id)
   data mediaAvailable: Bool = loadAdminMediaAvailability()
+  data image: PostImageTarget = loadPostImageTarget(params.id)
   return ASX {
     <Head>
       <Link
@@ -53,6 +54,23 @@ page EditPost() {
         </nav>
         <p id="preview-hint" class="legura-hint">Preview opens in a new tab. Save changes first to include them.</p>
       </Card>
+      <If when={mediaAvailable}>
+        <Card title="Featured image">
+          <If when={image.image_id != ""}>
+            <img
+              class="legura-media-preview"
+              src={"/api/media/" + image.image_id}
+              alt={image.image_alt}
+              data-post-image-preview="true"
+            />
+          </If>
+          <If when={image.image_id == ""}>
+            <p>No featured image selected.</p>
+          </If>
+          <a class="ax-button" data-variant="secondary" href={"/admin/posts/" + post.id + "/image"}>Choose featured image</a>
+          <p class="legura-hint">Save content changes before opening image settings. Images are private for now.</p>
+        </Card>
+      </If>
     </AdminFrame>
   }
 }
