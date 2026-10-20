@@ -62,7 +62,7 @@ pub fn read_for_administrator(
     subject: Option<&str>,
     id: &str,
 ) -> Result<PrivateMedia, MediaReadError> {
-    use MediaReadError::{Forbidden, NotFound, Unavailable};
+    use MediaReadError::{Forbidden, Unavailable};
     let subject = subject.filter(|value| !value.is_empty()).ok_or(Forbidden)?;
     let administrator = database
         .query_row(
@@ -75,6 +75,18 @@ pub fn read_for_administrator(
     if administrator.as_deref() != Some("admin") {
         return Err(Forbidden);
     }
+    read_verified_image(database, storage, store, id)
+}
+
+/// Byte validation only, not an authorization boundary. Callers must establish
+/// their own current product grant before entering this shared implementation.
+pub(crate) fn read_verified_image(
+    database: &Connection,
+    storage: &impl ObjectStorage,
+    store: &StoreId,
+    id: &str,
+) -> Result<PrivateMedia, MediaReadError> {
+    use MediaReadError::{NotFound, Unavailable};
     let key = ObjectKey::parse(id).map_err(|_| NotFound)?;
     let metadata = database
         .query_row(
