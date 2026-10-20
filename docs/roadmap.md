@@ -46,6 +46,11 @@ Private Post Image Picker V0 subsequently adds a saved-post image screen,
 guarded save/remove actions and JS/no-JS forms. See post-image-picker-v0.md.
 Public delivery and inline rich-text images remain separate gates.
 
+Published Image Read V0 adds a Rust-only current-publication/association grant
+and reuses exact-byte validation. See published-image-read-v0.md. It does not
+register a public endpoint; a distinct public native binary transport and actual
+anonymous HTTP/browser acceptance are still required.
+
 Product Media Library V0 promotes the tested route into `/admin/media` with
 server-owned conditional navigation and default-off storage. See
 product-media-library-v0.md for opt-in and acceptance boundaries. The

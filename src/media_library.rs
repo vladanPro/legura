@@ -68,6 +68,32 @@ impl MediaLibraryStorage {
         )
     }
 
+    /// Read through the startup-validated capability, never a request-supplied path.
+    pub fn read_published_post_image(
+        &self,
+        slug: &str,
+        media_id: &str,
+    ) -> Result<crate::published_image::PublishedImage, crate::published_image::PublishedImageError>
+    {
+        use crate::published_image::PublishedImageError;
+        let mut connection =
+            Connection::open_with_flags(&self.database, OpenFlags::SQLITE_OPEN_READ_ONLY)
+                .map_err(|_| PublishedImageError::Unavailable)?;
+        connection
+            .busy_timeout(Duration::from_secs(5))
+            .map_err(|_| PublishedImageError::Unavailable)?;
+        connection
+            .execute_batch("PRAGMA trusted_schema=OFF; PRAGMA query_only=ON;")
+            .map_err(|_| PublishedImageError::Unavailable)?;
+        crate::published_image::read_for_published_post(
+            &mut connection,
+            self.images.store(),
+            &self.store_id,
+            slug,
+            media_id,
+        )
+    }
+
     pub fn set_post_image_for_administrator(
         &self,
         subject: &str,

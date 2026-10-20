@@ -181,3 +181,62 @@ fn final_symlink_is_refused_even_when_target_bytes_match_metadata() {
         Some(MediaReadError::Unavailable)
     );
 }
+
+#[test]
+fn configured_published_reads_use_existing_storage_and_current_database_state() {
+    use legura::published_image::PublishedImageError;
+    let fixture = Fixture::new();
+    let database = fixture.database();
+    for index in [1, 2, 4] {
+        database
+            .execute_batch(legura::database_contract::MIGRATIONS[index].1)
+            .unwrap();
+    }
+    let id = fixture.upload(false);
+    database.execute_batch(
+        "INSERT INTO legura_posts(id,title,slug,body,status) VALUES ('post','Title','story','Body','published');",
+    ).unwrap();
+    database
+        .execute(
+            "INSERT INTO legura_post_images VALUES ('post', ?, '')",
+            [&id],
+        )
+        .unwrap();
+    let service = MediaLibraryStorage::open(
+        &fixture.0.join("objects"),
+        fixture.store_id(),
+        &fixture.0.join("library.db"),
+    )
+    .unwrap();
+    assert_eq!(
+        service
+            .read_published_post_image("story", &id)
+            .unwrap()
+            .into_response()
+            .status,
+        200
+    );
+    database
+        .execute("UPDATE legura_posts SET status='draft' WHERE id='post'", [])
+        .unwrap();
+    assert!(matches!(
+        service.read_published_post_image("story", &id),
+        Err(PublishedImageError::NotFound)
+    ));
+    // No cached publication grant, even when the service instance is reused.
+    database
+        .execute(
+            "UPDATE legura_posts SET status='published' WHERE id='post'",
+            [],
+        )
+        .unwrap();
+    assert!(service.read_published_post_image("story", &id).is_ok());
+    database
+        .execute("DELETE FROM legura_post_images", [])
+        .unwrap();
+    assert!(matches!(
+        service.read_published_post_image("story", &id),
+        Err(PublishedImageError::NotFound)
+    ));
+    assert!(fixture.0.join("objects").join(&id).is_file());
+}
