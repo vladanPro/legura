@@ -29,7 +29,7 @@ is integrated into dev.
 Posts V0 adds private create/edit, draft/published status, public published pages
 and plain-text rendering. Its typed not-found framework fixes are published in
 core 0.6.6/runtime 0.6.5/CLI 0.6.9/scaffold 0.6.7 after green release CI.
-This branch adopts registry runtime/core and CLI `0.7.1` for private images,
+This branch adopts registry runtime/core and CLI `0.8.0` for public/private images,
 replacing the temporary source pins. See
 [Private Media HTTP](docs/private-media-http-v0.md) for registry acceptance and
 boundaries. The editor remains on its independent locked Git revision.
@@ -78,9 +78,11 @@ post attachments and deletion are separate work.
 The [post image foundation](docs/post-image-foundation-v0.md) establishes the
 optional featured-image relation and transactional selection rules. The
 [private image picker](docs/post-image-picker-v0.md) adds separate image/alt
-settings to saved posts; public delivery remains a separate step.
+settings to saved posts.
 The [published image read service](docs/published-image-read-v0.md) establishes
-the per-post read grant, without exposing a public image endpoint yet.
+the per-post read grant. [Public post images](docs/public-post-images-v0.md)
+connect that grant to an anonymous endpoint and the published story, with a
+placeholder for unavailable selected images. The media library stays private.
 The [private read service](docs/private-media-read-v0.md) validates referenced
 images and constructs binary responses in Rust. The [HTTP bridge](docs/private-media-http-v0.md)
 rechecks the current administrator and exposes no public filesystem directory.

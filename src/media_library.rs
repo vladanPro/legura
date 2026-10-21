@@ -94,6 +94,25 @@ impl MediaLibraryStorage {
         )
     }
 
+    pub fn published_post_image_presentation(
+        &self,
+        slug: &str,
+    ) -> crate::published_image::ImagePresentation {
+        let result = (|| -> rusqlite::Result<_> {
+            let mut connection =
+                Connection::open_with_flags(&self.database, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+            connection.busy_timeout(Duration::from_secs(5))?;
+            connection.execute_batch("PRAGMA trusted_schema=OFF; PRAGMA query_only=ON;")?;
+            Ok(crate::published_image::presentation(
+                &mut connection,
+                self.images.store(),
+                &self.store_id,
+                slug,
+            ))
+        })();
+        result.unwrap_or_default()
+    }
+
     pub fn set_post_image_for_administrator(
         &self,
         subject: &str,
