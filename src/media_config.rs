@@ -98,6 +98,59 @@ struct MediaReadInput {
     id: String,
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PublishedImageInput {
+    slug: String,
+    id: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PublishedImagePresentationInput {
+    slug: String,
+}
+
+/// Anonymous admission still requires the current published-post association.
+pub fn register_published_reads(
+    registry: &mut AxNativeRegistry,
+    env: &AxEnv,
+    base: &Path,
+) -> Result<(), AxNativeError> {
+    use axonyx_runtime::native_response::AxNativeResponseError;
+    let media = Arc::new(configured_media(env, base).map_err(|_| AxNativeError::Rejected)?);
+    let reader = media.clone();
+    registry.register_public_response(
+        "legura.post.image.read",
+        crate::storage::MAX_OBJECT_BYTES as usize,
+        move |input: PublishedImageInput| {
+            reader
+                .as_ref()
+                .as_ref()
+                .ok_or(AxNativeResponseError::NotFound)?
+                .read_published_post_image(&input.slug, &input.id)
+                .map_err(|error| match error {
+                    crate::published_image::PublishedImageError::NotFound => {
+                        AxNativeResponseError::NotFound
+                    }
+                    crate::published_image::PublishedImageError::Unavailable => {
+                        AxNativeResponseError::Unavailable
+                    }
+                })?
+                .into_native_response()
+        },
+    )?;
+    registry.register(
+        "legura.post.image.presentation",
+        move |input: PublishedImagePresentationInput| {
+            Ok::<_, ()>(match media.as_ref() {
+                Some(media) => media.published_post_image_presentation(&input.slug),
+                None => crate::published_image::ImagePresentation::default(),
+            })
+        },
+    )
+}
+
 /// The runtime supplies a verified subject, never an input field or browser role.
 pub fn register_private_reads(
     registry: &mut AxNativeRegistry,
@@ -341,6 +394,46 @@ mod tests {
             content_type: None,
             bytes,
         }
+    }
+
+    #[test]
+    fn disabled_public_reads_have_no_public_or_json_byte_access() {
+        use axonyx_runtime::backend::AxRuntimeEnvAccess;
+        use axonyx_runtime::server::AxHttpRequest;
+        let mut registry = AxNativeRegistry::default();
+        register_published_reads(&mut registry, &AxEnv::new(), Path::new("unused")).unwrap();
+        assert_eq!(
+            registry
+                .call(
+                    "legura.post.image.presentation",
+                    serde_json::json!({"slug":"draft"})
+                )
+                .unwrap(),
+            serde_json::json!({"selected":false,"src":"","alt":""})
+        );
+        assert!(registry
+            .call(
+                "legura.post.image.read",
+                serde_json::json!({"slug":"draft","id":"a".repeat(64)})
+            )
+            .is_err());
+        let runtime = axonyx_runtime::backend::AxDatabaseRuntime::new(
+            AxEnv::new(),
+            axonyx_runtime::backend::MemoryAdapter,
+        )
+        .with_native_functions(registry);
+        let request = AxHttpRequest::new("GET", "/image");
+        assert_eq!(
+            runtime
+                .runtime_native_public_response(
+                    &request,
+                    "legura.post.image.read",
+                    serde_json::json!({"slug":"draft","id":"a".repeat(64)})
+                )
+                .unwrap()
+                .status,
+            404
+        );
     }
 
     #[test]

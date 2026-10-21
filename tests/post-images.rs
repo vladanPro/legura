@@ -7,6 +7,50 @@ use sha2::{Digest, Sha256};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[test]
+fn presentation_uses_current_paths_and_falls_back_without_exposing_draft_images() {
+    use legura::published_image::presentation;
+    let (mut db, objects, store, id) = fixture();
+    assert!(!presentation(&mut db, &objects, &store, "second").selected);
+    set_for_administrator(
+        &mut db,
+        &objects,
+        &store,
+        Some("owner"),
+        "two",
+        Some(ImageSelection {
+            media_id: &id,
+            alt: "<literal>",
+        }),
+    )
+    .unwrap();
+    db.execute(
+        "UPDATE legura_posts SET slug=? WHERE id='two'",
+        ["hello-world"],
+    )
+    .unwrap();
+    assert!(!presentation(&mut db, &objects, &store, "hello ?#%/world").selected);
+    let image = presentation(&mut db, &objects, &store, "hello-world");
+    assert_eq!(image.src, format!("/api/post-images/hello-world/{id}"));
+    assert_eq!(image.alt, "<literal>");
+    assert!(image.selected);
+    db.execute(
+        "UPDATE legura_media SET sha256=? WHERE id=?",
+        params!["0".repeat(64), id],
+    )
+    .unwrap();
+    let image = presentation(&mut db, &objects, &store, "hello-world");
+    assert!(image.selected);
+    assert!(image.src.is_empty());
+    db.execute("UPDATE legura_posts SET status='draft' WHERE id='two'", [])
+        .unwrap();
+    let before = objects.reads.load(Ordering::SeqCst);
+    let image = presentation(&mut db, &objects, &store, "hello-world");
+    assert!(!image.selected);
+    assert!(image.alt.is_empty());
+    assert_eq!(objects.reads.load(Ordering::SeqCst), before);
+}
+
+#[test]
 fn public_grant_requires_the_exact_current_published_association() {
     let (mut db, objects, store, id) = fixture();
     for post in ["one", "two"] {

@@ -1,8 +1,19 @@
-component PostStory(title = "", body = "", contentHtml = "", backHref = "/posts", backLabel = "All posts") {
+component PostStory(title = "", body = "", contentHtml = "", backHref = "/posts", backLabel = "All posts", imageSelected = false, imageSrc = "", imageAlt = "") {
   return ASX {
     <article class="legura-story">
       <a href={backHref}>{backLabel}</a>
       <h1>{title}</h1>
+      <If when={imageSrc != ""}>
+        <img
+          class="legura-story__image"
+          data-post-featured-image="true"
+          src={imageSrc}
+          alt={imageAlt}
+        />
+      </If>
+      <If when={imageSelected && imageSrc == ""}>
+        <div class="legura-media-placeholder" data-post-image-unavailable="true">Featured image is unavailable.</div>
+      </If>
       <If when={contentHtml != ""}>
         <Html class="legura-story__body" content={contentHtml} />
       </If>

@@ -51,6 +51,11 @@ and reuses exact-byte validation. See published-image-read-v0.md. It does not
 register a public endpoint; a distinct public native binary transport and actual
 anonymous HTTP/browser acceptance are still required.
 
+Public Post Images V0 connects that service through Axonyx 0.8.0 public binary
+callbacks, with per-request published association checks, escaped alt text and
+an unavailable-image placeholder. See public-post-images-v0.md for current
+acceptance evidence; library access remains private and inline images are later.
+
 Product Media Library V0 promotes the tested route into `/admin/media` with
 server-owned conditional navigation and default-off storage. See
 product-media-library-v0.md for opt-in and acceptance boundaries. The

@@ -79,6 +79,7 @@ try {
   Invoke-Request -Path $postImageRemovePath -Method POST -Body "id=$postImagePostId" -Headers $sessionProof -Status 403 | Out-Null
   $disabledEdit = Invoke-Request -Path "/admin/posts/$postImagePostId/edit" -Headers @{Cookie=$cookie}
   if ($disabledEdit.Body.Contains('Choose featured image')) { throw 'Disabled media still exposes the picker' }
+  Invoke-Request -Path "/api/post-images/image-fixture/$($first[0])" -Status 404 | Out-Null
 } finally {
   Stop-Fixture
   $env:AX_SECRET_MEDIA_DRIVER = 'local'
@@ -89,3 +90,4 @@ try {
 Invoke-Request -Path $postImageSetPath -Method POST -Body $postImageForm -Headers $sessionProof -Status 303 | Out-Null
 Assert-PostImage $first[0] 'Fixture image'
 Write-Host 'Post image HTTP passed: guarded selection/replace/remove, escaped alt, bounded picker, unchanged content/status, persistence and private bytes.'
+. (Join-Path $root 'tests/public-post-image-http.ps1')
