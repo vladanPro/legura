@@ -76,3 +76,5 @@
 .legura-story__image { display: block; width: 100%; max-height: 32rem; object-fit: contain; border-radius: var(--ax-radius-md); margin-block: 1.5rem; }
 .legura-story__body { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; }
 @media (max-width: 40rem) { .legura-header { flex-direction: column; } .legura-main { margin-block: 1.5rem; } }
+.legura-operation-feedback:empty { display: none; }
+.legura-delete-feedback-form [data-ax-field-error]:empty { display: none; }

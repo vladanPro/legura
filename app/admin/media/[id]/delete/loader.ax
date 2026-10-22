@@ -1,0 +1,11 @@
+export query loadDeletableMedia(id: String) -> AdminMediaItem {
+  require Auth.subject else forbidden()
+  data administrator = db.legura_users.where({ id: Auth.subject }).first()
+  require administrator else forbidden()
+  require administrator["role"] == "admin" else forbidden()
+  data media = Native.call("legura.media.availability", null)
+  require media.available else forbidden()
+  data image = db.legura_media.where({ id: input.id }).first()
+  require image else notFound()
+  return { id: image["id"], content_type: image["content_type"], byte_size: image["byte_size"], width: image["width"], height: image["height"] }
+}

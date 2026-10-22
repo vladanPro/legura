@@ -13,3 +13,16 @@ action UploadLibraryImageAndReturn(image: File) {
   data saved = Storage.save("legura-media", input.image)
   return redirect("/admin/media")
 }
+
+action DeleteMedia(id: String, confirmation: String = "") {
+  data administrator = loadAdministrator()
+  data available = loadAdminMediaAvailability()
+  require available else forbidden()
+  require input.confirmation == "delete" else invalid({ confirmation: "Confirm permanent deletion before continuing." })
+  data result = Native.call("legura.media.delete", { administrator_id: administrator.id, media_id: input.id })
+  require result.authorized else forbidden()
+  require result.found else notFound()
+  require result.removed else invalid(result.errors)
+  require result.cleanup_ok else invalid({ operation: "The library record was removed, but its private file could not be cleaned up. Ask an administrator to check storage. Do not repeat deletion." })
+  return redirect("/admin/media")
+}

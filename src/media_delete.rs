@@ -1,4 +1,4 @@
-//! Unreferenced media removal. Not registered as an HTTP/native mutation yet.
+//! Unreferenced media removal behind the guarded native administrator action.
 use crate::storage::{ObjectKey, ObjectRef, ObjectRemoval, StorageError, StoreId};
 use rusqlite::{params, Connection, OptionalExtension, TransactionBehavior};
 
