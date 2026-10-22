@@ -38,6 +38,12 @@ the current pilot intentionally uses explicit 403 guards.
 
 ## 1. First End-to-End CMS
 
+Media Deletion Service V0 adds an unregistered administrator-checked Rust service
+that refuses referenced images and commits metadata removal before file cleanup.
+Cleanup failure is explicit, not reported as complete deletion. Confirmation UI,
+CSRF-protected action and browser acceptance remain next; see
+media-deletion-service-v0.md. No production deletion endpoint is enabled.
+
 Post Image Foundation V0 adds an optional per-post featured-image association,
 post-specific alt text, guarded transactional selection and lossless rollback.
 See post-image-foundation-v0.md. This persistence phase does not yet add an

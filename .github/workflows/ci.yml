@@ -61,6 +61,7 @@ jobs:
       - run: cargo test --locked --test media-check
       - run: cargo test --locked --test private-media-read
       - run: cargo test --locked --test post-images
+      - run: cargo test --locked --test media-delete
       - run: cargo test --locked --test media-archive
       - run: cargo test --locked --bin legura-maintenance
       - run: cargo clippy --locked --lib --tests -- -D warnings

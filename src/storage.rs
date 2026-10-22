@@ -114,6 +114,42 @@ pub trait ObjectStorage: Send + Sync {
     fn get(&self, reference: &ObjectRef) -> Result<Vec<u8>, StorageError>;
 }
 
+/// Separate destructive capability; reads/uploads do not imply removal support.
+pub trait ObjectRemoval: Send + Sync {
+    fn remove(&self, reference: &ObjectRef) -> Result<(), StorageError>;
+}
+
+impl ObjectRemoval for LocalStorage {
+    fn remove(&self, reference: &ObjectRef) -> Result<(), StorageError> {
+        if reference.store != self.id {
+            return Err(StorageError::WrongStore);
+        }
+        let metadata = self
+            .directory
+            .symlink_metadata(reference.key.as_str())
+            .map_err(|error| {
+                if error.kind() == io::ErrorKind::NotFound {
+                    StorageError::NotFound
+                } else {
+                    StorageError::Io(error)
+                }
+            })?;
+        if !metadata.is_file() || metadata.file_type().is_symlink() {
+            return Err(StorageError::NotRegularFile);
+        }
+        // One validated leaf only. Never follow links or recursively remove directories.
+        self.directory
+            .remove_file(reference.key.as_str())
+            .map_err(|error| {
+                if error.kind() == io::ErrorKind::NotFound {
+                    StorageError::NotFound
+                } else {
+                    StorageError::Io(error)
+                }
+            })
+    }
+}
+
 pub struct LocalStorage {
     directory: Dir,
     id: StoreId,
@@ -380,9 +416,44 @@ mod tests {
                 key: key.clone(),
             };
             assert!(store.get(&reference).is_err());
+            assert!(store.remove(&reference).is_err());
             assert!(store.put_at(key, b"changed").is_err());
         }
         assert_eq!(fs::read(other.0.join("secret")).unwrap(), b"outside");
         assert_eq!(store.get(&object.reference).unwrap(), b"inside");
+    }
+
+    #[test]
+    fn removes_only_a_regular_leaf_in_its_own_store() {
+        let fixture = Fixture::new();
+        let store = fixture.store();
+        let object = store.put(b"inside").unwrap();
+        let mut wrong = object.reference.clone();
+        wrong.store = StoreId::parse("other").unwrap();
+        assert!(matches!(
+            store.remove(&wrong),
+            Err(StorageError::WrongStore)
+        ));
+        assert_eq!(store.get(&object.reference).unwrap(), b"inside");
+        store.remove(&object.reference).unwrap();
+        assert!(matches!(
+            store.remove(&object.reference),
+            Err(StorageError::NotFound)
+        ));
+        let name = "c".repeat(64);
+        fs::create_dir(fixture.0.join(&name)).unwrap();
+        fs::write(fixture.0.join(&name).join("keep"), b"keep").unwrap();
+        let reference = ObjectRef {
+            store: StoreId::parse("primary").unwrap(),
+            key: ObjectKey::parse(&name).unwrap(),
+        };
+        assert!(matches!(
+            store.remove(&reference),
+            Err(StorageError::NotRegularFile)
+        ));
+        assert_eq!(
+            fs::read(fixture.0.join(name).join("keep")).unwrap(),
+            b"keep"
+        );
     }
 }

@@ -135,6 +135,26 @@ impl MediaLibraryStorage {
         )
     }
 
+    pub fn delete_for_administrator(
+        &self,
+        subject: &str,
+        id: &str,
+    ) -> Result<crate::media_delete::DeleteOutcome, crate::media_delete::DeleteError> {
+        let mut connection = self
+            .connect()
+            .map_err(|_| crate::media_delete::DeleteError::Unavailable)?;
+        connection
+            .execute_batch("PRAGMA trusted_schema=OFF;")
+            .map_err(|_| crate::media_delete::DeleteError::Unavailable)?;
+        crate::media_delete::delete_for_administrator(
+            &mut connection,
+            self.images.store(),
+            &self.store_id,
+            Some(subject),
+            id,
+        )
+    }
+
     fn connect(&self) -> Result<Connection, MediaLibraryUnavailable> {
         let connection = Connection::open_with_flags(
             &self.database,
