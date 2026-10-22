@@ -1,7 +1,7 @@
 # Media Deletion Service V0
 
-This is an unregistered Rust service, not a shipped administrator button or HTTP
-mutation. It introduces no schema migration and changes no running installation.
+This Rust service is called by the separate Media Deletion UI V0 integration.
+It introduces no schema migration and changes no running installation by itself.
 
 ## Contract
 
@@ -34,12 +34,11 @@ All current media references are featured-image associations. Before supporting
 inline editor images or other consumers, extend the reference check and tests.
 Unsupported direct SQL writers are outside the product service contract.
 
-## Next Integration Gate
+## Integration Gate
 
-Add an administrator-only confirmation flow and POST action with normal session
-and CSRF guards. Surface InUse as a useful error and CleanupRequired as an honest
-partial-cleanup warning. Prove no-JS/JS behavior, repeated submits, stale forms,
-public/private read revocation and restart behavior before exposing deletion.
+The administrator-only confirmation flow and POST action use normal session and
+CSRF guards. InUse is a form error; CleanupRequired reports partial cleanup.
+See media-deletion-ui-v0.md for the isolated HTTP/browser acceptance boundary.
 
 Tests cover denied identities/keys/stores, draft/published references, SQL and
 deferred-commit failure, missing files, cleanup failure and local leaf safety.

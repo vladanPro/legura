@@ -299,3 +299,4 @@ Assert-MediaCounts -Rows $mediaExpectedRows -Files $mediaExpectedFiles
 Invoke-Request -Path '/admin/media' -Headers @{ Cookie = $cookie } | Out-Null
 Write-Host 'Live media archive/recovery proof passed without stopping or changing the running disposable CMS; recovery remains inactive.'
 . (Join-Path $root 'tests/media-http/recovery-activation.ps1')
+. (Join-Path $root 'tests/media-delete-http.ps1')

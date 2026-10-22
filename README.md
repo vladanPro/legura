@@ -74,7 +74,9 @@ The [opt-in Media library](docs/product-media-library-v0.md) adds private image
 uploads and bounded listing at `/admin/media`, using the existing local storage
 foundation. It stays disabled until an operator configures valid private storage.
 Private image previews use a session-verified endpoint;
-post attachments and deletion are separate work.
+featured-image attachment and the guarded [deletion confirmation](docs/media-deletion-ui-v0.md)
+have separate acceptance contracts. Existing installations are not changed by
+these source tests.
 The [post image foundation](docs/post-image-foundation-v0.md) establishes the
 optional featured-image relation and transactional selection rules. The
 [private image picker](docs/post-image-picker-v0.md) adds separate image/alt

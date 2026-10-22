@@ -236,6 +236,56 @@ pub fn register_post_images(
     )
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DeleteMediaInput {
+    administrator_id: String,
+    media_id: String,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DeleteMediaResult {
+    authorized: bool,
+    found: bool,
+    removed: bool,
+    cleanup_ok: bool,
+    errors: std::collections::BTreeMap<String, String>,
+}
+
+pub fn register_media_deletion(
+    registry: &mut AxNativeRegistry,
+    env: &AxEnv,
+    base: &Path,
+) -> Result<(), AxNativeError> {
+    use crate::media_delete::{DeleteError, DeleteOutcome};
+    let media = configured_media(env, base).map_err(|_| AxNativeError::Rejected)?;
+    registry.register("legura.media.delete", move |input: DeleteMediaInput| {
+        let result = match &media {
+            Some(media) => media.delete_for_administrator(&input.administrator_id, &input.media_id),
+            None => Err(DeleteError::Forbidden),
+        };
+        let mut output = DeleteMediaResult {
+            authorized: true, found: true, removed: false, cleanup_ok: true,
+            errors: Default::default(),
+        };
+        match result {
+            Ok(DeleteOutcome::Removed) => output.removed = true,
+            Ok(DeleteOutcome::CleanupRequired(_)) => {
+                output.removed = true;
+                output.cleanup_ok = false;
+            }
+            Err(DeleteError::Forbidden) => output.authorized = false,
+            Err(DeleteError::NotFound) => output.found = false,
+            Err(DeleteError::InUse) => {
+                output.errors.insert("operation".into(), "This image is used by a post. Remove it from all posts, including drafts, before deleting it.".into());
+            }
+            Err(DeleteError::Unavailable) => return Err(AxNativeError::Rejected),
+        }
+        Ok(output)
+    })
+}
+
 fn configured_media(
     env: &AxEnv,
     base: &Path,
@@ -394,6 +444,19 @@ mod tests {
             content_type: None,
             bytes,
         }
+    }
+
+    #[test]
+    fn disabled_deletion_refuses_authority_and_extra_input() {
+        let mut registry = AxNativeRegistry::default();
+        register_media_deletion(&mut registry, &AxEnv::new(), Path::new("unused")).unwrap();
+        let input = serde_json::json!({"administrator_id":"owner","media_id":"a".repeat(64)});
+        let result = registry.call("legura.media.delete", input.clone()).unwrap();
+        assert_eq!(result["authorized"], false);
+        assert_eq!(result["removed"], false);
+        let mut forged = input;
+        forged["path"] = "../private".into();
+        assert!(registry.call("legura.media.delete", forged).is_err());
     }
 
     #[test]

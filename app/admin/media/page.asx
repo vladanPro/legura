@@ -4,6 +4,7 @@ import { Card } from "@axonyx/ui/foundry/Card"
 import { Grid } from "@axonyx/ui/foundry/Grid"
 import { Button } from "@axonyx/ui/foundry/Button"
 import { CodeBlock } from "@axonyx/ui/foundry/CodeBlock"
+import { OperationFeedback } from "@/components/OperationFeedback"
 
 page MediaLibrary() {
   data listing: AdminMediaPage = loadMediaLibrary(query.page ?? "1")
@@ -17,7 +18,16 @@ page MediaLibrary() {
           </div>
           <p class="legura-hint" data-media-total={listing.total}>{listing.total + " stored images"}</p>
         </header>
-        <p class="legura-preview-notice">Image previews and featured-image selections are private to administrators. Public post images are not enabled yet.</p>
+        <p class="legura-preview-notice">The library is private. A selected featured image becomes public only while its post is published.</p>
+        <form
+          method="post"
+          action={action DeleteMedia}
+          class="legura-delete-feedback-form"
+          aria-label="Media deletion feedback"
+        >
+          <OperationFeedback />
+          <p class="ax-field__error" data-ax-field-error="confirmation" role="alert"></p>
+        </form>
         <Card title="Upload an image">
           <form
             method="post"
@@ -59,6 +69,11 @@ page MediaLibrary() {
                   <h2>{image.content_type}</h2>
                   <p>{image.width + " x " + image.height + " pixels"}</p>
                   <p>{image.byte_size + " bytes"}</p>
+                  <a
+                    class="ax-button"
+                    data-variant="ghost"
+                    href={"/admin/media/" + image.id + "/delete"}
+                  >Delete image</a>
                   <details class="legura-media-details">
                     <summary>Technical details</summary>
                     <CodeBlock title="Media ID" language="text" copy="true">{image.id}</CodeBlock>
