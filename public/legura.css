@@ -8,6 +8,10 @@
 .legura-mode-picker[hidden] { display: none; }
 .legura-mode-picker .ax-select { min-height: 2.75rem; width: auto; }
 .legura-main { max-width: 42rem; margin: 3rem auto; }
+.legura-route-fallback { display: grid; justify-items: start; gap: 1rem; padding: clamp(1.5rem, 5vw, 3rem); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+.legura-route-fallback > * { margin: 0; }
+.legura-route-fallback p:not(.legura-route-fallback__code) { line-height: 1.6; color: var(--ax-text-muted); }
+.legura-route-fallback__code { color: var(--ax-accent); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; }
 .legura-main:has(.legura-admin-shell) { max-width: none; }
 .legura-admin-content { padding: clamp(1rem, 3vw, 2rem); }
 .legura-admin-content > * + * { margin-top: 1.5rem; }

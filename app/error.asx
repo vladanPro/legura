@@ -1,0 +1,10 @@
+page ApplicationError() {
+  return ASX {
+    <section class="legura-route-fallback" aria-labelledby="legura-error-title">
+      <p class="legura-route-fallback__code">PAGE UNAVAILABLE</p>
+      <h1 id="legura-error-title">We could not load this page.</h1>
+      <p>Try again in a moment. If you were saving a change, check whether it was saved before submitting it again.</p>
+      <a class="ax-button" data-variant="secondary" href="/">Go to homepage</a>
+    </section>
+  }
+}

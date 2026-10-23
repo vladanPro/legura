@@ -44,7 +44,10 @@ if (!$conflict.Body.Contains("This URL slug is already in use.")) { throw "Dupli
 $public = Invoke-Request -Path "/posts"
 if ($public.Body.Contains("Private draft") -or $public.Body.Contains("Secret draft body")) { throw "Public list leaked a draft" }
 Invoke-Request -Path "/posts/private-draft" -Status 404 | Out-Null
-Invoke-Request -Path "/posts/unknown" -Status 404 | Out-Null
+$missing = Invoke-Request -Path "/posts/unknown" -Status 404
+if (!$missing.Body.Contains("This page is not available.") -or !$missing.Body.Contains('href="/"')) { throw "Missing public route lost the safe Legura 404 boundary" }
+$missingHead = Invoke-Request -Path "/posts/unknown" -Method HEAD -Status 404
+if ($missingHead.Body.Length -ne 0) { throw "Missing route HEAD response unexpectedly included a body" }
 $edit = Invoke-Request -Path "/admin/posts/$id/edit" -Headers @{ Cookie = $cookie }
 if (!$edit.Body.Contains("Secret draft body")) { throw "Private editor failed to load post" }
 Invoke-Request -Path "/admin/posts/missing/edit" -Headers @{ Cookie = $cookie } -Status 404 | Out-Null
