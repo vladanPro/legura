@@ -887,6 +887,7 @@ fn media_migration_rollback_preserves_referenced_rows_then_allows_empty_table() 
     )
     .unwrap();
     let migrations = legura::database_contract::embedded_migrations();
+    AxMigrationExecutor::rollback_migration(&runtime, &migrations[5]).unwrap();
     AxMigrationExecutor::rollback_migration(&runtime, &migrations[4]).unwrap();
     assert!(AxMigrationExecutor::rollback_migration(&runtime, &migrations[3]).is_err());
     let database = Connection::open(path).unwrap();
@@ -937,11 +938,14 @@ fn post_image_rollback_refuses_editorial_loss_and_preserves_media_after_detach()
             .with_secret("db_dialect", "sqlite"),
     )
     .unwrap();
-    let migration = legura::database_contract::embedded_migrations()
-        .pop()
-        .unwrap();
-    assert!(AxMigrationExecutor::rollback_migration(&runtime, &migration).is_err());
-    legura::database_contract::validate_current(&database).unwrap();
+    let migrations = legura::database_contract::embedded_migrations();
+    AxMigrationExecutor::rollback_migration(&runtime, &migrations[5]).unwrap();
+    let migration = &migrations[4];
+    assert!(AxMigrationExecutor::rollback_migration(&runtime, migration).is_err());
+    assert_eq!(
+        legura::database_contract::validate_structure(&database).unwrap(),
+        5
+    );
     assert_eq!(
         database
             .query_row("SELECT alt FROM legura_post_images", [], |row| row
@@ -953,7 +957,7 @@ fn post_image_rollback_refuses_editorial_loss_and_preserves_media_after_detach()
     database
         .execute("DELETE FROM legura_post_images", [])
         .unwrap();
-    AxMigrationExecutor::rollback_migration(&runtime, &migration).unwrap();
+    AxMigrationExecutor::rollback_migration(&runtime, migration).unwrap();
     assert_eq!(
         legura::database_contract::validate_structure(&database).unwrap(),
         4
