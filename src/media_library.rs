@@ -23,6 +23,10 @@ pub struct MediaLibraryStorage {
 }
 
 impl MediaLibraryStorage {
+    pub fn store_id(&self) -> &StoreId {
+        &self.store_id
+    }
+
     /// Both the database/schema and private directory must already exist.
     /// No env reading, directory creation, schema migration or DB creation occurs.
     pub fn open(
@@ -147,6 +151,26 @@ impl MediaLibraryStorage {
             .execute_batch("PRAGMA trusted_schema=OFF;")
             .map_err(|_| crate::media_delete::DeleteError::Unavailable)?;
         crate::media_delete::delete_for_administrator(
+            &mut connection,
+            self.images.store(),
+            &self.store_id,
+            Some(subject),
+            id,
+        )
+    }
+
+    pub fn retry_cleanup_for_administrator(
+        &self,
+        subject: &str,
+        id: &str,
+    ) -> Result<crate::media_delete::DeleteOutcome, crate::media_delete::DeleteError> {
+        let mut connection = self
+            .connect()
+            .map_err(|_| crate::media_delete::DeleteError::Unavailable)?;
+        connection
+            .execute_batch("PRAGMA trusted_schema=OFF;")
+            .map_err(|_| crate::media_delete::DeleteError::Unavailable)?;
+        crate::media_delete::retry_cleanup_for_administrator(
             &mut connection,
             self.images.store(),
             &self.store_id,

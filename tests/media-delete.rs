@@ -1,4 +1,6 @@
-use legura::media_delete::{delete_for_administrator, DeleteError, DeleteOutcome};
+use legura::media_delete::{
+    delete_for_administrator, retry_cleanup_for_administrator, DeleteError, DeleteOutcome,
+};
 use legura::storage::{ObjectRef, ObjectRemoval, StorageError, StoreId};
 use rusqlite::Connection;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -51,6 +53,12 @@ fn count(db: &Connection) -> u32 {
     db.query_row("SELECT count(*) FROM legura_media", [], |r| r.get(0))
         .unwrap()
 }
+fn pending(db: &Connection) -> u32 {
+    db.query_row("SELECT count(*) FROM legura_media_cleanup", [], |r| {
+        r.get(0)
+    })
+    .unwrap()
+}
 
 #[test]
 fn denies_missing_or_deleted_administrator_before_storage_access() {
@@ -68,6 +76,7 @@ fn denies_missing_or_deleted_administrator_before_storage_access() {
     );
     assert_eq!(storage.calls.load(Ordering::SeqCst), 0);
     assert_eq!(count(&db), 1);
+    assert_eq!(pending(&db), 0);
 }
 
 #[test]
@@ -118,6 +127,7 @@ fn draft_and_published_references_both_block_removal_until_all_detached() {
         Ok(DeleteOutcome::Removed)
     );
     assert_eq!(count(&db), 0);
+    assert_eq!(pending(&db), 0);
     assert_eq!(storage.calls.load(Ordering::SeqCst), 1);
     assert_eq!(
         delete_for_administrator(&mut db, &storage, &store, Some("owner"), &id),
@@ -142,6 +152,7 @@ fn failed_delete_or_commit_never_removes_bytes() {
         assert_eq!(error, DeleteError::Unavailable);
         assert!(!error.to_string().contains("private-db-marker"));
         assert_eq!(count(&db), 1);
+        assert_eq!(pending(&db), 0);
         assert_eq!(storage.calls.load(Ordering::SeqCst), 0);
         assert!(db.is_autocommit());
     }
@@ -158,7 +169,120 @@ fn cleanup_failure_is_explicit_and_does_not_restore_read_authority() {
     assert_eq!(reference.key.as_str(), id);
     assert_eq!(reference.store, store);
     assert_eq!(count(&db), 0);
+    assert_eq!(pending(&db), 1);
     assert!(db.is_autocommit());
+}
+
+#[test]
+fn cleanup_receipt_can_be_retried_only_by_administrator_for_same_store() {
+    let (mut db, mut storage, store, id) = fixture();
+    storage.fail = true;
+    assert!(matches!(
+        delete_for_administrator(&mut db, &storage, &store, Some("owner"), &id),
+        Ok(DeleteOutcome::CleanupRequired(_))
+    ));
+    assert_eq!(pending(&db), 1);
+    storage.fail = false;
+    for subject in [None, Some("missing")] {
+        assert_eq!(
+            retry_cleanup_for_administrator(&mut db, &storage, &store, subject, &id),
+            Err(DeleteError::Forbidden)
+        );
+    }
+    let other = StoreId::parse("other").unwrap();
+    assert_eq!(
+        retry_cleanup_for_administrator(&mut db, &storage, &other, Some("owner"), &id),
+        Err(DeleteError::NotFound)
+    );
+    assert_eq!(
+        retry_cleanup_for_administrator(&mut db, &storage, &store, Some("owner"), "../x"),
+        Err(DeleteError::NotFound)
+    );
+    assert_eq!(storage.calls.load(Ordering::SeqCst), 1);
+    assert!(db
+        .execute(
+            "INSERT INTO legura_media VALUES (?, 'local-media', 'image/png', 10, 1, 1, ?)",
+            [&id, &id],
+        )
+        .is_err());
+    assert_eq!(
+        retry_cleanup_for_administrator(&mut db, &storage, &store, Some("owner"), &id),
+        Ok(DeleteOutcome::Removed)
+    );
+    assert_eq!(pending(&db), 0);
+    assert_eq!(storage.calls.load(Ordering::SeqCst), 2);
+    assert_eq!(
+        retry_cleanup_for_administrator(&mut db, &storage, &store, Some("owner"), &id),
+        Err(DeleteError::NotFound)
+    );
+}
+
+#[test]
+fn cleanup_receipt_survives_database_reopen_and_missing_object_is_retryable() {
+    let (db, mut storage, store, id) = fixture();
+    let mut random = [0u8; 16];
+    getrandom::getrandom(&mut random).unwrap();
+    let name: String = random.iter().map(|byte| format!("{byte:02x}")).collect();
+    let path = std::env::temp_dir().join(format!("legura-cleanup-{name}.sqlite"));
+    db.backup("main", &path, None).unwrap();
+    let mut connection = Connection::open(&path).unwrap();
+    storage.fail = true;
+    assert!(matches!(
+        delete_for_administrator(&mut connection, &storage, &store, Some("owner"), &id),
+        Ok(DeleteOutcome::CleanupRequired(_))
+    ));
+    drop(connection);
+    let mut reopened = Connection::open(&path).unwrap();
+    assert_eq!(pending(&reopened), 1);
+    storage.fail = false;
+    storage.missing = true;
+    assert_eq!(
+        retry_cleanup_for_administrator(&mut reopened, &storage, &store, Some("owner"), &id),
+        Ok(DeleteOutcome::Removed)
+    );
+    assert_eq!(pending(&reopened), 0);
+    drop(reopened);
+    std::fs::remove_file(path).unwrap();
+}
+
+#[test]
+fn cleanup_migration_cannot_roll_back_with_pending_private_bytes() {
+    let (mut db, mut storage, store, id) = fixture();
+    storage.fail = true;
+    assert!(matches!(
+        delete_for_administrator(&mut db, &storage, &store, Some("owner"), &id),
+        Ok(DeleteOutcome::CleanupRequired(_))
+    ));
+    let down = legura::database_contract::MIGRATIONS.last().unwrap().2;
+    let rollback = db.transaction().unwrap();
+    assert!(rollback.execute_batch(down).is_err());
+    rollback.rollback().unwrap();
+    assert_eq!(pending(&db), 1);
+    storage.fail = false;
+    assert_eq!(
+        retry_cleanup_for_administrator(&mut db, &storage, &store, Some("owner"), &id),
+        Ok(DeleteOutcome::Removed)
+    );
+    db.execute_batch(down).unwrap();
+    assert!(db.prepare("SELECT id FROM legura_media_cleanup").is_err());
+}
+
+#[test]
+fn cleanup_migration_adds_receipts_without_rewriting_existing_media() {
+    let db = Connection::open_in_memory().unwrap();
+    for (_, up, _) in legura::database_contract::MIGRATIONS.iter().take(5) {
+        db.execute_batch(up).unwrap();
+    }
+    let id = "a".repeat(64);
+    db.execute(
+        "INSERT INTO legura_media VALUES (?, 'local-media', 'image/png', 10, 1, 1, ?)",
+        [&id, &id],
+    )
+    .unwrap();
+    db.execute_batch(legura::database_contract::MIGRATIONS.last().unwrap().1)
+        .unwrap();
+    assert_eq!(count(&db), 1);
+    assert_eq!(pending(&db), 0);
 }
 
 #[test]
