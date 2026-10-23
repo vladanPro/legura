@@ -7,7 +7,7 @@ import { CodeBlock } from "@axonyx/ui/foundry/CodeBlock"
 import { OperationFeedback } from "@/components/OperationFeedback"
 
 page MediaLibrary() {
-  data listing: AdminMediaPage = loadMediaLibrary(query.page ?? "1")
+  data listing: AdminMediaPage = loadMediaLibrary(query.page ?? "1", query.cleanup_page ?? "1")
   return ASX {
     <AdminFrame section="media" mediaAvailable={listing.available}>
       <section aria-labelledby="media-heading" data-media-available={listing.available}>
@@ -28,6 +28,37 @@ page MediaLibrary() {
           <OperationFeedback />
           <p class="ax-field__error" data-ax-field-error="confirmation" role="alert"></p>
         </form>
+        <If when={listing.pending_total > 0}>
+          <Card title="Storage cleanup needed">
+            <p>These library records are already removed. Their private files may still need cleanup. Fix storage access before retrying; do not upload a replacement with the same ID.</p>
+            <p>{listing.pending_total + " pending"}</p>
+            <Each items={listing.pending_cleanup} as="receipt">
+              <form method="post" action={action RetryMediaCleanup} class="legura-form">
+                <input type="hidden" name="id" value={receipt.id} />
+                <CodeBlock title="Media ID" language="text" copy="true">{receipt.id}</CodeBlock>
+                <OperationFeedback />
+                <Button type="submit" variant="secondary">Retry cleanup</Button>
+              </form>
+            </Each>
+            <nav class="legura-post-pagination" aria-label="Storage cleanup pages">
+              <If when={listing.pending_page > 1}>
+                <a
+                  class="ax-button"
+                  data-variant="secondary"
+                  href={"/admin/media?page=" + listing.page + "&cleanup_page=" + (listing.pending_page - 1)}
+                >Previous cleanup page</a>
+              </If>
+              <span>{"Cleanup page " + listing.pending_page + " of " + listing.pending_total_pages}</span>
+              <If when={listing.pending_page < listing.pending_total_pages}>
+                <a
+                  class="ax-button"
+                  data-variant="secondary"
+                  href={"/admin/media?page=" + listing.page + "&cleanup_page=" + (listing.pending_page + 1)}
+                >Next cleanup page</a>
+              </If>
+            </nav>
+          </Card>
+        </If>
         <Card title="Upload an image">
           <form
             method="post"

@@ -26,3 +26,15 @@ action DeleteMedia(id: String, confirmation: String = "") {
   require result.cleanup_ok else invalid({ operation: "The library record was removed, but its private file could not be cleaned up. Ask an administrator to check storage. Do not repeat deletion." })
   return redirect("/admin/media")
 }
+
+action RetryMediaCleanup(id: String) {
+  data administrator = loadAdministrator()
+  data available = loadAdminMediaAvailability()
+  require available else forbidden()
+  data result = Native.call("legura.media.cleanup.retry", { administrator_id: administrator.id, media_id: input.id })
+  require result.authorized else forbidden()
+  require result.found else notFound()
+  require result.removed else invalid(result.errors)
+  require result.cleanup_ok else invalid({ operation: "Private file cleanup is still pending. Check storage and retry after the problem is fixed." })
+  return redirect("/admin/media")
+}

@@ -30,6 +30,11 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         include_str!("../db/migrations/20261019000000_005_post_images/up.sql"),
         include_str!("../db/migrations/20261019000000_005_post_images/down.sql"),
     ),
+    (
+        "20261023000000_006",
+        include_str!("../db/migrations/20261023000000_006_media_cleanup/up.sql"),
+        include_str!("../db/migrations/20261023000000_006_media_cleanup/down.sql"),
+    ),
 ];
 
 pub fn migration_hash(up: &str, down: &str) -> String {
@@ -52,6 +57,7 @@ pub fn embedded_migrations() -> Vec<AxMigration> {
                 "20261012000000_003" => "richtext",
                 "20261018000000_004" => "media",
                 "20261019000000_005" => "post_images",
+                "20261023000000_006" => "media_cleanup",
                 _ => unreachable!("embedded migration name is missing"),
             }
             .into(),

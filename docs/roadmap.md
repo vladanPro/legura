@@ -45,7 +45,12 @@ media-deletion-service-v0.md. No operator installation is changed by this work.
 
 Media Deletion UI V0 adds native confirmation, a guarded action, operation-level
 validation feedback and an honest cleanup warning. See media-deletion-ui-v0.md;
-isolated compiled HTTP/browser acceptance passes locally, with CI still required.
+isolated compiled HTTP/browser acceptance and required PR CI passed.
+
+Media Cleanup Receipts V0 records private-byte cleanup intent in the same
+transaction as metadata deletion and gives administrators a bounded retry path
+after failure or restart. See media-cleanup-receipts-v0.md. This is not automatic
+garbage collection or an operator deployment.
 
 Post Image Foundation V0 adds an optional per-post featured-image association,
 post-specific alt text, guarded transactional selection and lossless rollback.

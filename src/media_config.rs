@@ -90,6 +90,7 @@ pub fn configure(
 #[serde(deny_unknown_fields)]
 pub struct MediaAvailability {
     pub available: bool,
+    pub store_id: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -181,17 +182,23 @@ pub fn register_private_reads(
 }
 
 /// Server-owned startup snapshot for presentation only, never an upload grant.
+/// The store ID is public metadata; the private directory is never returned.
 /// Invalid configuration aborts registration instead of masquerading as disabled.
 pub fn register_availability(
     registry: &mut AxNativeRegistry,
     env: &AxEnv,
     base: &Path,
 ) -> Result<(), AxNativeError> {
-    let available = configured_media(env, base)
-        .map_err(|_| AxNativeError::Rejected)?
-        .is_some();
+    let media = configured_media(env, base).map_err(|_| AxNativeError::Rejected)?;
+    let availability = MediaAvailability {
+        available: media.is_some(),
+        store_id: media.map(|media| media.store_id().as_str().to_owned()),
+    };
     registry.register("legura.media.availability", move |_: ()| {
-        Ok::<_, ()>(MediaAvailability { available })
+        Ok::<_, ()>(MediaAvailability {
+            available: availability.available,
+            store_id: availability.store_id.clone(),
+        })
     })
 }
 
@@ -259,7 +266,10 @@ pub fn register_media_deletion(
     base: &Path,
 ) -> Result<(), AxNativeError> {
     use crate::media_delete::{DeleteError, DeleteOutcome};
-    let media = configured_media(env, base).map_err(|_| AxNativeError::Rejected)?;
+    let media = configured_media(env, base)
+        .map_err(|_| AxNativeError::Rejected)?
+        .map(Arc::new);
+    let retry_media = media.clone();
     registry.register("legura.media.delete", move |input: DeleteMediaInput| {
         let result = match &media {
             Some(media) => media.delete_for_administrator(&input.administrator_id, &input.media_id),
@@ -283,7 +293,37 @@ pub fn register_media_deletion(
             Err(DeleteError::Unavailable) => return Err(AxNativeError::Rejected),
         }
         Ok(output)
-    })
+    })?;
+    registry.register(
+        "legura.media.cleanup.retry",
+        move |input: DeleteMediaInput| {
+            let result = match &retry_media {
+                Some(media) => {
+                    media.retry_cleanup_for_administrator(&input.administrator_id, &input.media_id)
+                }
+                None => Err(DeleteError::Forbidden),
+            };
+            let mut output = DeleteMediaResult {
+                authorized: true,
+                found: true,
+                removed: false,
+                cleanup_ok: true,
+                errors: Default::default(),
+            };
+            match result {
+                Ok(DeleteOutcome::Removed) => output.removed = true,
+                Ok(DeleteOutcome::CleanupRequired(_)) => {
+                    output.removed = true;
+                    output.cleanup_ok = false;
+                }
+                Err(DeleteError::Forbidden) => output.authorized = false,
+                Err(DeleteError::NotFound) => output.found = false,
+                Err(DeleteError::InUse) => return Err(AxNativeError::Rejected),
+                Err(DeleteError::Unavailable) => return Err(AxNativeError::Rejected),
+            }
+            Ok(output)
+        },
+    )
 }
 
 fn configured_media(
@@ -709,7 +749,7 @@ mod tests {
                 registry
                     .call("legura.media.availability", serde_json::Value::Null)
                     .unwrap(),
-                serde_json::json!({"available": false})
+                serde_json::json!({"available": false, "store_id": null})
             );
             for input in [
                 serde_json::json!({"available": true}),
@@ -725,7 +765,7 @@ mod tests {
     }
 
     #[test]
-    fn availability_uses_validated_configuration_and_exposes_only_a_boolean() {
+    fn availability_uses_validated_configuration_and_exposes_no_storage_path() {
         let fixture = Fixture::new();
         let mut registry = AxNativeRegistry::default();
         register_availability(&mut registry, &fixture.env(), &fixture.0).unwrap();
@@ -733,7 +773,7 @@ mod tests {
             registry
                 .call("legura.media.availability", serde_json::Value::Null)
                 .unwrap(),
-            serde_json::json!({"available": true})
+            serde_json::json!({"available": true, "store_id": "local-media"})
         );
         assert_eq!(
             fs::read_dir(fixture.0.join("private-media"))
