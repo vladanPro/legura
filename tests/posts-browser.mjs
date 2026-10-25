@@ -50,7 +50,7 @@ async function fillPost(title, slug, body, status) {
 }
 
 async function checkEditRecovery(editPath, originalTitle, originalBody) {
-  await navigate(page, '/admin/posts/new');
+  await navigate(page, '/admin/posts/new/plain');
   await fillPost('Reserved slug fixture', 'reserved-edit-slug', 'Separate draft.', 'draft');
   await submit('Create post', '/admin/posts');
   const reservedPath = await page.getByRole('link', { name: 'Edit post: Reserved slug fixture', exact: true }).getAttribute('href');
