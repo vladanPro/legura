@@ -72,6 +72,13 @@ No source override is committed to Cargo.toml.
 
 ## Remaining Gates And UX Limits
 
+Editor recovery acceptance now also exercises duplicate-slug validation while
+editing an existing post, not only creating one. Both browser modes must retain
+title/content/status and the target ID, leave persisted values unchanged on 422,
+allow a corrected retry, and reload the saved values. Cancel must discard unsaved
+edits without publishing or changing the saved slug. This does not cover a
+concurrent write conflict or add autosave/optimistic concurrency.
+
 - Required registry HTTP/posts and both auth/posts browser modes must pass
   locally and in Linux CI before this feature is merged into dev.
 - Duplicate slugs detected before a write return 422 with a slug field message;
