@@ -1,0 +1,10 @@
+page NotFound() {
+  return ASX {
+    <section class="legura-route-fallback" aria-labelledby="legura-not-found-title">
+      <p class="legura-route-fallback__code">404 / PAGE NOT FOUND</p>
+      <h1 id="legura-not-found-title">This page is not available.</h1>
+      <p>The address may have changed, or the content may no longer be public.</p>
+      <a class="ax-button" data-variant="primary" href="/">Go to homepage</a>
+    </section>
+  }
+}

@@ -1,19 +1,21 @@
-import { Card } from "@axonyx/ui/foundry/Card"
-import { Button } from "@axonyx/ui/foundry/Button"
-import { PostFields } from "@/components/PostFields"
-import { AdminFrame } from "@/components/AdminFrame"
+import { NewPostForm } from "@/components/NewPostForm"
 
 page NewPost() {
   data title: String = loadNewPostTitle()
+  data mediaAvailable: Bool = loadAdminMediaAvailability()
   return ASX {
-    <AdminFrame section="posts">
-    <Card title={title}>
-      <p>A draft is visible only to the administrator.</p>
-      <form method="post" action={action CreatePost} data-ax-retain-fields="title,slug,body,status" class="legura-form">
-        <PostFields />
-        <div class="legura-form-actions"><Button type="submit" variant="primary">Create post</Button><a href="/admin/posts">Cancel</a></div>
-      </form>
-    </Card>
-    </AdminFrame>
+    <Head>
+      <Link
+        rel="stylesheet"
+        href="/content-editor/60e28caa76c3edae1e513847b9530f4f0fb17f987a88b422132fbb521600e5fc/editor.css"
+      />
+      <Script src="/content-editor/host.js" type="module" />
+    </Head>
+    <NewPostForm
+      title={title}
+      format="legura-richtext"
+      submitAction={action CreatePost}
+      mediaAvailable={mediaAvailable}
+    />
   }
 }

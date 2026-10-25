@@ -1,0 +1,21 @@
+action SetPostImage(id: String, media_id: String, alt: String = "") {
+  data administrator = loadAdministrator()
+  data mediaAvailable = loadAdminMediaAvailability()
+  require mediaAvailable else forbidden()
+  data result = Native.call("legura.post.image.set", { administrator_id: administrator.id, post_id: input.id, media_id: input.media_id, alt: input.alt })
+  require result.authorized else forbidden()
+  require result.found else notFound()
+  require result.saved else invalid(result.errors)
+  return redirect("/admin/posts/" + input.id + "/image")
+}
+
+action RemovePostImage(id: String) {
+  data administrator = loadAdministrator()
+  data mediaAvailable = loadAdminMediaAvailability()
+  require mediaAvailable else forbidden()
+  data result = Native.call("legura.post.image.remove", { administrator_id: administrator.id, post_id: input.id })
+  require result.authorized else forbidden()
+  require result.found else notFound()
+  require result.saved else invalid(result.errors)
+  return redirect("/admin/posts/" + input.id + "/image")
+}

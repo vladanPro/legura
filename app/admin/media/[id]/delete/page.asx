@@ -1,0 +1,50 @@
+import { AdminFrame } from "@/components/AdminFrame"
+import { OperationFeedback } from "@/components/OperationFeedback"
+import { Card } from "@axonyx/ui/foundry/Card"
+import { Button } from "@axonyx/ui/foundry/Button"
+
+page DeleteMediaConfirmation() {
+  data image: AdminMediaItem = loadDeletableMedia(params.id)
+  return ASX {
+    <AdminFrame section="media" mediaAvailable={true}>
+      <Card title="Delete image">
+        <img
+          class="legura-media-preview"
+          src={"/api/media/" + image.id}
+          alt="Image selected for deletion"
+        />
+        <p>{image.content_type + " - " + image.width + " x " + image.height + " pixels"}</p>
+        <p id="media-delete-warning">This permanently removes the image from the library. There is no trash or undo. Images used by any post, including drafts, cannot be deleted.</p>
+        <form
+          method="post"
+          action="/__axonyx/action?path=%2Fadmin%2Fmedia&name=DeleteMedia"
+          class="legura-form"
+        >
+          <OperationFeedback />
+          <input type="hidden" name="id" value={image.id} />
+          <label for="media-delete-confirmation">
+            <input
+              id="media-delete-confirmation"
+              type="checkbox"
+              name="confirmation"
+              value="delete"
+              required="true"
+              aria-describedby="media-delete-warning confirmation-error"
+            />
+            I want to permanently delete this image.
+          </label>
+          <p
+            id="confirmation-error"
+            class="ax-field__error"
+            data-ax-field-error="confirmation"
+            aria-live="polite"
+          ></p>
+          <div class="legura-form-actions">
+            <Button type="submit">Delete image permanently</Button>
+            <a href="/admin/media">Cancel deletion</a>
+          </div>
+        </form>
+      </Card>
+    </AdminFrame>
+  }
+}

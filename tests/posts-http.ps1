@@ -1,12 +1,34 @@
 # Dot-sourced only by the isolated fixture runner after administrator setup.
 $createPath = "/__axonyx/action?path=%2Fadmin%2Fposts%2Fnew&name=CreatePost"
 $form = "title=Private+draft&slug=private-draft&body=Secret+draft+body&status=draft"
+function Assert-PostValidation {
+  param([string] $Path, [string] $Id = "")
+  $baseline = @{ title = "Validation proof"; slug = "validation-proof"; body = "Validation body"; status = "draft" }
+  $cases = @(
+    @{ field = "title"; value = ""; message = "Enter a title of at most 160 characters." },
+    @{ field = "title"; value = ("t" * 161); message = "Enter a title of at most 160 characters." },
+    @{ field = "slug"; value = ""; message = "Enter a URL slug of at most 120 characters." },
+    @{ field = "slug"; value = ("s" * 121); message = "Enter a URL slug of at most 120 characters." },
+    @{ field = "body"; value = ""; message = "Content requires nonblank text of at most 20000 characters" },
+    @{ field = "body"; value = ("b" * 20001); message = "Content requires nonblank text of at most 20000 characters" },
+    @{ field = "status"; value = "unknown"; message = "Choose draft or published." }
+  )
+  foreach ($case in $cases) {
+    $fields = $baseline.Clone()
+    $fields[$case.field] = $case.value
+    if ($Id) { $fields.id = $Id }
+    $encoded = ($fields.GetEnumerator() | ForEach-Object { $_.Key + "=" + [Uri]::EscapeDataString([string]$_.Value) }) -join "&"
+    $response = Invoke-Request -Path $Path -Method POST -Body $encoded -Headers $sessionProof -Status 422
+    if (!$response.Body.Contains($case.message)) { throw "Shared validation lost $($case.field) feedback for $Path" }
+  }
+}
 $anonymousProof = Get-Proof
 foreach ($path in @("/admin/posts", "/admin/posts/new", "/admin/posts/missing/edit")) {
   Invoke-Request -Path $path -Status 403 | Out-Null
 }
 Invoke-Request -Path $createPath -Method POST -Body $form -Headers $anonymousProof -Status 403 | Out-Null
 Invoke-Request -Path $createPath -Method POST -Body $form -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null
+Assert-PostValidation -Path $createPath
 Invoke-Request -Path $createPath -Method POST -Body $form.Replace("title=Private+draft", "title=") -Headers $sessionProof -Status 422 | Out-Null
 Invoke-Request -Path $createPath -Method POST -Body $form.Replace("status=draft", "status=unknown") -Headers $sessionProof -Status 422 | Out-Null
 foreach ($slug in @("unsafe%2Fpath", "Uppercase", "-invalid", "invalid-")) {
@@ -22,11 +44,19 @@ if (!$conflict.Body.Contains("This URL slug is already in use.")) { throw "Dupli
 $public = Invoke-Request -Path "/posts"
 if ($public.Body.Contains("Private draft") -or $public.Body.Contains("Secret draft body")) { throw "Public list leaked a draft" }
 Invoke-Request -Path "/posts/private-draft" -Status 404 | Out-Null
-Invoke-Request -Path "/posts/unknown" -Status 404 | Out-Null
+$missing = Invoke-Request -Path "/posts/unknown" -Status 404
+if (!$missing.Body.Contains("This page is not available.") -or !$missing.Body.Contains('href="/"')) { throw "Missing public route lost the safe Legura 404 boundary" }
+$missingHead = Invoke-Request -Path "/posts/unknown" -Method HEAD -Status 404
+if ($missingHead.Body.Length -ne 0) { throw "Missing route HEAD response unexpectedly included a body" }
 $edit = Invoke-Request -Path "/admin/posts/$id/edit" -Headers @{ Cookie = $cookie }
 if (!$edit.Body.Contains("Secret draft body")) { throw "Private editor failed to load post" }
 Invoke-Request -Path "/admin/posts/missing/edit" -Headers @{ Cookie = $cookie } -Status 404 | Out-Null
 $updatePath = "/__axonyx/action?path=%2Fadmin%2Fposts%2F$id%2Fedit&name=UpdatePost"
+Assert-PostValidation -Path $updatePath -Id $id
+$unchanged = Invoke-Request -Path "/admin/posts/$id/edit" -Headers @{ Cookie = $cookie }
+if (!$unchanged.Body.Contains("Secret draft body")) { throw "Rejected validation changed stored content" }
+$boundary = "id=$id&title=" + ("t" * 160) + "&slug=" + ("s" * 120) + "&body=" + ("b" * 20000) + "&status=draft"
+Invoke-Request -Path $updatePath -Method POST -Body $boundary -Headers $sessionProof -Status 303 | Out-Null
 $update = "id=$id&title=Published+story&slug=public-story&body=%3Cscript%3Ealert%281%29%3C%2Fscript%3E%0ANext+line&status=published"
 Invoke-Request -Path $updatePath -Method POST -Body $update -Headers $anonymousProof -Status 403 | Out-Null
 Invoke-Request -Path $updatePath -Method POST -Body $update -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null

@@ -1,0 +1,15 @@
+page ContentProof() {
+  data title: String = loadContentProofTitle()
+  return ASX {
+    <main>
+      <h1>{title}</h1>
+      <form method="post" action={action PrepareContentPost}>
+        <input name="slug" />
+        <input name="content_format" />
+        <textarea name="body"></textarea>
+        <textarea name="content_document"></textarea>
+        <button type="submit">Validate and save</button>
+      </form>
+    </main>
+  }
+}

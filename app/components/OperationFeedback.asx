@@ -1,0 +1,10 @@
+component OperationFeedback() {
+  return ASX {
+    <p
+      class="ax-alert legura-operation-feedback"
+      data-tone="danger"
+      data-ax-field-error="operation"
+      role="alert"
+    ></p>
+  }
+}

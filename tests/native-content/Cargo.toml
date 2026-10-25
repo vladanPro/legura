@@ -1,0 +1,16 @@
+[package]
+name = "legura-native-content-proof"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+legura = { path = "../.." }
+axonyx-runtime = "=0.8.0"
+serde_json = "1"
+image = { version = "0.25.10", default-features = false, features = ["png"] }
+
+[build-dependencies]
+axonyx-core = "=0.8.0"

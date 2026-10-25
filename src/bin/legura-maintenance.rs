@@ -1,5 +1,8 @@
 use anyhow::{bail, ensure, Context, Result};
 use axonyx_runtime::backend::{runtime_from_env, AxEnv, AxMigration, AxMigrationExecutor};
+use legura::database_contract::{embedded_migrations, validate, validate_structure};
+#[cfg(test)]
+use legura::database_contract::{migration_hash, MIGRATIONS};
 use rusqlite::{
     backup::{Backup, StepResult},
     Connection, OpenFlags,
@@ -22,19 +25,6 @@ struct Manifest {
     database_sha256: String,
 }
 
-const MIGRATIONS: &[(&str, &str, &str)] = &[
-    (
-        "20261008000000_001",
-        include_str!("../../db/migrations/20261008000000_001_identity/up.sql"),
-        include_str!("../../db/migrations/20261008000000_001_identity/down.sql"),
-    ),
-    (
-        "20261009000000_002",
-        include_str!("../../db/migrations/20261009000000_002_posts/up.sql"),
-        include_str!("../../db/migrations/20261009000000_002_posts/down.sql"),
-    ),
-];
-
 fn main() {
     if let Err(error) = run() {
         eprintln!("Legura maintenance failed: {error:#}");
@@ -49,6 +39,15 @@ fn run() -> Result<()> {
             configure_local(Path::new(root))?;
             println!("New local HTTP configuration created. Read the setup token from the private .env file; secrets were not printed.");
         }
+        [command, archive, recovery, package, mode] if command == "config-recovery" => {
+            let mode = match mode.to_str() {
+                Some("https") => legura::recovery_config::CookieMode::Https,
+                Some("local-http") => legura::recovery_config::CookieMode::LocalHttp,
+                _ => bail!("Choose https or local-http explicitly; no configuration was created"),
+            };
+            legura::recovery_config::generate(Path::new(archive), Path::new(recovery), Path::new(package), mode)?;
+            println!("NEW private recovery .env created with independent secrets; secret values were not printed. No service or existing configuration was changed. Clear conflicting process overrides before startup; cookie mode does not configure TLS or network binding.");
+        }
         [command, destination] if command == "init" => {
             initialize(Path::new(destination))?;
             println!("Empty database initialized with compatible migrations. Configure independent secrets before starting browser setup.");
@@ -61,13 +60,64 @@ fn run() -> Result<()> {
             verify(Path::new(bundle))?;
             println!("Backup integrity and migration compatibility verified.");
         }
+        [command, source] if command == "content-check" => {
+            let report = content_check(Path::new(source))?;
+            println!("{}", serde_json::to_string(&report)?);
+            ensure!(report.invalid == 0, "Stored content is incompatible; no rows were repaired or changed");
+        }
+        [command, database, store, root] if command == "media-check" => {
+            let store = legura::storage::StoreId::parse(store.to_str().context("store ID must be UTF-8")?)?;
+            let storage = legura::storage::LocalStorage::open(Path::new(root), store.clone(), legura::storage::MAX_OBJECT_BYTES)?;
+            let report = legura::media_audit::audit(&open_readonly(Path::new(database))?, &storage, &store)?;
+            println!("{}", serde_json::to_string(&report)?);
+        }
+        [command, archive] if command == "archive-verify" => {
+            println!("{}", serde_json::to_string(&legura::backup_archive::verify(Path::new(archive))?)?);
+        }
+        [command, archive, destination] if command == "archive-restore" => {
+            let report = legura::backup_archive::restore(Path::new(archive), Path::new(destination))?;
+            println!("{}", serde_json::to_string(&report)?);
+            eprintln!("Recovered to a NEW inactive directory. Full CMS migration compatibility is NOT checked. Do not switch configuration or start this database before that check; use independent session secrets.");
+        }
+        [command, archive, destination] if command == "archive-check-recovery" => {
+            let report = legura::backup_archive::check_recovery(Path::new(archive), Path::new(destination))?;
+            println!("{}", serde_json::to_string(&report)?);
+            eprintln!("Current SQLite schema, migrations, content and media checked. Recovery is still inactive; no configuration or secrets were changed.");
+        }
+        [command, snapshot, store, root, archive] if command == "archive-pack-snapshot" => {
+            let store = legura::storage::StoreId::parse(store.to_str().context("store ID must be UTF-8")?)?;
+            let storage = legura::storage::LocalStorage::open(Path::new(root), store.clone(), legura::storage::MAX_OBJECT_BYTES)?;
+            println!("{}", serde_json::to_string(&legura::backup_archive::pack_snapshot(Path::new(snapshot), &storage, &store, Path::new(archive))?)?);
+        }
+        [command, database, store, root, archive] if command == "archive-backup" => {
+            let store = legura::storage::StoreId::parse(store.to_str().context("store ID must be UTF-8")?)?;
+            let storage = legura::storage::LocalStorage::open(Path::new(root), store.clone(), legura::storage::MAX_OBJECT_BYTES)?;
+            println!("{}", serde_json::to_string(&legura::backup_archive::backup(Path::new(database), &storage, &store, Path::new(archive))?)?);
+        }
         [command, bundle, destination] if command == "restore" => {
             restore(Path::new(bundle), Path::new(destination))?;
             println!("Restored to a NEW database. Stop the CMS before switching its database configuration; rotate the session key.");
         }
-        _ => bail!("usage: legura-maintenance config-local <package-directory> | init <new-database-file> | backup <database-file> <new-backup-directory> | verify <backup-directory> | restore <backup-directory> <new-database-file>"),
+        _ => bail!(concat!(
+            "usage: legura-maintenance config-local <package-directory> | init <new-database-file>",
+            " | backup <database-file> <new-backup-directory> | verify <backup-directory>",
+            " | restore <backup-directory> <new-database-file> | content-check <database-file>",
+            " | media-check <database-file> <store-id> <private-media-directory>",
+            " | archive-pack-snapshot <frozen-snapshot-file> <store-id> <private-media-directory> <new-archive>",
+            " | archive-backup <database-file> <store-id> <private-media-directory> <new-archive>",
+            " | archive-verify <archive> | archive-restore <archive> <new-private-directory>",
+            " | archive-check-recovery <archive> <inactive-recovery-directory>",
+            " | config-recovery <archive> <inactive-recovery-directory> <package-directory> <https|local-http>"
+        )),
     }
     Ok(())
+}
+
+fn content_check(path: &Path) -> Result<legura::content_audit::ContentAudit> {
+    let connection = open_readonly(path)?;
+    validate_structure(&connection)?;
+    legura::content_audit::audit(&connection)
+        .context("Cannot audit content storage; verify compatible content migrations first")
 }
 
 fn random_secret() -> Result<String> {
@@ -124,33 +174,6 @@ fn open_readonly(path: &Path) -> Result<Connection> {
     Ok(connection)
 }
 
-fn migration_hash(up: &str, down: &str) -> String {
-    let mut hash = Sha256::new();
-    hash.update(b"axonyx-migration-v1\0");
-    hash.update(up.replace("\r\n", "\n"));
-    hash.update(b"\0");
-    hash.update(down.replace("\r\n", "\n"));
-    format!("{:x}", hash.finalize())
-}
-
-fn embedded_migrations() -> Vec<AxMigration> {
-    MIGRATIONS
-        .iter()
-        .map(|(version, up, down)| AxMigration {
-            version: (*version).into(),
-            name: match *version {
-                "20261008000000_001" => "identity",
-                "20261009000000_002" => "posts",
-                _ => unreachable!("embedded migration name is missing"),
-            }
-            .into(),
-            checksum: migration_hash(up, down),
-            up_sql: (*up).into(),
-            down_sql: (*down).into(),
-        })
-        .collect()
-}
-
 fn initialize(path: &Path) -> Result<()> {
     initialize_with_migrations(path, &embedded_migrations())
 }
@@ -186,40 +209,18 @@ fn initialize_with_migrations(path: &Path, migrations: &[AxMigration]) -> Result
     result
 }
 
-fn validate(connection: &Connection) -> Result<()> {
-    let integrity: String = connection.query_row("PRAGMA integrity_check", [], |row| row.get(0))?;
-    ensure!(integrity == "ok", "SQLite integrity check failed");
-    ensure!(
-        !connection
-            .prepare("PRAGMA foreign_key_check")?
-            .query([])?
-            .next()?
-            .is_some(),
-        "foreign-key integrity check failed"
-    );
-    for sql in [
-        "SELECT id, email, role FROM legura_users LIMIT 0",
-        "SELECT user_id, email, password_hash FROM legura_credentials LIMIT 0",
-        "SELECT id, site_name, admin_id FROM legura_installation LIMIT 0",
-        "SELECT id, title, slug, body, status FROM legura_posts LIMIT 0",
-    ] {
-        connection.prepare(sql)?;
-    }
-    let count: usize =
-        connection.query_row("SELECT count(*) FROM _axonyx_migrations", [], |row| {
-            row.get(0)
-        })?;
-    ensure!(count == MIGRATIONS.len(), "unsupported migration history");
-    for (version, up, down) in MIGRATIONS {
-        let checksum: String = connection.query_row(
-            "SELECT checksum FROM _axonyx_migrations WHERE version = ?1",
-            [version],
-            |row| row.get(0),
-        )?;
-        ensure!(
-            checksum == migration_hash(up, down),
-            "migration checksum does not match this maintenance build"
-        );
+fn require_database_only(connection: &Connection) -> Result<()> {
+    let has_media: bool = connection.query_row(
+        "SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name = 'legura_media')",
+        [],
+        |row| row.get(0),
+    )?;
+    if has_media {
+        let references: bool =
+            connection.query_row("SELECT EXISTS(SELECT 1 FROM legura_media)", [], |row| {
+                row.get(0)
+            })?;
+        ensure!(!references, "Database-only backup cannot protect referenced media; media-inclusive backup is required");
     }
     Ok(())
 }
@@ -290,6 +291,7 @@ fn snapshot(source: &Connection, target: &Path) -> Result<()> {
         }
         destination.pragma_update(None, "journal_mode", "DELETE")?;
         validate(&destination)?;
+        require_database_only(&destination)?;
         drop(destination);
         file.sync_all()?;
         Ok(())
@@ -303,6 +305,7 @@ fn snapshot(source: &Connection, target: &Path) -> Result<()> {
 
 fn backup(database: &Path, bundle: &Path) -> Result<()> {
     let source = open_readonly(database).context("cannot open source database")?;
+    require_database_only(&source)?;
     let builder = fs::DirBuilder::new();
     #[cfg(unix)]
     let builder = {
@@ -359,7 +362,9 @@ fn verify(bundle: &Path) -> Result<()> {
             "unexpected SQLite sidecar in backup"
         );
     }
-    validate(&open_readonly(&database)?)
+    let connection = open_readonly(&database)?;
+    validate(&connection)?;
+    require_database_only(&connection)
 }
 
 fn restore(bundle: &Path, target: &Path) -> Result<()> {
@@ -395,7 +400,7 @@ mod tests {
                     )
                     .unwrap();
             }
-            connection.execute_batch("INSERT INTO legura_users VALUES ('owner','owner@example.test','admin'); INSERT INTO legura_credentials VALUES ('owner','owner@example.test','fixture-hash'); INSERT INTO legura_installation VALUES (1,'Fixture','owner'); INSERT INTO legura_posts VALUES ('post','Published','story','Before deletion','published'); INSERT INTO legura_posts VALUES ('draft','Draft','draft','Private','draft');").unwrap();
+            connection.execute_batch("INSERT INTO legura_users VALUES ('owner','owner@example.test','admin'); INSERT INTO legura_credentials VALUES ('owner','owner@example.test','fixture-hash'); INSERT INTO legura_installation VALUES (1,'Fixture','owner'); INSERT INTO legura_posts(id,title,slug,body,status) VALUES ('post','Published','story','Before deletion','published'); INSERT INTO legura_posts(id,title,slug,body,status) VALUES ('draft','Draft','draft','Private','draft');").unwrap();
             Self(path)
         }
         fn path(&self, name: &str) -> std::path::PathBuf {
@@ -406,6 +411,62 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn database_only_backup_refuses_media_instead_of_reporting_incomplete_success() {
+        let fixture = Fixture::new();
+        let source = Connection::open(fixture.path("source.db")).unwrap();
+        backup(
+            &fixture.path("source.db"),
+            &fixture.path("empty-media-backup"),
+        )
+        .unwrap();
+        source
+            .execute(
+                "INSERT INTO legura_media VALUES (?1, 'local-media', 'image/png', 10, 1, 1, ?2)",
+                ["a".repeat(64), "b".repeat(64)],
+            )
+            .unwrap();
+        let result = backup(
+            &fixture.path("source.db"),
+            &fixture.path("incomplete-backup"),
+        );
+        assert!(result.unwrap_err().to_string().contains("media-inclusive"));
+        assert!(!fixture.path("incomplete-backup").exists());
+        // The snapshot-level guard covers a media insert racing initial preflight.
+        assert!(snapshot(&source, &fixture.path("incomplete.db")).is_err());
+        assert!(!fixture.path("incomplete.db").exists());
+        assert_eq!(
+            source
+                .query_row("SELECT COUNT(*) FROM legura_media", [], |row| row
+                    .get::<_, i64>(0))
+                .unwrap(),
+            1
+        );
+        let bundle = fixture.path("empty-media-backup");
+        let copied = Connection::open(bundle.join("database.sqlite")).unwrap();
+        copied
+            .execute(
+                "INSERT INTO legura_media VALUES (?1, 'local-media', 'image/png', 10, 1, 1, ?2)",
+                ["a".repeat(64), "b".repeat(64)],
+            )
+            .unwrap();
+        drop(copied);
+        let mut manifest: Manifest =
+            serde_json::from_slice(&fs::read(bundle.join("manifest.json")).unwrap()).unwrap();
+        manifest.database_sha256 = digest(&bundle.join("database.sqlite")).unwrap();
+        fs::write(
+            bundle.join("manifest.json"),
+            serde_json::to_vec(&manifest).unwrap(),
+        )
+        .unwrap();
+        assert!(verify(&bundle)
+            .unwrap_err()
+            .to_string()
+            .contains("media-inclusive"));
+        assert!(restore(&bundle, &fixture.path("incomplete-restored.db")).is_err());
+        assert!(!fixture.path("incomplete-restored.db").exists());
     }
 
     #[test]
@@ -471,6 +532,119 @@ mod tests {
             .unwrap();
         assert_eq!(history.0, "identity");
         assert!(!history.1.is_empty());
+    }
+
+    #[test]
+    fn legacy_upgrade_rich_restore_and_lossless_rollback() {
+        let fixture = Fixture::new();
+        let path = fixture.path("legacy.db");
+        let migrations = embedded_migrations()[..3].to_vec();
+        initialize_with_migrations(&path, &migrations[..2]).unwrap();
+        let db = Connection::open(&path).unwrap();
+        let original = "<script>literal</script>\nExisting post";
+        db.execute("INSERT INTO legura_posts(id,title,slug,body,status) VALUES ('old','Old','old',?1,'published')", [original]).unwrap();
+        backup(&path, &fixture.path("old-backup")).unwrap();
+        let runtime = runtime_from_env(
+            AxEnv::new()
+                .with_secret("db_url", format!("sqlite:{}", path.to_str().unwrap()))
+                .with_secret("db_dialect", "sqlite"),
+        )
+        .unwrap();
+        assert_eq!(
+            AxMigrationExecutor::apply_migrations(&runtime, &migrations)
+                .unwrap()
+                .len(),
+            1
+        );
+        assert!(AxMigrationExecutor::apply_migrations(&runtime, &migrations)
+            .unwrap()
+            .is_empty());
+        let old: (String, String, Option<String>) = db
+            .query_row(
+                "SELECT body,content_format,content_document FROM legura_posts WHERE id='old'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(old, (original.into(), "plain-text".into(), None));
+        let document = serde_json::json!({"format":"legura-richtext","version":1,"blocks":[
+            {"type":"paragraph","children":[
+                {"text":"First","marks":["bold"],"link":"https://example.com/first"},
+                {"text":" Second","marks":[],"link":"https://example.com/second"}
+            ]}
+        ]})
+        .to_string();
+        let columns = legura::content::PostContent::rich(&document)
+            .unwrap()
+            .storage_columns()
+            .unwrap();
+        db.execute("INSERT INTO legura_posts(id,title,slug,body,status,content_format,content_document) VALUES ('rich','Rich','rich',?1,'draft',?2,?3)",
+            rusqlite::params![columns.body, columns.content_format, columns.content_document]).unwrap();
+        backup(&path, &fixture.path("rich-backup")).unwrap();
+        restore(
+            &fixture.path("rich-backup"),
+            &fixture.path("rich-restored.db"),
+        )
+        .unwrap();
+        let restored = open_readonly(&fixture.path("rich-restored.db")).unwrap();
+        validate(&restored).unwrap();
+        let saved: String = restored
+            .query_row(
+                "SELECT content_document FROM legura_posts WHERE id='rich'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(saved, columns.content_document.unwrap());
+        assert!(
+            AxMigrationExecutor::rollback_migration(&runtime, &migrations[2]).is_err(),
+            "Rollback must refuse to discard rich documents"
+        );
+        validate(&db).unwrap();
+        assert_eq!(
+            db.query_row(
+                "SELECT count(*) FROM sqlite_schema WHERE name='_legura_richtext_rollback_guard'",
+                [],
+                |row| row.get::<_, i64>(0)
+            )
+            .unwrap(),
+            0
+        );
+        db.execute("DELETE FROM legura_posts WHERE id='rich'", [])
+            .unwrap();
+        AxMigrationExecutor::rollback_migration(&runtime, &migrations[2]).unwrap();
+        validate(&db).unwrap();
+        assert_eq!(
+            db.query_row("SELECT body FROM legura_posts WHERE id='old'", [], |row| {
+                row.get::<_, String>(0)
+            })
+            .unwrap(),
+            original
+        );
+        restore(
+            &fixture.path("old-backup"),
+            &fixture.path("old-restored.db"),
+        )
+        .unwrap();
+        let legacy = open_readonly(&fixture.path("old-restored.db")).unwrap();
+        validate(&legacy).unwrap();
+        assert_eq!(
+            legacy
+                .query_row("SELECT count(*) FROM _axonyx_migrations", [], |row| row
+                    .get::<_, i64>(0))
+                .unwrap(),
+            2,
+            "Restore must not silently upgrade old snapshots"
+        );
+    }
+
+    #[test]
+    fn rich_backup_refuses_invalid_document() {
+        let fixture = Fixture::new();
+        let db = Connection::open(fixture.path("source.db")).unwrap();
+        db.execute("UPDATE legura_posts SET content_format='legura-richtext',content_document='{}' WHERE id='post'", []).unwrap();
+        assert!(backup(&fixture.path("source.db"), &fixture.path("invalid-rich")).is_err());
+        assert!(!fixture.path("invalid-rich/manifest.json").exists());
     }
 
     #[test]

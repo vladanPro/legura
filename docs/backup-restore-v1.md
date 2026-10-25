@@ -5,6 +5,13 @@ cloud backup service or production installer. Use trusted local storage and
 backups you created; a SHA-256 checksum detects corruption, not a malicious
 backup whose manifest was also replaced.
 
+Database-only backup/verify/restore now explicitly refuses databases with media
+references instead of reporting success without their files. Empty media tables
+remain compatible. The read-only [media integrity check](media-integrity-check-v0.md)
+is a separate prerequisite. Experimental media-inclusive archive creation is
+documented in [archive V0](legura-archive-v0.md); restore is not implemented and
+does not replace this database-only V1 workflow.
+
 ## Build and Backup
 
 For the local source pilot, [Operator Quickstart](operator-quickstart.md) provides
@@ -28,7 +35,10 @@ SQLite's online backup API captures a consistent snapshot, including committed
 WAL records. Do not substitute a raw copy of a live `.db` file. Under sustained
 writes or locks, the snapshot attempt can time out; retry in a quiet period.
 V1 validates SQLite integrity, foreign keys, required product columns and the
-exact two migration versions/checksums embedded in this maintenance build.
+known two-migration legacy prefix or three-migration upgraded history/checksums
+embedded in this maintenance build. Rich snapshots additionally validate their
+documents and body projections. Restore preserves the snapshot's schema version;
+it does not implicitly upgrade it. See richtext-migration-v1.md.
 
 A completed bundle contains `database.sqlite` and `manifest.json` (format,
 product/version, database SHA-256). The manifest is written last; an interrupted

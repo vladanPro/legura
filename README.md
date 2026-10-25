@@ -2,6 +2,9 @@
 
 A self-hosted content management system built on Axonyx.
 
+For source formatting, format-on-save and the optional staged-content guard,
+see [Source formatting](docs/source-formatting-v1.md).
+
 Legura takes its name from the Serbian word for alloy: distinct elements forming
 one useful whole. Content, design, and application behavior belong together,
 without forcing the user to learn the framework underneath.
@@ -26,8 +29,11 @@ is integrated into dev.
 Posts V0 adds private create/edit, draft/published status, public published pages
 and plain-text rendering. Its typed not-found framework fixes are published in
 core 0.6.6/runtime 0.6.5/CLI 0.6.9/scaffold 0.6.7 after green release CI.
-This branch uses registry runtime 0.6.6 and CI CLI 0.6.10; required acceptance now
-includes HTTP posts and both browser modes alongside the original auth tests.
+This branch adopts registry runtime/core and CLI `0.8.0` for public/private images,
+replacing the temporary source pins. See
+[Private Media HTTP](docs/private-media-http-v0.md) for registry acceptance and
+boundaries. The editor remains on its independent locked Git revision.
+Acceptance includes HTTP posts and both browser modes alongside auth.
 The Posts acceptance/integration gate is recorded in docs/posts-v0.md.
 
 Editor validation adds field-level duplicate-slug feedback and preserves long
@@ -61,6 +67,60 @@ overview, posts and editor screens. See [the layout contract](docs/admin-shell-v
 and [Light/Dark appearance](docs/appearance-v0.md). These remain development
 pilots, not an installable product release.
 
+The [posts table contract](docs/posts-table-v1.md) explains published Foundry UI
+adoption and why search and pagination remain server-owned.
+
+The [opt-in Media library](docs/product-media-library-v0.md) adds private image
+uploads and bounded listing at `/admin/media`, using the existing local storage
+foundation. It stays disabled until an operator configures valid private storage.
+Private image previews use a session-verified endpoint;
+featured-image attachment and the guarded [deletion confirmation](docs/media-deletion-ui-v0.md)
+have separate acceptance contracts. Existing installations are not changed by
+these source tests.
+The [post image foundation](docs/post-image-foundation-v0.md) establishes the
+optional featured-image relation and transactional selection rules. The
+[private image picker](docs/post-image-picker-v0.md) adds separate image/alt
+settings to saved posts.
+The [published image read service](docs/published-image-read-v0.md) establishes
+the per-post read grant. [Public post images](docs/public-post-images-v0.md)
+connect that grant to an anonymous endpoint and the published story, with a
+placeholder for unavailable selected images. The media library stays private.
+The [private read service](docs/private-media-read-v0.md) validates referenced
+images and constructs binary responses in Rust. The [HTTP bridge](docs/private-media-http-v0.md)
+rechecks the current administrator and exposes no public filesystem directory.
+The [Media availability contract](docs/media-availability-v0.md) supplies a
+validated, server-owned boolean for product navigation, not an upload grant.
+
+An isolated protected-upload proof is merged in `dev` (PR #48), after all seven
+CI gates passed. Its startup hook (framework PR #357) is published in CLI 0.6.15,
+first adopted from crates.io; the current private-image CI uses registry CLI
+0.7.1. The
+[library view pilot](docs/media-library-view-v0.md) is the basis of the opt-in
+product page. Existing operator installations are not automatically activated.
+
+The read-only [media integrity check](docs/media-integrity-check-v0.md) prepares
+the backup boundary. Database-only backup refuses media references; coordinated
+file-inclusive recovery remains incomplete. No media is activated here.
+
+An experimental [`.legura` archive container](docs/legura-archive-v0.md) can package
+an explicitly supplied frozen snapshot or capture live SQLite through its backup
+API, including referenced images. Inactive recovery into a NEW private directory
+validates SQLite and exact media references without switching configuration.
+An explicit read-only [recovery compatibility check](docs/recovery-compatibility-v0.md)
+checks current product migrations, schema, content and original archived bytes.
+Operator activation remains separate; a recovery receipt is not startup certification.
+An [isolated activation proof](docs/recovery-activation-proof-v0.md) exercises
+stop/check/switch/start with new session secrets and source rollback, without
+changing the developer's running CMS or claiming an operator activation command.
+The [native media configuration](docs/native-media-config-v0.md) now uses Legura's
+own startup hook and the application DB settings, disabled by default. Operator
+media pages and delivery remain inactive; the current private-image feature requires the
+registry CLI/runtime 0.7.1 documented above.
+
+The native tool can now generate a NEW [private recovery configuration](docs/recovery-private-config-v0.md)
+with independent session/setup secrets after archive compatibility checks. It
+never replaces an existing `.env` or activates a service.
+
 ## Product
 
 - Own your server, content, files, and database.
@@ -82,17 +142,56 @@ See [the roadmap](docs/roadmap.md), [product boundary](docs/product.md), and
 [installation model](docs/installation.md).
 The [Posts V0 contract](docs/posts-v0.md) records implemented scope and remaining gates.
 The [posts listing pilot](docs/posts-listing-v0.md) documents filtering,
-pagination, title search and its cargo-axonyx 0.6.10 tooling requirement.
+pagination, title search and its compiled cargo-axonyx 0.6.12 tooling requirement.
 The [administration overview](docs/admin-overview-v0.md) documents database-backed
 post counts, filtered-list shortcuts and the first-draft prompt.
 The [private saved preview](docs/posts-preview-v0.md) lets an administrator
 review a post without publishing it or losing unsaved editor text.
+
+Create/update share pure post validation through `app/domain/posts.ax`.
+The [shared validation proof](docs/shared-post-validation-v0.md) records the
+published compiler fix and registry-only HTTP/backup acceptance. The editor
+package remains pinned to Git; operator activation is separate.
+
+The rich-text proofs now use published CLI 0.6.13, runtime 0.6.9 and
+UI 0.0.86 without source overrides. See [post editor acceptance](docs/post-editor-forms-v0.md).
+This is not editor publication or activation in the operator installation.
+
+Public published-post rendering now validates stored content through Rust before
+passing fixed rich markup into ASX. See [the rendering boundary](docs/public-richtext-rendering-v0.md).
+Private saved preview uses the same validated rich renderer under administrator
+guards. [Active form integration](docs/active-editor-v0.md) connects the real
+create/edit forms; applying it to an existing operator installation remains a
+separate, backup-first step.
+
+Isolated editor loaders also revalidate stored documents on the server before
+mounting them, without repairing or rewriting the database. See
+[the editor read boundary](docs/editor-storage-validation-v0.md).
+
+Build tooling can export the pinned editor's embedded ASX/CSS/JS bundle to a new
+directory with a hash inventory. See [package assets](docs/editor-package-assets-v0.md).
+Source prepare/build installs and verifies the pinned generation; it does not
+upgrade an existing operator checkout automatically.
+
+The [side-by-side installation helper](docs/editor-managed-install-v0.md) installs
+content-addressed editor generations and refuses local changes. Activation stays
+explicit; there is no overwrite or automatic cleanup of old generations.
+
+Before activation, [content-check](docs/editor-content-check-v0.md) can audit a
+specified SQLite database read-only and report content compatibility counts,
+without printing post content or repairing rows.
 
 The [setup/auth pilot](docs/setup-auth-v0.md) documents local initialization and
 the acceptance gate. HTTP acceptance is not a security audit or production
 readiness proof. Do not deploy this development pilot publicly.
 
 ## Development
+
+The [rich-text storage contract](docs/richtext-storage-v0.md) now backs real CMS
+forms through the pinned editor package and native Rust validation. New posts
+default to rich text, with explicit plain-text creation at `/admin/posts/new/plain`.
+Existing plain posts retain their format; rich editing requires JavaScript.
+No public CMS release, automatic conversion or operator upgrade is implied.
 
 For a local SQLite trial, follow the [tested source preparation](docs/installation.md#local-sqlite-pilot).
 `pwsh -File scripts/local.ps1 -Task prepare` initializes/checks/builds;

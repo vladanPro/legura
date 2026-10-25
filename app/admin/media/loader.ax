@@ -1,0 +1,42 @@
+export type AdminMediaItem {
+  id: String
+  content_type: String
+  byte_size: Number
+  width: Number
+  height: Number
+}
+
+export type PendingMediaCleanup {
+  id: String
+  created_at: Number
+}
+
+export type AdminMediaPage {
+  available: Bool
+  items: AdminMediaItem[]
+  total: Number
+  page: Number
+  total_pages: Number
+  pending_cleanup: PendingMediaCleanup[]
+  pending_total: Number
+  pending_page: Number
+  pending_total_pages: Number
+}
+
+export query loadMediaLibrary(page: String = "1", cleanupPage: String = "1") -> AdminMediaPage {
+  require Auth.subject else forbidden()
+  data administrator = db.legura_users.where({ id: Auth.subject }).first()
+  require administrator else forbidden()
+  require administrator["role"] == "admin" else forbidden()
+  data media = Native.call("legura.media.availability", null)
+  require media.available else forbidden()
+  data requested = Native.call("legura.pagination.request", { page: input.page })
+  data counts = db.query("SELECT COUNT(*) AS total FROM legura_media")
+  data pagination = Native.call("legura.pagination", { total: counts[0]["total"], requested_page: requested.requested_page, page_size: 10 })
+  data items = db.query("SELECT id, content_type, byte_size, width, height FROM legura_media ORDER BY id LIMIT ? OFFSET ?", pagination.page_size, pagination.offset)
+  data cleanup_count = db.query("SELECT COUNT(*) AS total FROM legura_media_cleanup WHERE store_id = ?", media.store_id)
+  data cleanup_requested = Native.call("legura.pagination.request", { page: input.cleanupPage })
+  data cleanup_pagination = Native.call("legura.pagination", { total: cleanup_count[0]["total"], requested_page: cleanup_requested.requested_page, page_size: 10 })
+  data pending = db.query("SELECT id, created_at FROM legura_media_cleanup WHERE store_id = ? ORDER BY created_at, id LIMIT ? OFFSET ?", media.store_id, cleanup_pagination.page_size, cleanup_pagination.offset)
+  return { available: media.available, items: items, total: counts[0]["total"], page: pagination.page, total_pages: pagination.total_pages, pending_cleanup: pending, pending_total: cleanup_count[0]["total"], pending_page: cleanup_pagination.page, pending_total_pages: cleanup_pagination.total_pages }
+}

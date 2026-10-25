@@ -1,4 +1,5 @@
 /target/
+/tests/native-content/target/
 /dist/
 /node_modules/
 /test-results/
@@ -9,6 +10,9 @@
 /uploads/
 /backups/
 /src/generated/
+/.legura/editor-assets/
+/app/components/legura-editor/
+/public/content-editor/*/
 *.db
 *.db-shm
 *.db-wal

@@ -1,24 +1,76 @@
 import { Card } from "@axonyx/ui/foundry/Card"
-import { Button } from "@axonyx/ui/foundry/Button"
 import { PostFields } from "@/components/PostFields"
 import { AdminFrame } from "@/components/AdminFrame"
 
 page EditPost() {
-  data post: Post = loadEditablePost(params.id)
+  data post: PostForEditor = loadEditablePost(params.id)
+  data mediaAvailable: Bool = loadAdminMediaAvailability()
+  data image: PostImageTarget = loadPostImageTarget(params.id)
   return ASX {
-    <AdminFrame section="posts">
-    <Card title="Edit post">
-      <form method="post" action={action UpdatePost} data-ax-retain-fields="title,slug,body,status" class="legura-form">
-        <input type="hidden" name="id" value={post.id} />
-        <PostFields title={post.title} slug={post.slug} body={post.body} status={post.status} />
-        <div class="legura-form-actions"><Button type="submit" variant="primary">Save changes</Button><a href="/admin/posts">Cancel</a></div>
-      </form>
-      <nav class="legura-links" aria-label="Post management">
-        <a href={"/admin/posts/" + post.id + "/preview"} target="_blank" rel="noopener" aria-describedby="preview-hint">Preview saved post</a>
-        <a href={"/admin/posts/" + post.id + "/delete"}>Delete post</a>
-      </nav>
-      <p id="preview-hint" class="legura-hint">Preview opens in a new tab. Save changes first to include them.</p>
-    </Card>
+    <Head>
+      <Link
+        rel="stylesheet"
+        href="/content-editor/60e28caa76c3edae1e513847b9530f4f0fb17f987a88b422132fbb521600e5fc/editor.css"
+      />
+      <Script src="/content-editor/host.js" type="module" />
+    </Head>
+    <AdminFrame section="posts" mediaAvailable={mediaAvailable}>
+      <Card title="Edit post">
+        <form
+          method="post"
+          action={action UpdatePost}
+          data-content-editor-form="true"
+          data-ax-retain-fields="title,slug,body,status,content_document"
+          class="legura-form"
+        >
+          <input type="hidden" name="id" value={post.id} />
+          <PostFields
+            title={post.title}
+            slug={post.slug}
+            body={post.body}
+            status={post.status}
+            format={post.content_format}
+            document={post.content_document ?? ""}
+          />
+          <div class="legura-form-actions">
+            <button
+              type="submit"
+              class="ax-button"
+              data-variant="primary"
+              data-editor-save="true"
+              disabled={post.content_format == "legura-richtext"}
+            >Save changes</button>
+            <a href="/admin/posts">Cancel</a>
+          </div>
+        </form>
+        <nav class="legura-links" aria-label="Post management">
+          <a
+            href={"/admin/posts/" + post.id + "/preview"}
+            target="_blank"
+            rel="noopener"
+            aria-describedby="preview-hint"
+          >Preview saved post</a>
+          <a href={"/admin/posts/" + post.id + "/delete"}>Delete post</a>
+        </nav>
+        <p id="preview-hint" class="legura-hint">Preview opens in a new tab. Save changes first to include them.</p>
+      </Card>
+      <If when={mediaAvailable}>
+        <Card title="Featured image">
+          <If when={image.image_id != ""}>
+            <img
+              class="legura-media-preview"
+              src={"/api/media/" + image.image_id}
+              alt={image.image_alt}
+              data-post-image-preview="true"
+            />
+          </If>
+          <If when={image.image_id == ""}>
+            <p>No featured image selected.</p>
+          </If>
+          <a class="ax-button" data-variant="secondary" href={"/admin/posts/" + post.id + "/image"}>Choose featured image</a>
+          <p class="legura-hint">Save content changes before opening image settings. Images are private for now.</p>
+        </Card>
+      </If>
     </AdminFrame>
   }
 }

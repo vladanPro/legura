@@ -1,0 +1,9 @@
+action UpdateEditorPost(slug: String, content_format: String, body: String, content_document: String = "") {
+  data administrator = loadAdministrator()
+  data post = db.legura_posts.where({slug: input.slug}).first()
+  require post else notFound()
+  data prepared = Native.call("legura.content.prepare", {content_format: input.content_format, body: input.body, content_document: input.content_document})
+  require prepared.columns != null else invalid(prepared.errors)
+  db.legura_posts.update({body: prepared.columns.body, content_format: prepared.columns.content_format, content_document: prepared.columns.content_document}).where({slug: input.slug})
+  return redirect("/admin/content-editor/edit?slug=" + input.slug)
+}

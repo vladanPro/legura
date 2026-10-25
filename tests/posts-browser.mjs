@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { waitForDocumentNavigation } from "./document-navigation.mjs";
 
 const [baseUrl, mode] = process.argv.slice(2);
 assert.ok(["127.0.0.1", "localhost"].includes(new URL(baseUrl).hostname), "Use an isolated local fixture");
@@ -34,10 +35,11 @@ async function navigate(target, path, expected = 200) {
 
 async function submit(button, destination) {
   const responsePromise = page.waitForResponse((response) => response.url().includes("/__axonyx/action?") && response.request().method() === "POST");
+  const navigation = waitForDocumentNavigation(page, `${baseUrl}${destination}`);
   await page.getByRole("button", { name: button, exact: true }).click();
   const response = await responsePromise;
   assert.ok([200, 303].includes(response.status()), `Unexpected ${button} status ${response.status()}`);
-  await page.waitForURL(`${baseUrl}${destination}`);
+  await navigation;
 }
 
 async function fillPost(title, slug, body, status) {
@@ -100,8 +102,10 @@ async function checkEditRecovery(editPath, originalTitle, originalBody) {
 
 async function checkAdminFrame() {
   const nav = page.getByRole('navigation', { name: 'Administration', exact: true });
+  await nav.locator('a[href="/admin/posts"][data-active="true"]').waitFor({ state: 'visible' });
   const active = nav.locator('[data-active="true"]');
-  assert.equal(await active.count(), 1, 'Exactly one admin section must be active');
+  const links = await nav.locator('a').evaluateAll(nodes => nodes.map(node => ({ href: node.getAttribute('href'), active: node.getAttribute('data-active'), current: node.getAttribute('aria-current') })));
+  assert.equal(await active.count(), 1, `Exactly one admin section must be active: ${JSON.stringify(links)}`);
   assert.equal(await active.getAttribute('href'), '/admin/posts');
   assert.equal(await active.getAttribute('aria-current'), 'true');
   assert.equal(await page.getByRole('main').count(), 1);
@@ -229,7 +233,7 @@ async function checkSavedPreview(editPath, title, body, status) {
 
 async function checkPostListing() {
   for (let index = 1; index <= 11; index += 1) {
-    await navigate(page, '/admin/posts/new');
+    await navigate(page, '/admin/posts/new/plain');
     const suffix = String(index).padStart(2, '0');
     const title = index === 11 ? `Listing ${suffix} & + % _ " Č` : `Listing ${suffix}`;
     await fillPost(title, `listing-${suffix}`, 'Pagination fixture.', index <= 6 ? 'draft' : 'published');
@@ -249,6 +253,9 @@ async function checkPostListing() {
   const table = page.getByRole('table', { name: 'Your posts', exact: true });
   const rows = table.getByRole('rowheader');
   const navigation = page.getByRole('navigation', { name: 'Posts pages', exact: true });
+  // This is one server-paginated slice, not a complete client-side DataTable dataset.
+  assert.equal(await page.locator('[data-ax-data-table]').count(), 0);
+  assert.equal(await page.getByRole('searchbox').count(), 1);
   assert.equal(await rows.count(), 10);
   assert.equal(await rows.first().textContent(), 'Listing 01listing-01');
   assert.equal(await navigation.getByRole('button', { name: 'Previous page' }).count(), 0);
@@ -391,6 +398,7 @@ try {
   await page.getByText('No posts yet', { exact: true }).waitFor();
   await checkAdminFrame();
   await page.getByRole("link", { name: "New post", exact: true }).click();
+  await page.getByRole('link', { name: 'Plain text', exact: true }).click();
   await checkAdminFrame();
   await fillPost("Private browser draft", "browser-draft", "Only the administrator should see this.", "draft");
   await submit("Create post", "/admin/posts");
@@ -411,7 +419,7 @@ try {
   await navigate(page, editPath);
 
   const longText = `${"Editor text ".repeat(1000)}\nČuvanje </textarea><script>unsafe</script>`;
-  await navigate(page, "/admin/posts/new");
+  await navigate(page, "/admin/posts/new/plain");
   await fillPost("Duplicate draft", "browser-draft", longText, "draft");
   const duplicateResponse = page.waitForResponse((response) => response.url().includes("/__axonyx/action?") && response.request().method() === "POST");
   await page.getByRole("button", { name: "Create post", exact: true }).click();
@@ -442,7 +450,7 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "Mobile editor overflow");
   await page.screenshot({ path: resolve(results, `editor-${mode}-mobile.png`), fullPage: true });
-  await submit("Save changes", "/admin/posts");
+  await submit("Save changes", editPath);
   await checkOverview(1, 0, 1);
   await navigate(page, '/admin/posts');
   await navigate(publicPage, "/posts");
@@ -456,7 +464,7 @@ try {
   assert.equal(await page.getByLabel("Status", { exact: true }).inputValue(), "published");
   await checkSavedPreview(editPath, 'Published browser story', content, 'published');
   await page.getByLabel("Status", { exact: true }).selectOption("draft");
-  await submit("Save changes", "/admin/posts");
+  await submit("Save changes", editPath);
   await checkOverview(1, 1, 0);
   await navigate(page, '/admin/posts');
   await navigate(publicPage, "/posts/browser-story", 404);
@@ -472,7 +480,7 @@ try {
   await page.waitForURL(`${baseUrl}${editPath}`);
   assert.equal(await page.getByLabel("Content", { exact: true }).inputValue(), content);
   await page.getByLabel("Status", { exact: true }).selectOption("published");
-  await submit("Save changes", "/admin/posts");
+  await submit("Save changes", editPath);
   await navigate(publicPage, "/posts/browser-story");
   await navigate(page, deletePath);
   await navigate(publicPage, deletePath, 403);

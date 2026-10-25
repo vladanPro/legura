@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Validate the index, never rewrite files or stage unrelated working-tree edits.
+root=$(git rev-parse --show-toplevel)
+cd "$root"
+formatter=$(git config --get axonyx.formatterPath || true)
+command=(cargo ax)
+if [[ -n "$formatter" ]]; then
+  command=("$formatter")
+fi
+failed=0
+while IFS= read -r -d '' file; do
+  case "$file" in
+    vendor/*|target/*|dist/*|app/generated/*|src/generated/*|app/components/legura-editor/*) continue ;;
+    *.asx|*.ax)
+      if ! git show ":$file" | "${command[@]}" fmt --stdin --check; then
+        printf 'Format staged Axonyx source before committing: %s\n' "$file" >&2
+        failed=1
+      fi
+      ;;
+  esac
+done < <(git diff --cached --name-only --diff-filter=ACMR -z)
+exit "$failed"

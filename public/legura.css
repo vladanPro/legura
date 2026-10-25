@@ -8,6 +8,10 @@
 .legura-mode-picker[hidden] { display: none; }
 .legura-mode-picker .ax-select { min-height: 2.75rem; width: auto; }
 .legura-main { max-width: 42rem; margin: 3rem auto; }
+.legura-route-fallback { display: grid; justify-items: start; gap: 1rem; padding: clamp(1.5rem, 5vw, 3rem); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
+.legura-route-fallback > * { margin: 0; }
+.legura-route-fallback p:not(.legura-route-fallback__code) { line-height: 1.6; color: var(--ax-text-muted); }
+.legura-route-fallback__code { color: var(--ax-accent); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.12em; }
 .legura-main:has(.legura-admin-shell) { max-width: none; }
 .legura-admin-content { padding: clamp(1rem, 3vw, 2rem); }
 .legura-admin-content > * + * { margin-top: 1.5rem; }
@@ -15,6 +19,11 @@
   :scope:not([data-legura-js='true']) .ax-layout-sidebar__toggle { display: none; }
 }
 .legura-admin-shell .ax-sidebar-item { min-height: 2.75rem; }
+.legura-media-details { min-width: 0; margin-top: 0.75rem; }
+.legura-media-details summary { padding-block: 0.75rem; color: var(--ax-text-muted); cursor: pointer; }
+.legura-media-details summary:focus-visible { outline: 2px solid var(--ax-accent); outline-offset: 3px; border-radius: var(--ax-radius-md); }
+.legura-media-details .ax-code-block__code { white-space: pre-wrap; overflow-wrap: anywhere; }
+.legura-media-details [data-ax-copy-code]:not([data-ax-copy-ready='true']) { display: none; }
 .legura-form { display: grid; gap: 0.75rem; --ax-input-min-height: 2.75rem; --ax-button-min-height: 2.75rem; }
 .legura-app .legura-form input.ax-input { min-height: 2.75rem; font-size: 1rem; }
 .legura-form .ax-button { min-height: 2.75rem; }
@@ -55,9 +64,21 @@
 .legura-post-edit { display: inline-flex; align-items: center; min-height: 2.75rem; white-space: nowrap; }
 .legura-posts-table:focus-visible { outline: 3px solid var(--ax-primary); outline-offset: 3px; }
 .legura-hint { color: var(--ax-text-muted); font-size: 0.875rem; overflow-wrap: anywhere; }
+.legura-media-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.75rem; width: 100%; min-height: 8rem; aspect-ratio: 16 / 9; box-sizing: border-box; margin-bottom: 1rem; padding: 1rem; border: 1px dashed var(--ax-border-strong); border-radius: var(--ax-radius-md); background: var(--ax-surface-2); color: var(--ax-text-muted); text-align: center; font-size: 0.875rem; }
+.legura-media-placeholder svg { flex: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.legura-media-preview { display: block; width: 100%; min-height: 8rem; aspect-ratio: 16 / 9; object-fit: contain; box-sizing: border-box; margin-bottom: 1rem; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-md); background: var(--ax-surface-2); }
+.legura-image-options { min-width: 0; margin: 0; padding: 0; border: 0; }
+.legura-image-options legend { margin-bottom: 1rem; font-weight: 600; }
+.legura-image-choice { display: grid; gap: 0.75rem; min-width: 0; padding: 1rem; border: 1px solid var(--ax-border-strong); border-radius: var(--ax-radius-md); cursor: pointer; overflow-wrap: anywhere; }
+.legura-image-choice:has(input:checked), .legura-image-choice:focus-within { border-color: var(--ax-accent); }
+.legura-image-choice input { width: 1.25rem; height: 1.25rem; accent-color: var(--ax-accent); }
+.legura-image-choice .legura-media-preview { margin: 0; }
 .legura-form-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 0.75rem; }
 .legura-form :is(input, textarea, select) { min-width: 0; max-width: 100%; }
 .legura-form .ax-textarea { min-height: 15rem; }
 .legura-story h1 { overflow-wrap: anywhere; }
+.legura-story__image { display: block; width: 100%; max-height: 32rem; object-fit: contain; border-radius: var(--ax-radius-md); margin-block: 1.5rem; }
 .legura-story__body { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; }
 @media (max-width: 40rem) { .legura-header { flex-direction: column; } .legura-main { margin-block: 1.5rem; } }
+.legura-operation-feedback:empty { display: none; }
+.legura-delete-feedback-form [data-ax-field-error]:empty { display: none; }

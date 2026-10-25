@@ -1,8 +1,15 @@
 import { PostStory } from "@/components/PostStory"
 
 page PublicPost() {
-  data post: Post = loadPublishedPost(params.slug)
+  data post: PublishedStory = loadPublishedPost(params.slug)
   return ASX {
-    <PostStory title={post.title} body={post.body} />
+    <PostStory
+      title={post.title}
+      body={post.body}
+      contentHtml={post.html}
+      imageSelected={post.imageSelected}
+      imageSrc={post.imageSrc}
+      imageAlt={post.imageAlt}
+    />
   }
 }

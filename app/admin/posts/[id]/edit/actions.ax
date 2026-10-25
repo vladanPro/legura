@@ -1,13 +1,18 @@
-action UpdatePost(id: String, title: String, slug: String, body: String, status: String) {
+import { validatePost } from "../../../../domain/posts.ax"
+
+action UpdatePost(id: String, title: String, slug: String, body: String, status: String, content_format: String = "plain-text", content_document: String = "") {
   data administrator = loadAdministrator()
   data post = db.legura_posts.where({ id: input.id }).first()
   require post else notFound()
-  require input.title != "" && input.title.length <= 160 else invalid({ title: "Enter a title of at most 160 characters." })
-  require input.slug != "" && input.slug.length <= 120 else invalid({ slug: "Enter a URL slug of at most 120 characters." })
-  require input.body != "" && input.body.length <= 20000 else invalid({ body: "Enter plain text of at most 20000 characters." })
-  require input.status == "draft" || input.status == "published" else invalid({ status: "Choose draft or published." })
+  require input.content_format == post["content_format"] else invalid({content_format: "Changing the content format requires explicit conversion."})
+  data validation = validatePost(input.title, input.slug, input.status)
+  require validation.title else invalid({ title: validation.titleError })
+  require validation.slug else invalid({ slug: validation.slugError })
+  require validation.status else invalid({ status: validation.statusError })
   data existing = db.legura_posts.where({ slug: input.slug }).first()
   require existing == null || existing["id"] == input.id else invalid({ slug: "This URL slug is already in use. Choose another." })
-  db.legura_posts.where({ id: input.id }).update({ title: input.title, slug: input.slug, body: input.body, status: input.status })
-  return redirect("/admin/posts")
+  data prepared = Native.call("legura.content.prepare", {content_format: input.content_format, body: input.body, content_document: input.content_document})
+  require prepared.columns != null else invalid(prepared.errors)
+  db.legura_posts.where({ id: input.id }).update({ title: input.title, slug: input.slug, body: prepared.columns.body, status: input.status, content_format: prepared.columns.content_format, content_document: prepared.columns.content_document })
+  return redirect("/admin/posts/" + input.id + "/edit")
 }
