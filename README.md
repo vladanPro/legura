@@ -29,8 +29,8 @@ is integrated into dev.
 Posts V0 adds private create/edit, draft/published status, public published pages
 and plain-text rendering. Its typed not-found framework fixes are published in
 core 0.6.6/runtime 0.6.5/CLI 0.6.9/scaffold 0.6.7 after green release CI.
-This branch adopts registry runtime/core and CLI `0.8.0` for public/private images,
-replacing the temporary source pins. See
+The current registry pins are core/runtime `0.8.1` and CI CLI `0.8.3` for
+public/private images and post authoring, replacing temporary source pins. See
 [Private Media HTTP](docs/private-media-http-v0.md) for registry acceptance and
 boundaries. The editor remains on its independent locked Git revision.
 Acceptance includes HTTP posts and both browser modes alongside auth.
