@@ -1,0 +1,16 @@
+import { validatePost } from "../../../domain/posts.ax"
+
+action CreatePost(title: String, slug: String, body: String, status: String, content_format: String = "plain-text", content_document: String = "") {
+  data administrator = loadAdministrator()
+  data validation = validatePost(input.title, input.slug, input.status)
+  require validation.title else invalid({ title: validation.titleError })
+  require validation.slug else invalid({ slug: validation.slugError })
+  require validation.status else invalid({ status: validation.statusError })
+  data existing = db.legura_posts.where({ slug: input.slug }).first()
+  require existing == null else invalid({ slug: "This URL slug is already in use. Choose another." })
+  data prepared = Native.call("legura.content.prepare", {content_format: input.content_format, body: input.body, content_document: input.content_document})
+  require prepared.columns != null else invalid(prepared.errors)
+  data id = Uuid.new()
+  db.legura_posts.insert({ id: id, title: input.title, slug: input.slug, body: prepared.columns.body, status: input.status, content_format: prepared.columns.content_format, content_document: prepared.columns.content_document })
+  return redirect("/admin/posts")
+}

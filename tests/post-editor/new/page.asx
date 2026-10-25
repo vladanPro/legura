@@ -1,0 +1,23 @@
+import { Card } from "@axonyx/ui/foundry/Card"
+import { AdminFrame } from "@/components/AdminFrame"
+import { PostFields } from "@/components/PostFields"
+
+page NewPost() {
+  data title: String = loadNewPostTitle()
+  data format: String = loadPostEditorFormat(query.format ?? "legura-richtext")
+  return ASX {
+    <Head>
+      <Link rel="stylesheet" href="/content-editor/editor.css" />
+      <Script src="/content-editor/host.js" type="module" />
+    </Head>
+    <AdminFrame section="posts">
+      <Card title={title}>
+        <nav aria-label="Content editor"><a href="/admin/posts/new">Rich text</a><a href="/admin/posts/new?format=plain-text">Plain text</a></nav>
+        <form method="post" action={action CreatePost} data-content-editor-form="true" data-ax-retain-fields="title,slug,status,body,content_document" class="legura-form">
+          <PostFields format={format} />
+          <button type="submit" class="ax-button" data-variant="primary" data-editor-save="true" disabled={format == "legura-richtext"}>Create post</button>
+        </form>
+      </Card>
+    </AdminFrame>
+  }
+}

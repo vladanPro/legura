@@ -1,0 +1,192 @@
+name: Legura Pilot CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: legura-pilot-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  media-upload-http:
+    name: Isolated Media Upload HTTP
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: Swatinem/rust-cache@v2
+      - name: Install published private-binary CLI
+        run: cargo install cargo-axonyx --version '=0.8.3' --locked --debug --force
+      - name: Check storage hook formatting
+        shell: pwsh
+        run: |
+          rustfmt --edition 2021 --check src/native_storage.rs
+          if ($LASTEXITCODE -ne 0) { throw "Media hook formatting failed" }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install existing test-only browser tooling
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Prove media library recovery and isolated activation
+        shell: pwsh
+        run: ./scripts/smoke-auth.ps1 -Media -ScopedMedia -MediaBrowser -ToolPath (Get-Command cargo-axonyx).Source -Port 3963
+  media-storage:
+    name: Local Media Storage (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all -- --check
+      - run: cargo test --locked --lib
+      - run: cargo test --locked --test media-check
+      - run: cargo test --locked --test private-media-read
+      - run: cargo test --locked --test post-images
+      - run: cargo test --locked --test media-delete
+      - run: cargo test --locked --test media-archive
+      - run: cargo test --locked --bin legura-maintenance
+      - run: cargo clippy --locked --lib --tests -- -D warnings
+  source-format:
+    name: Axonyx Source Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install cargo-axonyx --version '=0.8.3' --locked --debug
+      - run: bash scripts/format-sources.sh --check
+      - name: Check staged-source hook safety
+        shell: pwsh
+        run: ./scripts/test-format-hook.ps1 -FormatterPath (Get-Command cargo-ax).Source
+  native-editor-retry:
+    name: Native Editor Retry
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: Swatinem/rust-cache@v2
+      - name: Install published private-binary CLI
+        run: cargo install cargo-axonyx --version '=0.8.3' --locked --debug
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install test-only browser tooling
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Verify native 422 recovery with registry runtime and pinned editor
+        shell: pwsh
+        run: |
+          ./scripts/smoke-auth.ps1 -PostEditor -NativeRetry -Mode javascript -Port 3948
+          ./scripts/smoke-auth.ps1 -PostEditor -Mode native -Port 3948
+  native-content-http:
+    name: Isolated Native Content HTTP
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: Swatinem/rust-cache@v2
+      - name: Install published private-binary CLI
+        run: cargo install cargo-axonyx --version '=0.8.3' --locked --debug
+      - name: Verify compiled native content with disposable SQLite
+        shell: pwsh
+        run: |
+          rustfmt --edition 2021 --check tests/content-http/native.rs
+          if ($LASTEXITCODE -ne 0) { throw "Native fixture formatting failed" }
+          ./scripts/smoke-auth.ps1 -Content -Port 3946
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install test-only browser tooling
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Verify pinned editor create, retry, reload and read-only fallback
+        shell: pwsh
+        run: |
+          ./scripts/smoke-auth.ps1 -ContentEditor -Mode javascript -Port 3946
+          ./scripts/smoke-auth.ps1 -ContentEditor -Mode native -Port 3946
+      - name: Verify normal post forms with rich and plain content
+        shell: pwsh
+        run: |
+          ./scripts/smoke-auth.ps1 -ActiveEditor -NativeRetry -Mode javascript -Port 3946
+          ./scripts/smoke-auth.ps1 -ActiveEditor -Mode native -Port 3946
+  compiled-auth:
+    name: Registry Compiled Auth
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: Swatinem/rust-cache@v2
+      - name: Install published private-binary CLI
+        run: cargo install cargo-axonyx --version '=0.8.3' --locked --debug
+      - name: Verify SQLite maintenance safety
+        run: |
+          cargo fmt --all -- --check
+          cargo test --locked --bin legura-maintenance
+          cargo test --locked --lib
+          cargo test --locked --test content-check
+      - name: Verify isolated native content preparation
+        run: |
+          cargo fmt --manifest-path tests/native-content/Cargo.toml -- --check
+          cargo run --locked --manifest-path tests/native-content/Cargo.toml
+      - name: Verify isolated compiled setup and identity
+        shell: pwsh
+        run: ./scripts/smoke-auth.ps1 -Port 3941 -Posts -BackupRestore
+      - name: Verify first-run local preparation
+        shell: pwsh
+        run: ./scripts/smoke-local.ps1 -Port 3943 -Package
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install browser test tools
+        run: |
+          npm ci
+          npm audit --audit-level=high
+          npx playwright install --with-deps chromium
+      - name: Verify same-URL and native save navigation synchronization
+        run: node --test tests/document-navigation.test.mjs
+      - name: Verify browser forms with and without JavaScript
+        shell: pwsh
+        run: |
+          ./scripts/smoke-auth.ps1 -Port 3941 -Mode javascript
+          ./scripts/smoke-auth.ps1 -Port 3941 -Mode native
+      - name: Verify posts with and without JavaScript
+        shell: pwsh
+        run: |
+          ./scripts/smoke-auth.ps1 -Port 3941 -Posts -Mode javascript
+          ./scripts/smoke-auth.ps1 -Port 3941 -Posts -Mode native

@@ -1,0 +1,15 @@
+export type PublishedStory {
+  title: String
+  body: String
+  html: String
+  imageSelected: Bool
+  imageSrc: String
+  imageAlt: String
+}
+export query loadPublishedPost(slug: String) -> PublishedStory {
+  data post = db.legura_posts.where({ slug: input.slug, status: "published" }).first()
+  require post else notFound()
+  data rendered = Native.call("legura.content.render", { content_format: post["content_format"], body: post["body"], content_document: post["content_document"] })
+  data image = Native.call("legura.post.image.presentation", { slug: input.slug })
+  return { title: post["title"], body: post["body"], html: rendered.html, imageSelected: image.selected, imageSrc: image.src, imageAlt: image.alt }
+}

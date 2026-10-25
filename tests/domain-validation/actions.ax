@@ -1,0 +1,10 @@
+import { validatePost } from "../../app/domain/posts.ax"
+
+action ValidatePostProof(title: String, slug: String, body: String, status: String) {
+  data validation = validatePost(input.title, input.slug, input.body, input.status)
+  require validation["title"] else invalid({ title: validation["titleError"] })
+  require validation["slug"] else invalid({ slug: validation["slugError"] })
+  require validation["body"] else invalid({ body: validation["bodyError"] })
+  require validation["status"] else invalid({ status: validation["statusError"] })
+  return ok
+}

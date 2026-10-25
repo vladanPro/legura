@@ -1,0 +1,84 @@
+export type LeguraCredentialsRow {
+  user_id: String
+  email: String
+  password_hash: String
+}
+
+export type LeguraCredentialsCreateInput {
+  user_id: String
+  email: String
+  password_hash: String
+}
+
+export type LeguraCredentialsUpdateInput {
+  user_id: Optional<String>
+  email: Optional<String>
+  password_hash: Optional<String>
+}
+
+export type LeguraInstallationRow {
+  id: Int
+  site_name: String
+  admin_id: String
+}
+
+export type LeguraInstallationCreateInput {
+  id: Optional<Int>
+  site_name: String
+  admin_id: String
+}
+
+export type LeguraInstallationUpdateInput {
+  id: Optional<Int>
+  site_name: Optional<String>
+  admin_id: Optional<String>
+}
+
+export type LeguraPostsRow {
+  id: String
+  title: String
+  slug: String
+  body: String
+  status: String
+  content_format: String
+  content_document: Optional<String>
+}
+
+export type LeguraPostsCreateInput {
+  id: String
+  title: String
+  slug: String
+  body: String
+  status: Optional<String>
+  content_format: Optional<String>
+  content_document: Optional<String>
+}
+
+export type LeguraPostsUpdateInput {
+  id: Optional<String>
+  title: Optional<String>
+  slug: Optional<String>
+  body: Optional<String>
+  status: Optional<String>
+  content_format: Optional<String>
+  content_document: Optional<String>
+}
+
+export type LeguraUsersRow {
+  id: String
+  email: String
+  role: String
+}
+
+export type LeguraUsersCreateInput {
+  id: String
+  email: String
+  role: String
+}
+
+export type LeguraUsersUpdateInput {
+  id: Optional<String>
+  email: Optional<String>
+  role: Optional<String>
+}
+

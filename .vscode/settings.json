@@ -1,0 +1,6 @@
+{
+  "[ax]": {
+    "editor.defaultFormatter": "vladanpro.axonyx-vscode",
+    "editor.formatOnSave": true
+  }
+}

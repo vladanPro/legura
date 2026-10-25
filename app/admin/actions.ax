@@ -1,0 +1,5 @@
+action SignOut() {
+  require Auth.subject else redirect("/login")
+  Session.destroy()
+  return redirect("/login")
+}

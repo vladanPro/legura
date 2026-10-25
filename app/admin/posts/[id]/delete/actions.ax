@@ -1,0 +1,8 @@
+action DeletePost(id: String, confirmSlug: String) {
+  data administrator = loadAdministrator()
+  data post = db.legura_posts.where({ id: input.id }).first()
+  require post else notFound()
+  require input.confirmSlug == post["slug"] else invalid({ confirmSlug: "Enter this post's URL slug to confirm deletion." })
+  db.legura_posts.where({ id: input.id, slug: input.confirmSlug }).delete()
+  return redirect("/admin/posts")
+}

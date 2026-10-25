@@ -1,0 +1,137 @@
+import { AdminFrame } from "@/components/AdminFrame"
+import { MediaPlaceholder } from "@/components/MediaPlaceholder"
+import { Card } from "@axonyx/ui/foundry/Card"
+import { Grid } from "@axonyx/ui/foundry/Grid"
+import { Button } from "@axonyx/ui/foundry/Button"
+import { CodeBlock } from "@axonyx/ui/foundry/CodeBlock"
+import { OperationFeedback } from "@/components/OperationFeedback"
+
+page MediaLibrary() {
+  data listing: AdminMediaPage = loadMediaLibrary(query.page ?? "1", query.cleanup_page ?? "1")
+  return ASX {
+    <AdminFrame section="media" mediaAvailable={listing.available}>
+      <section aria-labelledby="media-heading" data-media-available={listing.available}>
+        <header class="legura-page-heading">
+          <div>
+            <h1 id="media-heading">Media library</h1>
+            <p>Private, validated images for your content.</p>
+          </div>
+          <p class="legura-hint" data-media-total={listing.total}>{listing.total + " stored images"}</p>
+        </header>
+        <p class="legura-preview-notice">The library is private. A selected featured image becomes public only while its post is published.</p>
+        <form
+          method="post"
+          action={action DeleteMedia}
+          class="legura-delete-feedback-form"
+          aria-label="Media deletion feedback"
+        >
+          <OperationFeedback />
+          <p class="ax-field__error" data-ax-field-error="confirmation" role="alert"></p>
+        </form>
+        <If when={listing.pending_total > 0}>
+          <Card title="Storage cleanup needed">
+            <p>These library records are already removed. Their private files may still need cleanup. Fix storage access before retrying; do not upload a replacement with the same ID.</p>
+            <p>{listing.pending_total + " pending"}</p>
+            <Each items={listing.pending_cleanup} as="receipt">
+              <form method="post" action={action RetryMediaCleanup} class="legura-form">
+                <input type="hidden" name="id" value={receipt.id} />
+                <CodeBlock title="Media ID" language="text" copy="true">{receipt.id}</CodeBlock>
+                <OperationFeedback />
+                <Button type="submit" variant="secondary">Retry cleanup</Button>
+              </form>
+            </Each>
+            <nav class="legura-post-pagination" aria-label="Storage cleanup pages">
+              <If when={listing.pending_page > 1}>
+                <a
+                  class="ax-button"
+                  data-variant="secondary"
+                  href={"/admin/media?page=" + listing.page + "&cleanup_page=" + (listing.pending_page - 1)}
+                >Previous cleanup page</a>
+              </If>
+              <span>{"Cleanup page " + listing.pending_page + " of " + listing.pending_total_pages}</span>
+              <If when={listing.pending_page < listing.pending_total_pages}>
+                <a
+                  class="ax-button"
+                  data-variant="secondary"
+                  href={"/admin/media?page=" + listing.page + "&cleanup_page=" + (listing.pending_page + 1)}
+                >Next cleanup page</a>
+              </If>
+            </nav>
+          </Card>
+        </If>
+        <Card title="Upload an image">
+          <form
+            method="post"
+            enctype="multipart/form-data"
+            action={action UploadLibraryImageAndReturn}
+            class="legura-form"
+          >
+            <label for="media-image">Image</label>
+            <input
+              type="file"
+              id="media-image"
+              name="image"
+              accept="image/jpeg,image/png,image/webp"
+              required="true"
+              aria-describedby="media-upload-help"
+            />
+            <p id="media-upload-help" class="legura-hint">JPEG, PNG or still WebP. Up to 8 MiB and 16 million pixels; images are re-encoded before storage.</p>
+            <Button type="submit">Upload image</Button>
+          </form>
+        </Card>
+        <If when={listing.total == 0}>
+          <Card title="No images yet">
+            <MediaPlaceholder />
+            <p>Upload your first image above. Only administrators can access this library.</p>
+          </Card>
+        </If>
+        <If when={listing.items}>
+          <Grid cols="2" colsMobile="1" gap="lg">
+            <Each items={listing.items} as="image">
+              <Card>
+                <article data-media-id={image.id} aria-label="Stored image details">
+                  <img
+                    class="legura-media-preview"
+                    src={"/api/media/" + image.id}
+                    alt="Stored image preview"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <h2>{image.content_type}</h2>
+                  <p>{image.width + " x " + image.height + " pixels"}</p>
+                  <p>{image.byte_size + " bytes"}</p>
+                  <a
+                    class="ax-button"
+                    data-variant="ghost"
+                    href={"/admin/media/" + image.id + "/delete"}
+                  >Delete image</a>
+                  <details class="legura-media-details">
+                    <summary>Technical details</summary>
+                    <CodeBlock title="Media ID" language="text" copy="true">{image.id}</CodeBlock>
+                  </details>
+                </article>
+              </Card>
+            </Each>
+          </Grid>
+        </If>
+        <nav class="legura-post-pagination" aria-label="Media pages">
+          <If when={listing.page > 1}>
+            <a
+              class="ax-button"
+              data-variant="secondary"
+              href={"/admin/media?page=" + (listing.page - 1)}
+            >Previous page</a>
+          </If>
+          <span data-media-page={listing.page}>{"Page " + listing.page + " of " + listing.total_pages}</span>
+          <If when={listing.page < listing.total_pages}>
+            <a
+              class="ax-button"
+              data-variant="secondary"
+              href={"/admin/media?page=" + (listing.page + 1)}
+            >Next page</a>
+          </If>
+        </nav>
+      </section>
+    </AdminFrame>
+  }
+}

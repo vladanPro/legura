@@ -1,0 +1,43 @@
+export type Post {
+  id: String
+  title: String
+  slug: String
+  body: String
+  status: String
+}
+export type AdminPostPage {
+  posts: Post[]
+  page: Number
+  total: Number
+  status: String
+  search: String
+}
+export query loadAdminPosts(status: String = "all", page: String = "1", search: String = "") -> AdminPostPage {
+  require Auth.subject else forbidden()
+  data administrator = db.legura_users.where({ id: Auth.subject }).first()
+  require administrator else forbidden()
+  require administrator["role"] == "admin" else forbidden()
+  data filters = Native.call("legura.posts.filters", { status: input.status, page: input.page, search: input.search })
+  data counts = db.query("SELECT COUNT(*) AS total FROM legura_posts WHERE (? = 'all' OR status = ?) AND instr(lower(title), lower(?)) > 0", filters.status, filters.status, filters.search)
+  data pagination = Native.call("legura.pagination", { total: counts[0]["total"], requested_page: filters.requested_page, page_size: 10 })
+  data posts = db.query("SELECT id, title, slug, body, status FROM legura_posts WHERE (? = 'all' OR status = ?) AND instr(lower(title), lower(?)) > 0 ORDER BY title ASC, id ASC LIMIT ? OFFSET ?", filters.status, filters.status, filters.search, pagination.page_size, pagination.offset)
+  return { posts: posts, page: pagination.page, total: counts[0]["total"], status: filters.status, search: filters.search }
+}
+
+export type PostImageTarget {
+  id: String
+  title: String
+  image_id: String
+  image_alt: String
+}
+
+export query loadPostImageTarget(id: String) -> PostImageTarget {
+  require Auth.subject else forbidden()
+  data administrator = db.legura_users.where({ id: Auth.subject }).first()
+  require administrator else forbidden()
+  require administrator["role"] == "admin" else forbidden()
+  data post = db.legura_posts.where({ id: input.id }).first()
+  require post else notFound()
+  data images = db.query("SELECT COALESCE((SELECT media_id FROM legura_post_images WHERE post_id = ?), '') AS image_id, COALESCE((SELECT alt FROM legura_post_images WHERE post_id = ?), '') AS image_alt", input.id, input.id)
+  return { id: post["id"], title: post["title"], image_id: images[0]["image_id"], image_alt: images[0]["image_alt"] }
+}

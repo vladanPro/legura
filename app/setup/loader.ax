@@ -1,0 +1,10 @@
+export type Installation {
+  id: Int
+  site_name: String
+  admin_id: String
+}
+export query loadSetup() -> String {
+  data installation = db.legura_installation.where({ id: 1 }).first()
+  require installation == null else forbidden()
+  return "Create your first administrator"
+}

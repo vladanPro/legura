@@ -1,0 +1,23 @@
+import { RichTextEditor } from "@/components/RichTextEditor"
+
+page NewContentEditor() {
+  data title: String = loadContentEditorTitle()
+  return ASX {
+    <Head>
+      <Link rel="stylesheet" href="/content-editor/editor.css" />
+      <Script src="/content-editor/host.js" type="module" />
+    </Head>
+    <main>
+      <h1>{title}</h1>
+      <form method="post" action={action CreateEditorPost} data-content-editor-form="true">
+        <label>URL slug<input name="slug" /></label>
+        <p data-ax-field-error="slug" role="alert"></p>
+        <input type="hidden" name="content_format" value="legura-richtext" />
+        <input type="hidden" name="body" value="" />
+        <RichTextEditor label="Post content" />
+        <p data-ax-field-error="content_document" role="alert"></p>
+        <button type="submit" data-editor-save="true" disabled="true">Save content</button>
+      </form>
+    </main>
+  }
+}

@@ -1,0 +1,3 @@
+route GET "/api/post-images/:slug/:id" -> Binary {
+  return Native.publicResponse("legura.post.image.read", { slug: params.slug, id: params.id })
+}
