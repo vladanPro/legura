@@ -76,7 +76,7 @@ async function checkEditRecovery(editPath, originalTitle, originalBody) {
   assert.ok(!html.includes('Recovered draft') && !html.includes('Recovered editor content.'));
   await page.getByLabel('URL slug', { exact: true }).fill('browser-draft');
   await page.getByLabel('Status', { exact: true }).selectOption('draft');
-  await submit('Save changes', '/admin/posts');
+  await submit('Save changes', editPath);
   await navigate(page, editPath);
   assert.equal(await page.getByLabel('Title', { exact: true }).inputValue(), 'Recovered draft');
   assert.equal(await page.getByLabel('Content', { exact: true }).inputValue(), replacementBody);
@@ -96,7 +96,7 @@ async function checkEditRecovery(editPath, originalTitle, originalBody) {
   await submit('Delete post permanently', '/admin/posts');
   await navigate(page, editPath);
   await fillPost(originalTitle, 'browser-draft', originalBody, 'draft');
-  await submit('Save changes', '/admin/posts');
+  await submit('Save changes', editPath);
   await navigate(page, editPath);
 }
 
