@@ -66,9 +66,9 @@ checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
 name = "axonyx-core"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ad56a28e6f59793909b4bd63694faf5f86d6d29bd65e0499cd39d27ac9c9afe"
+checksum = "d089b9ac41f254a05748927a9563fe13b02f57c9f70305ba255671cf17f789bc"
 dependencies = [
  "axonyx-macros",
  "proc-macro2",
@@ -90,9 +90,9 @@ dependencies = [
 
 [[package]]
 name = "axonyx-runtime"
-version = "0.8.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eef0a0d4b3517d3648f53a9d3eba3cd731675ea78019b725291446152ae8af81"
+checksum = "4c0b3af8dd2a3b66abe742b86fd662e4a0f3599a56a0eff58151d9db474cd5ab"
 dependencies = [
  "argon2",
  "axonyx-core",

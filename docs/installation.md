@@ -34,7 +34,7 @@ Legura release. From a terminal:
 ```powershell
 git clone --branch dev https://github.com/vladanPro/legura.git
 Set-Location legura
-cargo install cargo-axonyx --version 0.6.10 --locked --force
+cargo install cargo-axonyx --version 0.8.3 --locked --force
 pwsh -File scripts/local.ps1 -Task prepare
 pwsh -File scripts/local.ps1 -Task start
 ```
