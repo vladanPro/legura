@@ -1,6 +1,6 @@
 //! Media persistence and private reads; HTTP mutations require administrator/CSRF policy.
 use crate::media_upload::{MediaUploadError, MediaUploadStorage, StoredMedia};
-use crate::storage::{LocalStorage, StoreId, MAX_OBJECT_BYTES};
+use crate::storage::{LocalStorage, ObjectRemoval, StorageError, StoreId, MAX_OBJECT_BYTES};
 use axonyx_runtime::backend::{AxRuntimeError, AxRuntimeResult};
 use axonyx_runtime::server::{AxFileRef, AxFileStorage, AxIncomingFile};
 use rusqlite::{params, Connection, OpenFlags};
@@ -190,6 +190,34 @@ impl MediaLibraryStorage {
             .map_err(|_| MediaLibraryUnavailable)?;
         Ok(connection)
     }
+
+    fn remove_unindexed_object(&self, saved: &StoredMedia) {
+        if let Err(error) = self.images.store().remove(&saved.object.reference) {
+            if !matches!(error, StorageError::NotFound) {
+                eprintln!(
+                    "Legura media cleanup failed for object {}: {error}",
+                    saved.object.reference.key.as_str()
+                );
+            }
+        }
+    }
+
+    fn reconcile_failed_metadata(&self, connection: &Connection, saved: &StoredMedia) {
+        let key = saved.object.reference.key.as_str();
+        match connection.query_row(
+            "SELECT EXISTS(SELECT 1 FROM legura_media WHERE id=?)",
+            [key],
+            |row| row.get::<_, bool>(0),
+        ) {
+            Ok(false) => self.remove_unindexed_object(saved),
+            Ok(true) => {
+                eprintln!("Legura media metadata exists for object {key}; private bytes retained");
+            }
+            Err(_) => {
+                eprintln!("Legura media metadata status is uncertain for object {key}; private bytes retained");
+            }
+        }
+    }
 }
 
 impl AxFileStorage for MediaLibraryStorage {
@@ -205,11 +233,17 @@ impl AxFileStorage for MediaLibraryStorage {
                 }
                 _ => AxRuntimeError::message("Media storage is unavailable"),
             })?;
-        let connection = self
-            .connect()
-            .map_err(|_| AxRuntimeError::message("Media metadata could not be saved"))?;
-        insert_metadata(&connection, &saved)
-            .map_err(|_| AxRuntimeError::message("Media metadata could not be saved"))?;
+        let connection = match self.connect() {
+            Ok(connection) => connection,
+            Err(_) => {
+                self.remove_unindexed_object(&saved);
+                return Err(AxRuntimeError::message("Media metadata could not be saved"));
+            }
+        };
+        if insert_metadata(&connection, &saved).is_err() {
+            self.reconcile_failed_metadata(&connection, &saved);
+            return Err(AxRuntimeError::message("Media metadata could not be saved"));
+        }
         let id = saved.object.reference.key.as_str().to_owned();
         Ok(AxFileRef {
             file_name: format!("{id}.{}", saved.extension),
@@ -232,6 +266,7 @@ fn insert_metadata(connection: &Connection, saved: &StoredMedia) -> rusqlite::Re
 mod tests {
     use super::*;
     use crate::storage::{ObjectKey, ObjectRef, StoredObject};
+    use image::ImageEncoder;
 
     fn saved() -> StoredMedia {
         StoredMedia {
@@ -343,5 +378,81 @@ mod tests {
             ))
             .unwrap();
         assert!(open().is_ok());
+    }
+
+    #[test]
+    fn failed_metadata_insert_removes_only_unindexed_private_objects() {
+        let mut nonce = [0; 16];
+        getrandom::getrandom(&mut nonce).unwrap();
+        let root = std::env::temp_dir().join(format!(
+            "legura-media-rollback-{:032x}",
+            u128::from_le_bytes(nonce)
+        ));
+        let media_root = root.join("media");
+        std::fs::create_dir_all(&media_root).unwrap();
+        struct Cleanup(std::path::PathBuf);
+        impl Drop for Cleanup {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_dir_all(&self.0);
+            }
+        }
+        let _cleanup = Cleanup(root.clone());
+        let database = root.join("library.db");
+        let connection = Connection::open(&database).unwrap();
+        connection
+            .execute_batch(include_str!(
+                "../db/migrations/20261018000000_004_media/up.sql"
+            ))
+            .unwrap();
+        let mut storage = MediaLibraryStorage::open(
+            &media_root,
+            StoreId::parse("test-store").unwrap(),
+            &database,
+        )
+        .unwrap();
+        connection
+            .execute_batch("CREATE TRIGGER reject_media BEFORE INSERT ON legura_media BEGIN SELECT RAISE(ABORT, 'test failure'); END;")
+            .unwrap();
+        let mut bytes = Vec::new();
+        image::codecs::png::PngEncoder::new(&mut bytes)
+            .write_image(&[10, 20, 30, 255], 1, 1, image::ExtendedColorType::Rgba8)
+            .unwrap();
+        let file = AxIncomingFile {
+            field_name: "image".into(),
+            file_name: "photo.png".into(),
+            content_type: Some("image/png".into()),
+            bytes,
+        };
+        let error = storage.save_file(crate::media_upload::MEDIA_CAPABILITY, &file);
+        assert!(error.is_err());
+        assert_eq!(
+            error.unwrap_err().public_error_payload()["message"],
+            "Media metadata could not be saved"
+        );
+        assert_eq!(std::fs::read_dir(&media_root).unwrap().count(), 0);
+        assert_eq!(
+            connection
+                .query_row("SELECT COUNT(*) FROM legura_media", [], |row| row
+                    .get::<_, i64>(0))
+                .unwrap(),
+            0
+        );
+
+        connection
+            .execute_batch("DROP TRIGGER reject_media;")
+            .unwrap();
+        let indexed = saved();
+        let indexed_path = media_root.join(indexed.object.reference.key.as_str());
+        std::fs::write(&indexed_path, b"indexed bytes").unwrap();
+        insert_metadata(&connection, &indexed).unwrap();
+        storage.reconcile_failed_metadata(&connection, &indexed);
+        assert_eq!(std::fs::read(indexed_path).unwrap(), b"indexed bytes");
+
+        storage.database = root.join("missing.db");
+        assert!(storage
+            .save_file(crate::media_upload::MEDIA_CAPABILITY, &file)
+            .is_err());
+        assert_eq!(std::fs::read_dir(&media_root).unwrap().count(), 1);
+        assert!(!storage.database.exists());
     }
 }
