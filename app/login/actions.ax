@@ -7,7 +7,8 @@ query loadCredential(email: String) -> Credential? {
   return db.legura_credentials.where({ email: input.email }).first()
 }
 action SignIn(email: String, password: String) {
-  before Login.throttle("legura:login:" + input.email, 5, 60)
+  before Login.throttle(Login.accountKey(input.email), 5, 60)
+  before Login.throttle("legura:login:global", 60, 60)
   data credential = loadCredential(input.email)
   data verified = Password.verifyOptional(input.password, credential?.password_hash)
   require verified else invalid({ email: "Email or password is incorrect." })
