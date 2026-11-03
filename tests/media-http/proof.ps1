@@ -177,7 +177,7 @@ Send-Media -Bytes $validImage -Headers $sessionProof -Status 200 | Out-Null
 Assert-MediaCounts -Rows 2 -Files 2
 Assert-StoredMedia
 
-# An explicit abort proves file/DB failure policy: retain an unreferenced object,
+# An explicit abort proves file/DB failure policy: remove an unindexed object,
 # return no successful FileRef, and never delete a possibly committed object.
 $injectFailure = @'
 import sqlite3, sys
@@ -189,7 +189,7 @@ if ($LASTEXITCODE -ne 0) { throw "Cannot inject isolated metadata failure" }
 try {
   $failed = Send-Media -Bytes $validImage -Headers $sessionProof -Status 500
   if ($failed.Body -match 'private-db-marker|INSERT|legura_media|private-media') { throw "Metadata failure leaked implementation details" }
-  Assert-MediaCounts -Rows 2 -Files 3
+  Assert-MediaCounts -Rows 2 -Files 2
   Assert-StoredMedia
 } finally {
   & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);d.execute("DROP TRIGGER reject_media");d.commit();d.close()' $db
@@ -200,7 +200,7 @@ try {
 $native = Send-Media -Bytes $validImage -Headers $sessionProof -Status 303 -Native -Padding $padding
 if ($native.Headers['Location'] -ne '/admin/media') { throw "Native upload did not return to the library" }
 for ($index = 0; $index -lt 8; $index++) { Send-Media -Bytes $validImage -Headers $sessionProof -Status 200 | Out-Null }
-Assert-MediaCounts -Rows 11 -Files 12
+Assert-MediaCounts -Rows 11 -Files 11
 Assert-StoredMedia
 
 function Get-MediaPageIds([string]$Query, [int]$Page, [int]$Count) {
@@ -226,7 +226,7 @@ Start-Fixture
 $restarted = @(Get-MediaPageIds '?page=2' 2 1)
 if (($restarted -join ',') -ne ($second -join ',')) { throw "Media pagination changed after restart" }
 $mediaExpectedRows = 11
-$mediaExpectedFiles = 12
+$mediaExpectedFiles = 11
 if ($MediaBrowser) {
   # Session is passed on stdin, not command-line arguments or a persistent file.
   @{ baseUrl = $baseUrl; cookie = $cookie; image = [Convert]::ToBase64String($validImage) } | ConvertTo-Json -Compress | & node (Join-Path $root 'tests/media-browser.mjs')
@@ -236,7 +236,7 @@ if ($MediaBrowser) {
   Assert-MediaCounts -Rows $mediaExpectedRows -Files $mediaExpectedFiles
   Assert-StoredMedia
 }
-Write-Host 'Media HTTP proof passed: protected uploads, native redirect, Foundry library, bounded pagination, persistence and orphan-on-DB-failure policy.'
+Write-Host 'Media HTTP proof passed: protected uploads, native redirect, Foundry library, bounded pagination, persistence and safe metadata-failure cleanup.'
 . (Join-Path $root 'tests/post-image-http.ps1')
 
 # Run the operator boundary against the real uploaded objects and live SQLite.
