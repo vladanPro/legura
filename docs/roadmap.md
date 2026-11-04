@@ -175,6 +175,8 @@ for a restored installation or a new SQLite DB using embedded migrations.
 Fresh DB init and native local HTTP configuration are no-clobber. Session/setup
 secrets are generated independently from OS randomness; production settings
 remain operator-managed.
+The same-host fresh-package rehearsal now also verifies publication after
+restart and live backup/restore into a new DB with rotated session secrets.
 Windows acceptance passed; Linux must pass CI before integration.
 See native-package-v0.md. No signed archive or production platform matrix yet.
 
