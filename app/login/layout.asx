@@ -2,6 +2,8 @@ import { BackofficeFrame } from "@/components/BackofficeFrame"
 
 page LoginLayout() {
   return ASX {
-    <BackofficeFrame><Slot /></BackofficeFrame>
+    <BackofficeFrame>
+      <Slot />
+    </BackofficeFrame>
   }
 }
