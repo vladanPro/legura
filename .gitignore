@@ -10,6 +10,7 @@
 /uploads/
 /backups/
 /src/generated/
+/src/bin/axonyx-production.rs
 /.legura/editor-assets/
 /app/components/legura-editor/
 /public/content-editor/*/

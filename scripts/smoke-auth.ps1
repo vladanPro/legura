@@ -346,12 +346,15 @@ try {
   $login = Invoke-Request -Path $loginPath -Method POST -Body "email=$email&password=$password" -Headers $proof -Status 303
   $cookie = ([string]$login.Headers["Set-Cookie"]).Split(';')[0]
   Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } | Out-Null
-  # The owner's wrong and successful logins consumed two slots; unknown email has its own key.
+  # SQLite NOCASE identifies these spellings as one account; unknown email has its own budget.
   foreach ($attempt in 1..3) {
-    Invoke-Request -Path $loginPath -Method POST -Body "email=$email&password=wrong-password" -Headers $proof -Status 422 | Out-Null
+    $variant = if ($attempt -eq 1) { $email.ToUpperInvariant() } else { $email }
+    Invoke-Request -Path $loginPath -Method POST -Body "email=$variant&password=wrong-password" -Headers $proof -Status 422 | Out-Null
   }
   $limited = Invoke-Request -Path $loginPath -Method POST -Body "email=$email&password=$password" -Headers $proof -Status 429
   if ([int]$limited.Headers["Retry-After"] -lt 1 -or $limited.Headers["Cache-Control"] -ne "no-store" -or $limited.Headers["Set-Cookie"]) { throw "Login throttle failed its admission boundary" }
+  $otherAccount = Invoke-Request -Path $loginPath -Method POST -Body "email=missing%40example.com&password=wrong-password" -Headers $proof -Status 422
+  if ($otherAccount.Body -notmatch "Email or password is incorrect" -or $otherAccount.Headers["Set-Cookie"]) { throw "Login throttle blocked an independent account or exposed its existence" }
   $revokedProof = Get-Proof -Cookie $cookie
   & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);d.execute("delete from legura_credentials");d.execute("delete from legura_installation");d.execute("delete from legura_users");d.commit();d.close()' $db
   if ($LASTEXITCODE -ne 0) { throw "Cannot revoke fixture identity" }

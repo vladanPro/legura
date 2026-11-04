@@ -1,13 +1,13 @@
 # Setup And Identity Pilot
 
-This is the first product slice, not an installable production CMS release.
-SQLite only. No posts, editor, recovery emails, social login or plugin loading.
+This document describes the first setup/identity slice, not an installable
+production CMS release. The broader source pilot now includes posts and an
+editor; recovery emails, social login and plugin loading are still out of scope.
 
-Current status: migrations/schema pull and `cargo ax check` pass. The required
-typed action query, backend expression and action-conflict fixes (#323/#324)
-are published in core 0.6.4, runtime 0.6.3 and CLI 0.6.7 after green upstream CI
-and dev-to-main release PRs. Registry-only compiled HTTP acceptance passed on
-2026-10-09 with the published CLI and registry runtime, without ToolManifest.
+Current registry pins are core/runtime `0.8.3` and CLI `0.8.7`. Registry-only
+compiled HTTP/browser acceptance passed in CI on 2026-11-03, including the
+account-key login throttle. The original 2026-10-09 acceptance used earlier
+`0.6.x` packages; those are historical, not the versions to install today.
 Do not weaken optional credential verification or remove guards to pass build.
 
 ## Boundaries
@@ -31,13 +31,19 @@ Do not weaken optional credential verification or remove guards to pass build.
 - Mutations use framework same-origin/CSRF checks. Logout destroys the session.
 - Native validation retains site name/email only. Passwords and setup tokens
   must be entered again. Unknown-account and wrong-password errors are identical.
+- Sign-in is limited to five attempts per normalized account key per minute,
+  plus a shared cap of 60 attempts per minute. A limited request returns 429
+  with `Retry-After` and no session cookie. Both counters are process-local;
+  a restart clears them and multiple server instances do not share a budget.
+  The shared cap can also block legitimate users under abuse. This is a
+  single-administrator pilot mitigation, not a final multi-user rate-limit policy.
 
 ## Local Development
 
 Install the tested CLI, then initialize the local development pilot:
 
 ```powershell
-cargo install cargo-axonyx --version 0.6.10 --locked --force
+cargo install cargo-axonyx --version 0.8.7 --locked --force
 pwsh -File scripts/local.ps1 -Task prepare
 pwsh -File scripts/local.ps1 -Task start
 ```
@@ -63,21 +69,24 @@ The executable acceptance runner is `pwsh -File scripts/smoke-auth.ps1`.
 It copies tracked source into a disposable directory, ignores the developer's
 `.env`/database, uses its own SQLite file and random secrets, and cleans up its
 own process and files. Source tooling can be selected with `-ToolManifest`.
-Verified on 2026-10-09 with source and published registry tooling:
+The original 2026-10-09 proof used source and then-published registry tooling.
+The 2026-11-03 CI proof uses published runtime `0.8.3` and CLI `0.8.7`:
 migration/check/compiled build, token
 rejection, invalid-input retention without credential replay, exactly one owner
 from parallel setup, transaction rollback, Argon2id persistence, protected admin
 reads, restart/session persistence, CSRF rejection, login/logout, identical
-unknown/wrong-password errors, rate admission and revocation after deleting the
-database identity. Run `pwsh -File scripts/smoke-auth.ps1` to repeat the registry
-proof. For upstream changes only, add `-ToolManifest ../axonyx-framework/Cargo.toml`.
+unknown/wrong-password errors, per-account rate admission and revocation after
+deleting the database identity. The independent-account assertion additionally
+passed the isolated local compiled smoke with source CLI on 2026-11-04.
+Run `pwsh -File scripts/smoke-auth.ps1` to repeat the registry proof. For
+upstream changes only, add `-ToolManifest ../axonyx-framework/Cargo.toml`.
 
 This is HTTP acceptance, not browser UX/accessibility testing or a security
 audit. Pilot PR #1 passed Linux CI and merged into dev. Browser acceptance is
-documented separately in browser-auth-v0.md; it found redirect/CSRF gaps now
-fixed in core 0.6.5/runtime 0.6.4. CI installs CLI 0.6.8 and repeats isolated
-HTTP and browser acceptance on Linux. No production-ready CMS or installer
-is claimed.
+documented separately in browser-auth-v0.md; it found historical redirect/CSRF
+gaps that were fixed in core 0.6.5/runtime 0.6.4. Current CI installs CLI
+0.8.7 and repeats isolated HTTP and browser acceptance on Linux. No
+production-ready CMS or installer is claimed.
 
 Prove token rejection, invalid-input 422 retention, first administrator creation,
 setup locking (including parallel requests), password hashing, private admin
