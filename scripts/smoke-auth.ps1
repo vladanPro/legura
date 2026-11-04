@@ -353,6 +353,8 @@ try {
   }
   $limited = Invoke-Request -Path $loginPath -Method POST -Body "email=$email&password=$password" -Headers $proof -Status 429
   if ([int]$limited.Headers["Retry-After"] -lt 1 -or $limited.Headers["Cache-Control"] -ne "no-store" -or $limited.Headers["Set-Cookie"]) { throw "Login throttle failed its admission boundary" }
+  $otherAccount = Invoke-Request -Path $loginPath -Method POST -Body "email=missing%40example.com&password=wrong-password" -Headers $proof -Status 422
+  if ($otherAccount.Body -notmatch "Email or password is incorrect" -or $otherAccount.Headers["Set-Cookie"]) { throw "Login throttle blocked an independent account or exposed its existence" }
   $revokedProof = Get-Proof -Cookie $cookie
   & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);d.execute("delete from legura_credentials");d.execute("delete from legura_installation");d.execute("delete from legura_users");d.commit();d.close()' $db
   if ($LASTEXITCODE -ne 0) { throw "Cannot revoke fixture identity" }
