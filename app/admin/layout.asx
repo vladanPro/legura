@@ -1,0 +1,7 @@
+import { BackofficeFrame } from "@/components/BackofficeFrame"
+
+page AdminLayout() {
+  return ASX {
+    <BackofficeFrame><Slot /></BackofficeFrame>
+  }
+}

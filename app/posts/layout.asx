@@ -1,0 +1,7 @@
+import { PublicFrame } from "@/components/PublicFrame"
+
+page PostsLayout() {
+  return ASX {
+    <PublicFrame><Slot /></PublicFrame>
+  }
+}

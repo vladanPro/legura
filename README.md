@@ -66,6 +66,9 @@ The shared administration frame composes Foundry AppShell and Sidebar for
 overview, posts and editor screens. See [the layout contract](docs/admin-shell-v0.md)
 and [Light/Dark appearance](docs/appearance-v0.md). These remain development
 pilots, not an installable product release.
+The [public theme boundary](docs/public-theme-boundary-v0.md) separates the
+public home/blog frame from setup/login/admin appearance. It fixes the current
+public default, but does not yet let an operator install or select a theme.
 
 The [posts table contract](docs/posts-table-v1.md) explains published Foundry UI
 adoption and why search and pagination remain server-owned.
