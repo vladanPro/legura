@@ -3,8 +3,9 @@ import { Copy } from "@axonyx/ui/foundry/Copy"
 import { PublicFrame } from "@/components/PublicFrame"
 
 page Home() {
+  data publicTheme: String = loadPublicTheme()
   return ASX {
-    <PublicFrame>
+    <PublicFrame theme={publicTheme}>
       <Card title="Your Legura installation">
         <Copy>Read published stories or sign in to manage your content.</Copy>
         <nav class="legura-links">
