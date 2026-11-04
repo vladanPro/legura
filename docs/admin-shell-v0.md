@@ -14,8 +14,9 @@ and uses package JS to collapse on mobile. Without JS it stays open and the
 application hides the inert toggle. There is still one generated main landmark.
 Application CSS owns content padding and width, not Foundry color recipes.
 
-The header logo and Light/Dark preference remain shared across public and admin
-routes. Login/setup/public content keep their narrower single-column layout.
+The header logo and Light/Dark preference are shared by login, setup and admin
+through `BackofficeFrame`; the public home/blog uses its own `PublicFrame`.
+Login/setup/public content keep their narrower single-column layout.
 This is a navigation/layout pilot, not a complete CMS dashboard or UI audit.
 
 Acceptance includes registry compiled auth/posts flows, active section on all

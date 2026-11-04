@@ -1,16 +1,19 @@
 import { Card } from "@axonyx/ui/foundry/Card"
 import { Copy } from "@axonyx/ui/foundry/Copy"
+import { PublicFrame } from "@/components/PublicFrame"
 
 page Home() {
   return ASX {
-    <Card title="Your Legura installation">
-      <Copy>Read published stories or sign in to manage your content.</Copy>
-      <nav class="legura-links">
-        <a href="/posts">Published posts</a>
-        <a href="/setup">First-run setup</a>
-        <a href="/login">Sign in</a>
-        <a href="/admin">Administration</a>
-      </nav>
-    </Card>
+    <PublicFrame>
+      <Card title="Your Legura installation">
+        <Copy>Read published stories or sign in to manage your content.</Copy>
+        <nav class="legura-links">
+          <a href="/posts">Published posts</a>
+          <a href="/setup">First-run setup</a>
+          <a href="/login">Sign in</a>
+          <a href="/admin">Administration</a>
+        </nav>
+      </Card>
+    </PublicFrame>
   }
 }
