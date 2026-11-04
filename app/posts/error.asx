@@ -1,0 +1,10 @@
+page PublicPostError() {
+  return ASX {
+    <section class="legura-route-fallback" aria-labelledby="legura-post-error-title">
+      <p class="legura-route-fallback__code">PAGE UNAVAILABLE</p>
+      <h1 id="legura-post-error-title">We could not load this story.</h1>
+      <p>Please try again in a moment.</p>
+      <a class="ax-button" data-variant="secondary" href="/posts">Back to published posts</a>
+    </section>
+  }
+}

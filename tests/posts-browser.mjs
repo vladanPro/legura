@@ -435,6 +435,9 @@ try {
   await navigate(publicPage, "/posts");
   assert.ok(!(await publicPage.content()).includes("Private browser draft"));
   await navigate(publicPage, "/posts/browser-draft", 404);
+  await checkPublicThemeBoundary(publicPage);
+  await publicPage.getByRole('heading', { name: 'This story is not available.' }).waitFor();
+  assert.equal(await publicPage.getByRole('link', { name: 'Back to published posts' }).getAttribute('href'), '/posts');
   await page.getByRole("link", { name: "Edit post: Private browser draft", exact: true }).click();
   const editPath = new URL(page.url()).pathname;
   assert.match(editPath, /^\/admin\/posts\/[^/]+\/edit$/);
