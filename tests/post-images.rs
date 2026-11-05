@@ -626,7 +626,10 @@ fn deletion_semantics_hold_with_foreign_keys_enabled_or_disabled() {
 #[test]
 fn migration_preserves_existing_posts_and_media_and_rejects_dangling_references() {
     let (db, _, _, id) = fixture();
-    let (_, up, down) = legura::database_contract::MIGRATIONS.last().unwrap();
+    let (_, up, down) = legura::database_contract::MIGRATIONS
+        .iter()
+        .find(|(version, _, _)| *version == "20261019000000_005")
+        .unwrap();
     db.execute_batch(down).unwrap();
     db.execute_batch(up).unwrap();
     assert_eq!(

@@ -21,6 +21,7 @@ component AdminFrame(section = "overview", mediaAvailable = false) {
           </SidebarSection>
           <SidebarSection title="Website">
             <SidebarItem href="/posts">Public posts</SidebarItem>
+            <SidebarItem href="/admin/appearance" active={section == "appearance"}>Public theme</SidebarItem>
           </SidebarSection>
         </nav>
       </Sidebar>

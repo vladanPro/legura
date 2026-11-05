@@ -4,7 +4,7 @@ This document describes the first setup/identity slice, not an installable
 production CMS release. The broader source pilot now includes posts and an
 editor; recovery emails, social login and plugin loading are still out of scope.
 
-Current registry pins are core/runtime `0.8.3` and CLI `0.8.7`. Registry-only
+Current registry pins are core/runtime `0.8.3` and CLI `0.8.8`. Registry-only
 compiled HTTP/browser acceptance passed in CI on 2026-11-03, including the
 account-key login throttle. The original 2026-10-09 acceptance used earlier
 `0.6.x` packages; those are historical, not the versions to install today.
@@ -43,7 +43,7 @@ Do not weaken optional credential verification or remove guards to pass build.
 Install the tested CLI, then initialize the local development pilot:
 
 ```powershell
-cargo install cargo-axonyx --version 0.8.7 --locked --force
+cargo install cargo-axonyx --version 0.8.8 --locked --force
 pwsh -File scripts/local.ps1 -Task prepare
 pwsh -File scripts/local.ps1 -Task start
 ```
@@ -85,7 +85,7 @@ This is HTTP acceptance, not browser UX/accessibility testing or a security
 audit. Pilot PR #1 passed Linux CI and merged into dev. Browser acceptance is
 documented separately in browser-auth-v0.md; it found historical redirect/CSRF
 gaps that were fixed in core 0.6.5/runtime 0.6.4. Current CI installs CLI
-0.8.7 and repeats isolated HTTP and browser acceptance on Linux. No
+0.8.8 and repeats isolated HTTP and browser acceptance on Linux. No
 production-ready CMS or installer is claimed.
 
 Prove token rejection, invalid-input 422 retention, first administrator creation,

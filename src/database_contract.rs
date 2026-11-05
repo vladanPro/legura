@@ -35,6 +35,11 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         include_str!("../db/migrations/20261023000000_006_media_cleanup/up.sql"),
         include_str!("../db/migrations/20261023000000_006_media_cleanup/down.sql"),
     ),
+    (
+        "20261104000000_007",
+        include_str!("../db/migrations/20261104000000_007_public_theme/up.sql"),
+        include_str!("../db/migrations/20261104000000_007_public_theme/down.sql"),
+    ),
 ];
 
 pub fn migration_hash(up: &str, down: &str) -> String {
@@ -58,6 +63,7 @@ pub fn embedded_migrations() -> Vec<AxMigration> {
                 "20261018000000_004" => "media",
                 "20261019000000_005" => "post_images",
                 "20261023000000_006" => "media_cleanup",
+                "20261104000000_007" => "public_theme",
                 _ => unreachable!("embedded migration name is missing"),
             }
             .into(),
@@ -100,6 +106,17 @@ pub fn validate_structure(connection: &Connection) -> Result<usize> {
         ensure!(
             checksum == migration_hash(up, down),
             "migration checksum does not match this maintenance build"
+        );
+    }
+    if count >= 7 {
+        let (id, theme): (i64, String) = connection.query_row(
+            "SELECT id, theme FROM legura_public_theme WHERE id = 1",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )?;
+        ensure!(
+            id == 1 && matches!(theme.as_str(), "default" | "editorial"),
+            "invalid public theme"
         );
     }
     Ok(count)

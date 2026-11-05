@@ -29,7 +29,7 @@ is integrated into dev.
 Posts V0 adds private create/edit, draft/published status, public published pages
 and plain-text rendering. Its typed not-found framework fixes are published in
 core 0.6.6/runtime 0.6.5/CLI 0.6.9/scaffold 0.6.7 after green release CI.
-The current registry pins are core/runtime `0.8.3` and CI CLI `0.8.7` for
+The current registry pins are core/runtime `0.8.3` and CI CLI `0.8.8` for
 public/private images and post authoring, replacing temporary source pins. See
 [Private Media HTTP](docs/private-media-http-v0.md) for registry acceptance and
 boundaries. The editor remains on its independent locked Git revision.
@@ -67,8 +67,9 @@ overview, posts and editor screens. See [the layout contract](docs/admin-shell-v
 and [Light/Dark appearance](docs/appearance-v0.md). These remain development
 pilots, not an installable product release.
 The [public theme boundary](docs/public-theme-boundary-v0.md) separates the
-public home/blog frame from setup/login/admin appearance. It fixes the current
-public default, but does not yet let an operator install or select a theme.
+public home/blog frame from setup/login/admin appearance. An administrator can
+select either built-in Default or Editorial at `/admin/appearance`; this changes
+the public layout and palette without changing posts or backoffice settings.
 
 The [posts table contract](docs/posts-table-v1.md) explains published Foundry UI
 adoption and why search and pagination remain server-owned.

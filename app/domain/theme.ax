@@ -1,0 +1,4 @@
+export query loadPublicTheme() -> String {
+  data active = db.legura_public_theme.where({ id: 1 }).first()
+  return active["theme"]
+}

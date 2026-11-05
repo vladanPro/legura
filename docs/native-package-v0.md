@@ -120,7 +120,7 @@ not supported. Replace program files/assets deliberately, never .env or data/.
 
 ## Build From Source
 
-Build prerequisites are Git, Rust/native toolchain, CLI 0.8.7 and PowerShell
+Build prerequisites are Git, Rust/native toolchain, CLI 0.8.8 and PowerShell
 7.4+. Stop servers using the same Cargo target, or use an independent target.
 From the initialized source checkout:
 

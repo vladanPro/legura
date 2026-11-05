@@ -1,10 +1,14 @@
+import { PublicFrame } from "@/components/PublicFrame"
+
 page PublicPostNotFound() {
   return ASX {
-    <section class="legura-route-fallback" aria-labelledby="legura-post-not-found-title">
-      <p class="legura-route-fallback__code">404 / STORY NOT FOUND</p>
-      <h1 id="legura-post-not-found-title">This story is not available.</h1>
-      <p>It may have moved, or it may not be published yet.</p>
-      <a class="ax-button" data-variant="primary" href="/posts">Back to published posts</a>
-    </section>
+    <PublicFrame>
+      <section class="legura-route-fallback" aria-labelledby="legura-post-not-found-title">
+        <p class="legura-route-fallback__code">404 / STORY NOT FOUND</p>
+        <h1 id="legura-post-not-found-title">This story is not available.</h1>
+        <p>It may have moved, or it may not be published yet.</p>
+        <a class="ax-button" data-variant="primary" href="/posts">Back to published posts</a>
+      </section>
+    </PublicFrame>
   }
 }
