@@ -1,15 +1,19 @@
 import { PostStory } from "@/components/PostStory"
+import { PublicFrame } from "@/components/PublicFrame"
 
 page PublicPost() {
+  data publicTheme: String = loadPublicTheme()
   data post: PublishedStory = loadPublishedPost(params.slug)
   return ASX {
-    <PostStory
-      title={post.title}
-      body={post.body}
-      contentHtml={post.html}
-      imageSelected={post.imageSelected}
-      imageSrc={post.imageSrc}
-      imageAlt={post.imageAlt}
-    />
+    <PublicFrame theme={publicTheme}>
+      <PostStory
+        title={post.title}
+        body={post.body}
+        contentHtml={post.html}
+        imageSelected={post.imageSelected}
+        imageSrc={post.imageSrc}
+        imageAlt={post.imageAlt}
+      />
+    </PublicFrame>
   }
 }

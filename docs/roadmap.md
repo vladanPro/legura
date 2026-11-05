@@ -175,6 +175,8 @@ for a restored installation or a new SQLite DB using embedded migrations.
 Fresh DB init and native local HTTP configuration are no-clobber. Session/setup
 secrets are generated independently from OS randomness; production settings
 remain operator-managed.
+The same-host fresh-package rehearsal now also verifies publication after
+restart and live backup/restore into a new DB with rotated session secrets.
 Windows acceptance passed; Linux must pass CI before integration.
 See native-package-v0.md. No signed archive or production platform matrix yet.
 
@@ -205,6 +207,12 @@ Backup / Restore V1 passed those gates and PR #6 is integrated into dev.
   are not automatically understood. Database credentials stay server-only.
 
 ## 4. Product Expansion
+
+Public Theme Boundary V0 separates the public home/blog Foundry root from the
+stable setup/login/admin appearance without changing content or auth routes.
+The public default is fixed; theme selection and installation remain later
+product work. The `/posts` subtree has public error/404 pages, while global
+fallbacks still use the backoffice frame. See public-theme-boundary-v0.md.
 
 The `.legura` archive V0 container packages a supplied frozen SQLite/media snapshot
 as standard TAR with a final hash inventory and read-only safe verification.

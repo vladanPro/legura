@@ -34,7 +34,7 @@ Legura release. From a terminal:
 ```powershell
 git clone --branch dev https://github.com/vladanPro/legura.git
 Set-Location legura
-cargo install cargo-axonyx --version 0.8.3 --locked --force
+cargo install cargo-axonyx --version 0.8.8 --locked --force
 pwsh -File scripts/local.ps1 -Task prepare
 pwsh -File scripts/local.ps1 -Task start
 ```
@@ -89,6 +89,10 @@ preservation and unsafe-config refusal, then completes native HTTP browser-setup
 requests and verifies administration/setup locking. It stops only its own
 process tree and deletes only its checked temporary fixture. Linux CI repeats
 this gate alongside the existing registry auth/posts/browser acceptance.
+With `-Package`, it also rehearses a runtime-only native directory without
+developer tools in PATH, including fresh setup, publication, restart and
+backup/restore into a new database. This remains a same-host acceptance test,
+not a downloadable installer or a production upgrade guarantee.
 
 Windows registry-only bootstrap passed on 2026-10-10 using CLI 0.6.10, including
 case-sensitive database path refusal and unchanged configuration/database after

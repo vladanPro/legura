@@ -85,7 +85,7 @@ try {
     & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);d.execute("update legura_posts set content_document=? where slug=?",(sys.argv[2],"rich-proof"));d.commit();d.close()' $db $corrupt
     if ($LASTEXITCODE -ne 0) { throw "Cannot inject isolated invalid document" }
     $failed = Invoke-Request -Path "/posts/rich-proof" -Status 500
-    if (!$failed.Body.Contains("We could not load this page.")) { throw "Corrupt public content lost the safe Legura 500 boundary" }
+    if (!$failed.Body.Contains("We could not load this story.") -or !$failed.Body.Contains('data-legura-public-theme="default"') -or $failed.Body.Contains('class="legura-app"')) { throw "Corrupt public content lost the safe public 500 boundary" }
     if ($failed.Body -match 'private-marker|javascript:alert|legura_posts|(?i:\bselect\s+\*\s+from\b)') { throw "Invalid public document leaked storage or executable content" }
     $failedPreview = Invoke-Request -Path $previewPath -Headers @{ Cookie = $cookie } -Status 500
     if (!$failedPreview.Body.Contains("We could not load this page.")) { throw "Corrupt private preview lost the safe Legura 500 boundary" }

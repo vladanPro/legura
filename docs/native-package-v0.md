@@ -120,7 +120,7 @@ not supported. Replace program files/assets deliberately, never .env or data/.
 
 ## Build From Source
 
-Build prerequisites are Git, Rust/native toolchain, CLI 0.6.10 and PowerShell
+Build prerequisites are Git, Rust/native toolchain, CLI 0.8.8 and PowerShell
 7.4+. Stop servers using the same Cargo target, or use an independent target.
 From the initialized source checkout:
 
@@ -150,4 +150,8 @@ Linux acceptance is a separate required CI gate, not assumed from that result.
 The gate also initializes a second empty DB and private local configuration with
 the packaged maintenance binary, refuses repeat init/config without changes,
 creates an administrator through browser
-setup, publishes a post and verifies logout/login, without Cargo in runtime PATH.
+setup, publishes a post, and verifies logout/login without Cargo in runtime PATH.
+It then restarts that same installation, backs up its live database, verifies
+the snapshot, restores into a NEW file, rotates the session key and checks the
+recovered published post and administrator login. This is a same-host native
+rehearsal, not a cross-platform prebuilt download or production upgrade test.

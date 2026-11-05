@@ -33,6 +33,18 @@ async function navigate(target, path, expected = 200) {
   assert.equal((await target.goto(`${baseUrl}${path}`)).status(), expected, path);
 }
 
+async function checkPublicThemeBoundary(target) {
+  const boundary = target.locator('[data-legura-public-theme]');
+  assert.equal(await boundary.count(), 1, 'Public route needs one theme boundary');
+  assert.equal(await boundary.getAttribute('data-legura-public-theme'), 'default');
+  assert.equal(await boundary.getAttribute('data-foundry'), 'silver');
+  assert.equal(await boundary.getAttribute('data-foundry-mode'), 'light');
+  assert.equal(await boundary.evaluate(node => getComputedStyle(node).colorScheme), 'light');
+  assert.equal(await target.locator('.legura-app, [data-legura-mode-picker]').count(), 0,
+    'Public route must not include backoffice appearance controls');
+  assert.equal(await target.getByRole('main').count(), 1);
+}
+
 async function submit(button, destination) {
   const responsePromise = page.waitForResponse((response) => response.url().includes("/__axonyx/action?") && response.request().method() === "POST");
   const navigation = waitForDocumentNavigation(page, `${baseUrl}${destination}`);
@@ -380,6 +392,10 @@ try {
   await navigate(publicPage, "/__axonyx/data?path=%2Fadmin&name=overview", 403);
   await navigate(publicPage, "/admin/posts", 403);
   await navigate(publicPage, "/posts");
+  await checkPublicThemeBoundary(publicPage);
+  await navigate(publicPage, "/");
+  await checkPublicThemeBoundary(publicPage);
+  await navigate(publicPage, "/posts");
   await publicPage.getByText("Nothing published yet", { exact: true }).waitFor();
   await navigate(page, "/setup");
   await page.getByLabel("Site name", { exact: true }).fill("Posts fixture");
@@ -388,6 +404,16 @@ try {
   await page.getByLabel("Setup token", { exact: true }).fill(setupToken);
   await submit("Create installation", "/admin");
   await checkOverview(0, 0, 0);
+  assert.equal(await page.locator('.legura-app').count(), 1);
+  assert.equal(await page.locator('[data-legura-public-theme]').count(), 0);
+  if (mode === 'javascript') {
+    await page.getByLabel('Appearance', { exact: true }).selectOption('dark');
+    await navigate(page, '/posts');
+    await checkPublicThemeBoundary(page);
+    await navigate(page, '/admin');
+    assert.equal(await page.locator('.legura-app').getAttribute('data-foundry-mode'), 'dark');
+    await page.getByLabel('Appearance', { exact: true }).selectOption('light');
+  }
   await page.getByRole("link", { name: "Manage posts", exact: true }).click();
   await page.getByText("No posts yet", { exact: true }).waitFor();
   assert.equal(await page.getByRole('table', { name: 'Your posts', exact: true }).count(), 0);
@@ -409,6 +435,9 @@ try {
   await navigate(publicPage, "/posts");
   assert.ok(!(await publicPage.content()).includes("Private browser draft"));
   await navigate(publicPage, "/posts/browser-draft", 404);
+  await checkPublicThemeBoundary(publicPage);
+  await publicPage.getByRole('heading', { name: 'This story is not available.' }).waitFor();
+  assert.equal(await publicPage.getByRole('link', { name: 'Back to published posts' }).getAttribute('href'), '/posts');
   await page.getByRole("link", { name: "Edit post: Private browser draft", exact: true }).click();
   const editPath = new URL(page.url()).pathname;
   assert.match(editPath, /^\/admin\/posts\/[^/]+\/edit$/);

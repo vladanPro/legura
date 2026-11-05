@@ -253,7 +253,11 @@ fn cleanup_migration_cannot_roll_back_with_pending_private_bytes() {
         delete_for_administrator(&mut db, &storage, &store, Some("owner"), &id),
         Ok(DeleteOutcome::CleanupRequired(_))
     ));
-    let down = legura::database_contract::MIGRATIONS.last().unwrap().2;
+    let down = legura::database_contract::MIGRATIONS
+        .iter()
+        .find(|(version, _, _)| *version == "20261023000000_006")
+        .unwrap()
+        .2;
     let rollback = db.transaction().unwrap();
     assert!(rollback.execute_batch(down).is_err());
     rollback.rollback().unwrap();
@@ -279,8 +283,11 @@ fn cleanup_migration_adds_receipts_without_rewriting_existing_media() {
         [&id, &id],
     )
     .unwrap();
-    db.execute_batch(legura::database_contract::MIGRATIONS.last().unwrap().1)
+    let cleanup = legura::database_contract::MIGRATIONS
+        .iter()
+        .find(|(version, _, _)| *version == "20261023000000_006")
         .unwrap();
+    db.execute_batch(cleanup.1).unwrap();
     assert_eq!(count(&db), 1);
     assert_eq!(pending(&db), 0);
 }

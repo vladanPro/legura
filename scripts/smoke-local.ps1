@@ -245,23 +245,24 @@ try {
       New-Item -ItemType Directory -Path $freshData | Out-Null
       if (!$IsWindows) { [IO.File]::SetUnixFileMode($freshData, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute) }
       $freshPath = Join-Path $freshData 'legura.db'
+      $freshMaintenance = Join-Path $freshRoot "legura-maintenance$extension"
       $packageConfig = Join-Path $freshRoot '.env'
       $options.ArgumentList = @('-NoProfile', '-File', (Join-Path $freshRoot 'start.ps1'), '-Port', "$Port")
       $pathBefore = $env:PATH
       try {
         $env:PATH = Join-Path $fixture 'no-toolchain-path'
-        & $maintenance init $freshPath
+        & $freshMaintenance init $freshPath
         if ($LASTEXITCODE -ne 0) { throw "Native empty database initialization failed" }
         $freshHash = (Get-FileHash -LiteralPath $freshPath).Hash
-        & $maintenance init $freshPath
+        & $freshMaintenance init $freshPath
         if ($LASTEXITCODE -eq 0 -or (Get-FileHash -LiteralPath $freshPath).Hash -ne $freshHash) { throw "Native initialization overwrote an existing database" }
-        $configOutput = & $maintenance config-local $freshRoot
+        $configOutput = & $freshMaintenance config-local $freshRoot
         if ($LASTEXITCODE -ne 0) { throw "Native configuration failed" }
         $freshConfig = [IO.File]::ReadAllText($packageConfig)
         $freshKey = [regex]::Match($freshConfig, '(?m)^AX_SECRET_SESSION_KEY=([a-f0-9]{64})$').Groups[1].Value
         $freshToken = [regex]::Match($freshConfig, '(?m)^AX_SECRET_SETUP_TOKEN=([a-f0-9]{64})$').Groups[1].Value
         if (!$freshKey -or !$freshToken -or $freshKey -eq $freshToken -or "$configOutput".Contains($freshKey) -or "$configOutput".Contains($freshToken)) { throw "Native config did not create independent private secrets" }
-        & $maintenance config-local $freshRoot
+        & $freshMaintenance config-local $freshRoot
         if ($LASTEXITCODE -eq 0 -or [IO.File]::ReadAllText($packageConfig) -cne $freshConfig) { throw "Native config overwrote existing secrets" }
         $process = Start-Process @options
       } finally { $env:PATH = $pathBefore }
@@ -291,7 +292,66 @@ try {
       Request -Path '/__axonyx/action?path=%2Flogin&name=SignIn' -Status 303 -Body "email=native%40example.com&password=$password" -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
       Request -Path '/admin' -Status 200 | Out-Null
       if ([IO.File]::ReadAllText($packageConfig) -cne $freshConfig) { throw "Fresh server modified configuration" }
-      Write-Host "Fresh native DB passed without CLI: embedded migrations, private generated config, no-clobber repeat init/config, setup/admin, publication, logout and fresh login."
+      $freshBackups = Join-Path $freshRoot 'backups'
+      New-Item -ItemType Directory -Path $freshBackups | Out-Null
+      if (!$IsWindows) { [IO.File]::SetUnixFileMode($freshBackups, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute) }
+      $freshBundle = Join-Path $freshBackups 'first-post'
+      $restoredPath = Join-Path $freshData 'restored.db'
+      $pathBefore = $env:PATH
+      try {
+        $env:PATH = Join-Path $fixture 'no-toolchain-path'
+        & $freshMaintenance backup $freshPath $freshBundle
+        if ($LASTEXITCODE -ne 0) { throw "Fresh native live backup failed" }
+        & $freshMaintenance verify $freshBundle
+        if ($LASTEXITCODE -ne 0) { throw "Fresh native backup verification failed" }
+        & $freshMaintenance restore $freshBundle $restoredPath
+        if ($LASTEXITCODE -ne 0) { throw "Fresh native restore failed" }
+      } finally { $env:PATH = $pathBefore }
+      $process.Kill($true)
+      $process.WaitForExit()
+      $process.Dispose()
+      $process = $null
+      $pathBefore = $env:PATH
+      try {
+        $env:PATH = Join-Path $fixture 'no-toolchain-path'
+        $process = Start-Process @options
+      } finally { $env:PATH = $pathBefore }
+      $ready = $false
+      for ($attempt = 0; $attempt -lt 120; $attempt++) {
+        if ($process.HasExited) { throw "Restarted fresh server exited before readiness" }
+        try { Request -Path '/__axonyx/ready' -Status 200 | Out-Null; $ready = $true; break } catch { Start-Sleep -Milliseconds 250 }
+      }
+      if (!$ready) { throw "Restarted fresh server was not ready" }
+      $story = Request -Path '/posts/native-first' -Status 200
+      if (!$story.Contains('Native published content')) { throw "Fresh post did not survive restart" }
+      Request -Path '/admin' -Status 200 | Out-Null
+      $process.Kill($true)
+      $process.WaitForExit()
+      $process.Dispose()
+      $process = $null
+      $restoredKey = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+      $restoredConfig = $freshConfig.Replace('sqlite://data/legura.db', 'sqlite://data/restored.db').Replace($freshKey, $restoredKey)
+      [IO.File]::WriteAllText($packageConfig, $restoredConfig)
+      $pathBefore = $env:PATH
+      try {
+        $env:PATH = Join-Path $fixture 'no-toolchain-path'
+        $process = Start-Process @options
+      } finally { $env:PATH = $pathBefore }
+      $ready = $false
+      for ($attempt = 0; $attempt -lt 120; $attempt++) {
+        if ($process.HasExited) { throw "Recovered fresh server exited before readiness" }
+        try { Request -Path '/__axonyx/ready' -Status 200 | Out-Null; $ready = $true; break } catch { Start-Sleep -Milliseconds 250 }
+      }
+      if (!$ready) { throw "Recovered fresh server was not ready" }
+      $story = Request -Path '/posts/native-first' -Status 200
+      if (!$story.Contains('Native published content')) { throw "Fresh post was missing from restored database" }
+      Request -Path '/admin' -Status 403 | Out-Null
+      Request -Path '/setup' -Status 403 | Out-Null
+      $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+      Request -Path '/__axonyx/action?path=%2Flogin&name=SignIn' -Status 303 -Body "email=native%40example.com&password=$password" -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
+      Request -Path '/admin' -Status 200 | Out-Null
+      if ([IO.File]::ReadAllText($packageConfig) -cne $restoredConfig) { throw "Recovered server modified configuration" }
+      Write-Host "Fresh native DB passed without CLI: setup, publication, restart persistence, live backup/verify, no-clobber restore, rotated sessions and recovered login."
     }
     # The expected no-clobber failure must not become pwsh's final exit status.
     $global:LASTEXITCODE = 0

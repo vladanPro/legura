@@ -34,6 +34,72 @@ export type LeguraInstallationUpdateInput {
   admin_id: Optional<String>
 }
 
+export type LeguraMediaRow {
+  id: String
+  store_id: String
+  content_type: String
+  byte_size: Int
+  width: Int
+  height: Int
+  sha256: String
+}
+
+export type LeguraMediaCreateInput {
+  id: String
+  store_id: String
+  content_type: String
+  byte_size: Int
+  width: Int
+  height: Int
+  sha256: String
+}
+
+export type LeguraMediaUpdateInput {
+  id: Optional<String>
+  store_id: Optional<String>
+  content_type: Optional<String>
+  byte_size: Optional<Int>
+  width: Optional<Int>
+  height: Optional<Int>
+  sha256: Optional<String>
+}
+
+export type LeguraMediaCleanupRow {
+  id: String
+  store_id: String
+  created_at: Int
+}
+
+export type LeguraMediaCleanupCreateInput {
+  id: String
+  store_id: String
+  created_at: Optional<Int>
+}
+
+export type LeguraMediaCleanupUpdateInput {
+  id: Optional<String>
+  store_id: Optional<String>
+  created_at: Optional<Int>
+}
+
+export type LeguraPostImagesRow {
+  post_id: String
+  media_id: String
+  alt: String
+}
+
+export type LeguraPostImagesCreateInput {
+  post_id: String
+  media_id: String
+  alt: String
+}
+
+export type LeguraPostImagesUpdateInput {
+  post_id: Optional<String>
+  media_id: Optional<String>
+  alt: Optional<String>
+}
+
 export type LeguraPostsRow {
   id: String
   title: String
@@ -62,6 +128,21 @@ export type LeguraPostsUpdateInput {
   status: Optional<String>
   content_format: Optional<String>
   content_document: Optional<String>
+}
+
+export type LeguraPublicThemeRow {
+  id: Int
+  theme: String
+}
+
+export type LeguraPublicThemeCreateInput {
+  id: Optional<Int>
+  theme: String
+}
+
+export type LeguraPublicThemeUpdateInput {
+  id: Optional<Int>
+  theme: Optional<String>
 }
 
 export type LeguraUsersRow {

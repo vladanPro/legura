@@ -7,6 +7,7 @@ param(
   [int] $Port = 3941,
   [ValidateSet("http", "javascript", "native")][string] $Mode = "http",
   [switch] $Posts,
+  [switch] $Theme,
   [switch] $BackupRestore,
   [switch] $RefreshSchema,
   [switch] $Content,
@@ -326,6 +327,7 @@ try {
   if ($Content) { . (Join-Path $root "tests/content-http/proof.ps1") }
   if ($Media) { . (Join-Path $root "tests/media-http/proof.ps1") }
   if ($Posts) { . (Join-Path $root "tests/posts-http.ps1") }
+  if ($Theme) { . (Join-Path $root "tests/theme-http.ps1") }
   $logoutPath = "/__axonyx/action?path=%2Fadmin&name=SignOut"
   Invoke-Request -Path $logoutPath -Method POST -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null
   Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } | Out-Null

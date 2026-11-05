@@ -1,5 +1,5 @@
-.legura-app { min-height: 100vh; }
-[data-ax-root='page']:has(.legura-app) { padding: 0; }
+.legura-app, .legura-public { min-height: 100vh; }
+[data-ax-root='page']:has(.legura-app), [data-ax-root='page']:has(.legura-public) { padding: 0; }
 .legura-header { display: flex; justify-content: space-between; gap: 1rem; padding-block: 2rem; border-bottom: 1px solid var(--ax-border); }
 .legura-header a { font-size: 1.5rem; font-weight: 700; }
 .legura-brand { display: inline-flex; align-items: center; gap: 0.7rem; width: fit-content; }
@@ -8,6 +8,14 @@
 .legura-mode-picker[hidden] { display: none; }
 .legura-mode-picker .ax-select { min-height: 2.75rem; width: auto; }
 .legura-main { max-width: 42rem; margin: 3rem auto; }
+.legura-public[data-legura-public-theme='editorial'] .legura-main { max-width: 68rem; margin-block: clamp(2rem, 5vw, 5rem); }
+.legura-public[data-legura-public-theme='editorial'] .legura-post-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.legura-editorial-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 1.5rem; }
+.legura-editorial-nav a { font-size: 0.95rem; font-weight: 600; }
+.legura-theme-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.legura-theme-choices .ax-card { min-width: 0; }
+.legura-theme-choices form { margin-top: 1.5rem; }
+.legura-theme-active { color: var(--ax-accent); font-weight: 700; }
 .legura-route-fallback { display: grid; justify-items: start; gap: 1rem; padding: clamp(1.5rem, 5vw, 3rem); border: 1px solid var(--ax-border); border-radius: var(--ax-radius-lg); background: var(--ax-surface); }
 .legura-route-fallback > * { margin: 0; }
 .legura-route-fallback p:not(.legura-route-fallback__code) { line-height: 1.6; color: var(--ax-text-muted); }
@@ -80,5 +88,6 @@
 .legura-story__image { display: block; width: 100%; max-height: 32rem; object-fit: contain; border-radius: var(--ax-radius-md); margin-block: 1.5rem; }
 .legura-story__body { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.8; }
 @media (max-width: 40rem) { .legura-header { flex-direction: column; } .legura-main { margin-block: 1.5rem; } }
+@media (max-width: 40rem) { .legura-theme-choices, .legura-public[data-legura-public-theme='editorial'] .legura-post-list { grid-template-columns: 1fr; } }
 .legura-operation-feedback:empty { display: none; }
 .legura-delete-feedback-form [data-ax-field-error]:empty { display: none; }
