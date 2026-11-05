@@ -18,6 +18,24 @@ Database, .env, credentials, source, migrations and developer backups are NOT
 included. The inventory detects accidental changes, not malicious replacements;
 there is no package signing or automatic update mechanism in V0.
 
+## Verify A Fresh Package
+
+Before creating `data/` or `.env`, run the maintenance binary from the extracted
+package directory:
+
+```sh
+./legura-maintenance verify-package .
+```
+
+On Windows, use `./legura-maintenance.exe verify-package .`. This read-only
+check rejects missing, added, changed or linked package files and validates the
+SHA-256 inventory in `package.json`. It is deliberately strict: once private
+configuration or content has been added, use the backup/content checks instead
+of treating `verify-package` as a running-site health check. The manifest is
+stored beside the files and is **not** a publisher signature; obtain the package
+from a trusted source and verify a separately published release checksum when
+one exists.
+
 ## Prepare Existing Installation
 
 Back up and verify the compatible installation first. Use the maintenance tool

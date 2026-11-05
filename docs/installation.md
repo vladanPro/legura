@@ -9,11 +9,17 @@ directory for a new or restored compatible SQLite installation. Native DB init
 uses embedded migrations without the CLI. Native `config-local` generates a new
 local HTTP .env with independent random secrets; production configuration remains
 operator-managed. Neither command overwrites existing operator files.
+The native package is verified on disposable Windows and Linux CI installations,
+but is not yet a published download. Its `verify-package` command checks a fresh
+package's file inventory before initialization; it does not authenticate the
+publisher or establish production readiness.
 
 ## Prebuilt Native Package
 
-Download a package matching the server OS/architecture and supported system
-libraries. Upload it using SFTP or another deployment method. Set execution
+When a release artifact exists, download a package matching the server
+OS/architecture and supported system libraries. Upload it using SFTP or another
+deployment method. Verify the fresh extracted package before initialization as
+described in [Native Package V0](native-package-v0.md). Set execution
 permissions, configure storage/database/secrets, and start it as a supervised
 service behind the hosting provider's reverse proxy and TLS configuration.
 
