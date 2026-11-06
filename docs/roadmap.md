@@ -177,7 +177,9 @@ secrets are generated independently from OS randomness; production settings
 remain operator-managed.
 The same-host fresh-package rehearsal now also verifies publication after
 restart and live backup/restore into a new DB with rotated session secrets.
-Windows acceptance passed; Linux must pass CI before integration.
+Windows acceptance and the Linux package smoke passed, including fresh setup,
+publication, restart and backup/restore in disposable installations. This is
+not yet a public download, signed artifact or supported production upgrade.
 See native-package-v0.md. No signed archive or production platform matrix yet.
 
 Local source preparation has an executable first-run acceptance gate:

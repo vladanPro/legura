@@ -60,6 +60,10 @@ fn run() -> Result<()> {
             verify(Path::new(bundle))?;
             println!("Backup integrity and migration compatibility verified.");
         }
+        [command, package] if command == "verify-package" => {
+            legura::package_verify::verify(Path::new(package))?;
+            println!("Native package file inventory and checksums verified. This is not an authenticity signature or installation safety check.");
+        }
         [command, source] if command == "content-check" => {
             let report = content_check(Path::new(source))?;
             println!("{}", serde_json::to_string(&report)?);
@@ -101,6 +105,7 @@ fn run() -> Result<()> {
         _ => bail!(concat!(
             "usage: legura-maintenance config-local <package-directory> | init <new-database-file>",
             " | backup <database-file> <new-backup-directory> | verify <backup-directory>",
+            " | verify-package <fresh-package-directory>",
             " | restore <backup-directory> <new-database-file> | content-check <database-file>",
             " | media-check <database-file> <store-id> <private-media-directory>",
             " | archive-pack-snapshot <frozen-snapshot-file> <store-id> <private-media-directory> <new-archive>",

@@ -180,6 +180,8 @@ try {
       }
       $extension = if ($IsWindows) { '.exe' } else { '' }
       $maintenance = Join-Path $packageRoot "legura-maintenance$extension"
+      & $maintenance verify-package $packageRoot
+      if ($LASTEXITCODE -ne 0) { throw "Native package integrity check failed" }
       $packageData = Join-Path $packageRoot "data"
       New-Item -ItemType Directory -Path $packageData | Out-Null
       if (!$IsWindows) { [IO.File]::SetUnixFileMode($packageData, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute) }

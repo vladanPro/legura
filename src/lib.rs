@@ -15,6 +15,7 @@ pub mod media_image;
 pub mod media_library;
 pub mod media_read;
 pub mod media_upload;
+pub mod package_verify;
 pub mod pagination;
 pub mod post_images;
 pub mod published_image;
