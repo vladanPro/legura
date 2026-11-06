@@ -30,7 +30,7 @@ $archiveName = "legura-$($manifest.version)-$($manifest.platform).tar.gz"
 $archive = Join-Path $output $archiveName
 $checksum = "$archive.sha256"
 if ((Test-Path -LiteralPath $archive) -or (Test-Path -LiteralPath $checksum)) { throw 'Archive or checksum already exists' }
-$tar = (Get-Command tar -CommandType Application -ErrorAction Stop).Source
+$tar = Get-Command tar -CommandType Application -ErrorAction Stop | Select-Object -First 1 -ExpandProperty Source
 $temporary = Join-Path $output ('.legura-' + [Guid]::NewGuid().ToString('N') + '.tar.gz')
 $archiveCreated = $false
 $checksumCreated = $false
