@@ -182,6 +182,22 @@ try {
       $maintenance = Join-Path $packageRoot "legura-maintenance$extension"
       & $maintenance verify-package $packageRoot
       if ($LASTEXITCODE -ne 0) { throw "Native package integrity check failed" }
+      $artifactRoot = Join-Path $fixture 'artifacts'
+      New-Item -ItemType Directory -Path $artifactRoot | Out-Null
+      & ./scripts/archive-package.ps1 -PackageDirectory $packageRoot -OutputDirectory $artifactRoot
+      $archives = @(Get-ChildItem -LiteralPath $artifactRoot -File -Filter 'legura-*.tar.gz')
+      if ($archives.Count -ne 1) { throw 'Expected exactly one candidate archive' }
+      $archive = $archives[0]
+      $checksum = [IO.File]::ReadAllText("$($archive.FullName).sha256").TrimEnd()
+      $archiveHash = (Get-FileHash -LiteralPath $archive.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+      if ($checksum -cne "$archiveHash  $($archive.Name)") { throw 'Candidate archive checksum mismatch' }
+      $packageRoot = Join-Path $fixture 'extracted-package'
+      New-Item -ItemType Directory -Path $packageRoot | Out-Null
+      & tar -xzf $archive.FullName -C $packageRoot
+      if ($LASTEXITCODE -ne 0) { throw 'Candidate archive extraction failed' }
+      $maintenance = Join-Path $packageRoot "legura-maintenance$extension"
+      & $maintenance verify-package $packageRoot
+      if ($LASTEXITCODE -ne 0) { throw 'Extracted package integrity check failed' }
       $packageData = Join-Path $packageRoot "data"
       New-Item -ItemType Directory -Path $packageData | Out-Null
       if (!$IsWindows) { [IO.File]::SetUnixFileMode($packageData, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute) }
@@ -233,7 +249,7 @@ try {
       if (!$asset.StartsWith('/')) { throw "Packaged CSS reference missing" }
       Request -Path $asset -Status 200 | Out-Null
       if ([IO.File]::ReadAllText($packageConfig) -cne $original.Replace($config.AX_SECRET_SESSION_KEY, $newKey)) { throw "Packaged startup modified secrets" }
-      Write-Host "Native package passed: complete hashes, no source/secrets, relocated launcher, no developer tools, restored login/admin, private setup and CSS assets."
+      Write-Host "Native archive passed: checksum, extracted package integrity, no source/secrets, relocated launcher, no developer tools, restored login/admin, private setup and CSS assets."
       $process.Kill($true)
       $process.WaitForExit()
       $process.Dispose()

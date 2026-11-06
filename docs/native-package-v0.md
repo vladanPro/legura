@@ -36,6 +36,22 @@ stored beside the files and is **not** a publisher signature; obtain the package
 from a trusted source and verify a separately published release checksum when
 one exists.
 
+## Candidate Archive
+
+After building and verifying a fresh native package directory, create a
+platform-specific archive in an existing directory outside the package:
+
+```sh
+pwsh -File scripts/archive-package.ps1 -PackageDirectory ../legura-native-pilot -OutputDirectory ../artifacts
+```
+
+This creates `legura-<version>-<platform>.tar.gz` and a matching `.sha256`
+file, refusing to replace either. Extract into a new directory, verify the
+archive against the separately obtained checksum, then run `verify-package`
+there before adding data/ or .env. The checksum detects corruption but does
+not authenticate the publisher. These artifacts are not signed, published or
+supported as production installers yet.
+
 ## Prepare Existing Installation
 
 Back up and verify the compatible installation first. Use the maintenance tool
@@ -148,9 +164,9 @@ pwsh -File scripts/package.ps1 -OutputDirectory ../legura-native-pilot
 
 Output directory must be new and its parent must exist. Partial output without
 package.json is not a completed package. Production configuration assistance,
-signed archives, supported platform matrix, service installers and upgrade
-acceptance remain subsequent gates. Do not advertise this as a finished CMS
-installer.
+signed release artifacts, supported platform matrix, service installers and
+upgrade acceptance remain subsequent gates. Do not advertise this as a finished
+CMS installer.
 
 ## Acceptance
 
@@ -159,8 +175,10 @@ pwsh -File scripts/smoke-local.ps1 -Port 3943 -Package
 ```
 
 The disposable fixture packages its own initialized installation, validates the
-inventory/hashes, restores a trusted snapshot and rotates the test session key.
-The packaged launcher runs from another working directory with Cargo/Git/Node
+inventory/hashes, archives it, checks the archive checksum, extracts it into a
+new directory and verifies the extracted inventory before restoring a trusted
+snapshot and rotating the test session key. The extracted launcher runs from
+another working directory with Cargo/Git/Node
 absent from PATH. HTTP checks prove readiness, login, restored published/private
 posts, private admin/data guards, setup lock, CSS and denied configuration/source
 paths. No developer database, secrets or server are used. Windows passed locally;

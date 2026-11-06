@@ -10,9 +10,10 @@ uses embedded migrations without the CLI. Native `config-local` generates a new
 local HTTP .env with independent random secrets; production configuration remains
 operator-managed. Neither command overwrites existing operator files.
 The native package is verified on disposable Windows and Linux CI installations,
-but is not yet a published download. Its `verify-package` command checks a fresh
-package's file inventory before initialization; it does not authenticate the
-publisher or establish production readiness.
+but is not yet a published download. A candidate archive and checksum can be
+built and exercised locally. Its `verify-package` command checks a fresh
+extracted package's file inventory before initialization; it does not
+authenticate the publisher or establish production readiness.
 
 ## Prebuilt Native Package
 
@@ -95,8 +96,9 @@ preservation and unsafe-config refusal, then completes native HTTP browser-setup
 requests and verifies administration/setup locking. It stops only its own
 process tree and deletes only its checked temporary fixture. Linux CI repeats
 this gate alongside the existing registry auth/posts/browser acceptance.
-With `-Package`, it also rehearses a runtime-only native directory without
-developer tools in PATH, including fresh setup, publication, restart and
+With `-Package`, it creates and extracts a candidate archive, checks its
+checksum, then rehearses the runtime-only native directory without developer
+tools in PATH, including fresh setup, publication, restart and
 backup/restore into a new database. This remains a same-host acceptance test,
 not a downloadable installer or a production upgrade guarantee.
 
