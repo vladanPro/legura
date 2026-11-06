@@ -140,10 +140,25 @@ jobs:
         run: |
           ./scripts/smoke-auth.ps1 -ActiveEditor -NativeRetry -Mode javascript -Port 3946
           ./scripts/smoke-auth.ps1 -ActiveEditor -Mode native -Port 3946
+  native-package:
+    name: Native Package Archive
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install published private-binary CLI
+        run: cargo install cargo-axonyx --version '=0.8.8' --locked --debug
+      - name: Verify archive extraction and toolchain-free native flow
+        shell: pwsh
+        run: ./scripts/smoke-local.ps1 -Port 3943 -Package
   compiled-auth:
     name: Registry Compiled Auth
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -166,9 +181,6 @@ jobs:
       - name: Verify isolated compiled setup and identity
         shell: pwsh
         run: ./scripts/smoke-auth.ps1 -Port 3941 -Posts -Theme -BackupRestore
-      - name: Verify first-run local preparation
-        shell: pwsh
-        run: ./scripts/smoke-local.ps1 -Port 3943 -Package
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
