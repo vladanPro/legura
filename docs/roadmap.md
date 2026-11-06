@@ -173,8 +173,9 @@ Native Package V0 adds a runtime-only directory (server, maintenance tool, asset
 and file inventory), with disposable relocated/no-toolchain acceptance. It is
 for a restored installation or a new SQLite DB using embedded migrations.
 Fresh DB init and native local HTTP configuration are no-clobber. Session/setup
-secrets are generated independently from OS randomness; production settings
-remain operator-managed.
+secrets are generated independently from OS randomness. A new-only HTTPS-mode
+configuration now supports external SQLite/media paths, but TLS, proxy binding,
+service supervision and live upgrades remain operator-managed.
 The same-host fresh-package rehearsal now also verifies publication after
 restart and live backup/restore into a new DB with rotated session secrets.
 Windows acceptance and the Linux package smoke passed, including fresh setup,
