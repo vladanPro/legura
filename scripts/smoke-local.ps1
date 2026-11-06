@@ -370,6 +370,93 @@ try {
       Request -Path '/admin' -Status 200 | Out-Null
       if ([IO.File]::ReadAllText($packageConfig) -cne $restoredConfig) { throw "Recovered server modified configuration" }
       Write-Host "Fresh native DB passed without CLI: setup, publication, restart persistence, live backup/verify, no-clobber restore, rotated sessions and recovered login."
+      $process.Kill($true)
+      $process.WaitForExit()
+      $process.Dispose()
+      $process = $null
+      $httpsRoot = Join-Path $fixture 'https-native-package'
+      $httpsData = Join-Path $fixture 'https-private-data'
+      New-Item -ItemType Directory -Path $httpsRoot, $httpsData | Out-Null
+      foreach ($entry in Get-ChildItem -LiteralPath $packageRoot) {
+        if ($entry.Name -notin @('data', '.env')) { Copy-Item -LiteralPath $entry.FullName -Destination $httpsRoot -Recurse }
+      }
+      $httpsMedia = Join-Path $httpsData 'media'
+      New-Item -ItemType Directory -Path $httpsMedia | Out-Null
+      if (!$IsWindows) {
+        [IO.File]::SetUnixFileMode($httpsData, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute)
+        [IO.File]::SetUnixFileMode($httpsMedia, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute)
+      }
+      $httpsMaintenance = Join-Path $httpsRoot "legura-maintenance$extension"
+      $httpsDatabase = Join-Path $httpsData 'legura.db'
+      $httpsConfig = Join-Path $httpsRoot '.env'
+      $pathBefore = $env:PATH
+      try {
+        $env:PATH = Join-Path $fixture 'no-toolchain-path'
+        & $httpsMaintenance init $httpsDatabase
+        if ($LASTEXITCODE -ne 0) { throw 'HTTPS-mode fresh database initialization failed' }
+        $httpsDatabaseHash = (Get-FileHash -LiteralPath $httpsDatabase).Hash
+        $httpsOutput = & $httpsMaintenance config-https $httpsRoot $httpsData
+        if ($LASTEXITCODE -ne 0) { throw 'HTTPS-mode fresh configuration failed' }
+        $httpsContent = [IO.File]::ReadAllText($httpsConfig)
+        if (!$httpsContent.Contains('AX_SECRET_SESSION_COOKIE_SECURE=true') -or
+            !$httpsContent.Contains('AX_SECRET_MEDIA_DRIVER=local') -or
+            $httpsContent -notmatch '(?m)^AX_SECRET_MEDIA_ROOT=.*https-private-data[/\\]media$' -or
+            "$httpsOutput" -match '(?i)[a-f0-9]{64}' -or
+            (Get-FileHash -LiteralPath $httpsDatabase).Hash -ne $httpsDatabaseHash) {
+          throw 'HTTPS-mode config leaked secrets or changed external data'
+        }
+        & $httpsMaintenance config-https $httpsRoot $httpsData
+        if ($LASTEXITCODE -eq 0 -or [IO.File]::ReadAllText($httpsConfig) -cne $httpsContent) { throw 'HTTPS-mode config replaced an existing file' }
+        $options.ArgumentList = @('-NoProfile', '-File', (Join-Path $httpsRoot 'start.ps1'), '-Port', "$Port")
+        $process = Start-Process @options
+      } finally { $env:PATH = $pathBefore }
+      $ready = $false
+      for ($attempt = 0; $attempt -lt 120; $attempt++) {
+        if ($process.HasExited) { throw 'HTTPS-mode native server exited before readiness' }
+        try { Request -Path '/__axonyx/ready' -Status 200 | Out-Null; $ready = $true; break } catch { Start-Sleep -Milliseconds 250 }
+      }
+      if (!$ready) { throw 'HTTPS-mode native server was not ready' }
+      Request -Path '/setup' -Status 200 | Out-Null
+      $httpsHandler = [Net.Http.HttpClientHandler]::new()
+      $httpsHandler.AllowAutoRedirect = $false
+      $httpsHandler.CookieContainer = [Net.CookieContainer]::new()
+      $httpsClient = [Net.Http.HttpClient]::new($httpsHandler)
+      try {
+        $csrfRequest = [Net.Http.HttpRequestMessage]::new([Net.Http.HttpMethod]::Get, "$baseUrl/__axonyx/csrf")
+        $csrfRequest.Headers.Add('Origin', $baseUrl)
+        try {
+          $csrfResponse = $httpsClient.SendAsync($csrfRequest).GetAwaiter().GetResult()
+          try {
+            if ([int]$csrfResponse.StatusCode -ne 200) { throw 'HTTPS-mode CSRF bootstrap failed' }
+            $httpsProof = ($csrfResponse.Content.ReadAsStringAsync().GetAwaiter().GetResult() | ConvertFrom-Json).token
+          } finally { $csrfResponse.Dispose() }
+        } finally { $csrfRequest.Dispose() }
+        $httpsToken = [regex]::Match($httpsContent, '(?m)^AX_SECRET_SETUP_TOKEN=([a-f0-9]{64})$').Groups[1].Value
+        if (!$httpsProof -or !$httpsToken) { throw 'HTTPS-mode private setup credentials are incomplete' }
+        $setupRequest = [Net.Http.HttpRequestMessage]::new([Net.Http.HttpMethod]::Post, "$baseUrl/__axonyx/action?path=%2Fsetup&name=Install")
+        $setupRequest.Content = [Net.Http.StringContent]::new("siteName=HTTPS+proof&email=https%40example.com&password=$password&setupToken=$httpsToken", [Text.Encoding]::UTF8, 'application/x-www-form-urlencoded')
+        $setupRequest.Headers.Add('Origin', $baseUrl)
+        $setupRequest.Headers.Add('Accept', 'text/html')
+        $setupRequest.Headers.Add('X-Axonyx-CSRF', $httpsProof)
+        try {
+          $setupResponse = $httpsClient.SendAsync($setupRequest).GetAwaiter().GetResult()
+          try {
+            $cookies = [string]::Join(';', $setupResponse.Headers.GetValues('Set-Cookie'))
+            if ([int]$setupResponse.StatusCode -ne 303 -or $cookies -notmatch '(?i)(^|;)\s*Secure(\s*;|$)' -or $cookies -notmatch '(?i)(^|;)\s*HttpOnly(\s*;|$)') {
+              throw 'HTTPS-mode setup did not issue a Secure, HttpOnly session cookie'
+            }
+          } finally { $setupResponse.Dispose() }
+        } finally { $setupRequest.Dispose() }
+      } finally {
+        $httpsClient.Dispose()
+        $httpsHandler.Dispose()
+      }
+      $process.Kill($true)
+      $process.WaitForExit()
+      $process.Dispose()
+      $process = $null
+      if ([IO.File]::ReadAllText($httpsConfig) -cne $httpsContent) { throw 'HTTPS-mode server modified configuration' }
+      Write-Host 'Fresh HTTPS-mode config passed: external data/media, independent private secrets, no clobber and native startup without developer tools. TLS/service setup is not covered.'
     }
     # The expected no-clobber failure must not become pwsh's final exit status.
     $global:LASTEXITCODE = 0

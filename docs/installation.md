@@ -9,6 +9,9 @@ directory for a new or restored compatible SQLite installation. Native DB init
 uses embedded migrations without the CLI. Native `config-local` generates a new
 local HTTP .env with independent random secrets; production configuration remains
 operator-managed. Neither command overwrites existing operator files.
+The native `config-https` command can prepare a new-only HTTPS-mode `.env`
+with persistent SQLite/media paths outside the program package, but it does
+not provide TLS, a reverse proxy or a supervised service.
 The native package is verified on disposable Windows and Linux CI installations,
 but is not yet a published download. A candidate archive and checksum can be
 built and exercised locally. Its `verify-package` command checks a fresh

@@ -1,6 +1,9 @@
 use anyhow::{bail, ensure, Context, Result};
 use axonyx_runtime::backend::{runtime_from_env, AxEnv, AxMigration, AxMigrationExecutor};
-use legura::database_contract::{embedded_migrations, validate, validate_structure};
+use axonyx_runtime::server::AxUnavailableFileStorage;
+use legura::database_contract::{
+    embedded_migrations, validate, validate_current, validate_structure,
+};
 #[cfg(test)]
 use legura::database_contract::{migration_hash, MIGRATIONS};
 use rusqlite::{
@@ -13,6 +16,7 @@ use std::{
     env, fs,
     io::{Read, Write},
     path::Path,
+    sync::Arc,
     time::{Duration, Instant},
 };
 
@@ -38,6 +42,10 @@ fn run() -> Result<()> {
         [command, root] if command == "config-local" => {
             configure_local(Path::new(root))?;
             println!("New local HTTP configuration created. Read the setup token from the private .env file; secrets were not printed.");
+        }
+        [command, package, data] if command == "config-https" => {
+            configure_https(Path::new(package), Path::new(data))?;
+            println!("NEW HTTPS-mode configuration created with private external data paths and independent secrets. No TLS, proxy, service or existing installation was changed; read the setup token from the private .env file.");
         }
         [command, archive, recovery, package, mode] if command == "config-recovery" => {
             let mode = match mode.to_str() {
@@ -103,7 +111,7 @@ fn run() -> Result<()> {
             println!("Restored to a NEW database. Stop the CMS before switching its database configuration; rotate the session key.");
         }
         _ => bail!(concat!(
-            "usage: legura-maintenance config-local <package-directory> | init <new-database-file>",
+            "usage: legura-maintenance config-local <package-directory> | config-https <package-directory> <private-data-directory> | init <new-database-file>",
             " | backup <database-file> <new-backup-directory> | verify <backup-directory>",
             " | verify-package <fresh-package-directory>",
             " | restore <backup-directory> <new-database-file> | content-check <database-file>",
@@ -161,6 +169,104 @@ fn configure_local(root: &Path) -> Result<()> {
         let _ = fs::remove_file(&path);
     }
     result.context("could not persist local configuration")
+}
+
+fn configure_https(package: &Path, data: &Path) -> Result<()> {
+    ensure!(
+        fs::symlink_metadata(package)?.file_type().is_dir(),
+        "package root must be a directory, not a symlink"
+    );
+    ensure!(
+        fs::symlink_metadata(data)?.file_type().is_dir(),
+        "private data root must be a directory, not a symlink"
+    );
+    let package = package.canonicalize()?;
+    let data = data.canonicalize()?;
+    ensure!(
+        !data.starts_with(&package) && !package.starts_with(&data),
+        "private data must be separate from replaceable program files"
+    );
+    ensure!(
+        !package
+            .components()
+            .any(|part| part.as_os_str().to_str().is_some_and(|name| name
+                .eq_ignore_ascii_case("public")
+                || name.eq_ignore_ascii_case("dist"))),
+        "private configuration cannot be created inside public assets"
+    );
+    let database = data.join("legura.db");
+    let media = data.join("media");
+    regular_file(&database)?;
+    ensure!(
+        fs::symlink_metadata(&media)?.file_type().is_dir(),
+        "private media root must be an existing directory, not a symlink"
+    );
+    ensure!(
+        fs::read_dir(&media)?.next().is_none(),
+        "fresh private media root must be empty"
+    );
+    let connection = open_readonly(&database)?;
+    validate_current(&connection)?;
+    for table in [
+        "legura_users",
+        "legura_credentials",
+        "legura_installation",
+        "legura_posts",
+        "legura_media",
+        "legura_post_images",
+        "legura_media_cleanup",
+    ] {
+        let count: i64 =
+            connection.query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+                row.get(0)
+            })?;
+        ensure!(
+            count == 0,
+            "config-https only accepts an empty new installation"
+        );
+    }
+    let database_path = dotenv_path(&database)?;
+    let media_path = dotenv_path(&media)?;
+    let url = format!("sqlite:{database_path}");
+    let session = random_secret()?;
+    let setup = random_secret()?;
+    let store = format!("store-{}", &random_secret()?[..16]);
+    ensure!(
+        session != setup,
+        "independent secrets could not be generated"
+    );
+    let env = AxEnv::new()
+        .with_secret("db_url", &url)
+        .with_secret("db_dialect", "sqlite")
+        .with_secret("media_driver", "local")
+        .with_secret("media_root", media_path)
+        .with_secret("media_store_id", &store);
+    let _storage =
+        legura::media_config::configure(&env, &package, Arc::new(AxUnavailableFileStorage))
+            .map_err(|_| anyhow::anyhow!("private data/media configuration is not supported"))?;
+    let content = format!("AX_SECRET_DB_URL={url}\nAX_SECRET_DB_DIALECT=sqlite\nAX_SECRET_SESSION_KEY={session}\nAX_SECRET_SETUP_TOKEN={setup}\nAX_SECRET_SESSION_COOKIE_SECURE=true\nAX_SECRET_MEDIA_DRIVER=local\nAX_SECRET_MEDIA_ROOT={media_path}\nAX_SECRET_MEDIA_STORE_ID={store}\n");
+    let path = package.join(".env");
+    let mut file = private_file(&path)?;
+    let result = file
+        .write_all(content.as_bytes())
+        .and_then(|_| file.sync_all());
+    drop(file);
+    if result.is_err() {
+        let _ = fs::remove_file(&path);
+    }
+    result.context("could not persist HTTPS-mode configuration")
+}
+
+fn dotenv_path(path: &Path) -> Result<&str> {
+    let value = path.to_str().context("configuration paths must be UTF-8")?;
+    ensure!(
+        value.trim() == value
+            && !value
+                .chars()
+                .any(|c| c.is_control() || c == '\'' || c == '"'),
+        "configuration path cannot be represented safely in dotenv"
+    );
+    Ok(value)
 }
 
 fn regular_file(path: &Path) -> Result<()> {
@@ -505,6 +611,112 @@ mod tests {
         fs::write(root.join(".env"), b"").unwrap();
         assert!(configure_local(&root).is_err());
         assert_eq!(fs::metadata(root.join(".env")).unwrap().len(), 0);
+    }
+
+    #[test]
+    fn https_configuration_uses_external_empty_data_and_never_replaces_secrets() {
+        let fixture = Fixture::new();
+        let package = fixture.path("program");
+        let data = fixture.path("private-data");
+        fs::create_dir(&package).unwrap();
+        fs::create_dir(&data).unwrap();
+        fs::create_dir(data.join("media")).unwrap();
+        let database = data.join("legura.db");
+        initialize(&database).unwrap();
+        let original_database = digest(&database).unwrap();
+
+        configure_https(&package, &data).unwrap();
+        let content = fs::read_to_string(package.join(".env")).unwrap();
+        let values: std::collections::HashMap<_, _> = content
+            .lines()
+            .map(|line| line.split_once('=').unwrap())
+            .collect();
+        assert_eq!(values.len(), 8);
+        assert_eq!(values["AX_SECRET_SESSION_COOKIE_SECURE"], "true");
+        assert_eq!(values["AX_SECRET_MEDIA_DRIVER"], "local");
+        assert_eq!(
+            values["AX_SECRET_MEDIA_ROOT"],
+            data.canonicalize().unwrap().join("media").to_str().unwrap()
+        );
+        assert!(values["AX_SECRET_DB_URL"].starts_with("sqlite:"));
+        assert!(values["AX_SECRET_DB_URL"].ends_with("legura.db"));
+        assert!(values["AX_SECRET_MEDIA_STORE_ID"].starts_with("store-"));
+        assert_eq!(values["AX_SECRET_SESSION_KEY"].len(), 64);
+        assert_eq!(values["AX_SECRET_SETUP_TOKEN"].len(), 64);
+        assert_ne!(
+            values["AX_SECRET_SESSION_KEY"],
+            values["AX_SECRET_SETUP_TOKEN"]
+        );
+        assert_eq!(digest(&database).unwrap(), original_database);
+        assert!(configure_https(&package, &data).is_err());
+        assert_eq!(fs::read_to_string(package.join(".env")).unwrap(), content);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(
+                fs::metadata(package.join(".env"))
+                    .unwrap()
+                    .permissions()
+                    .mode()
+                    & 0o777,
+                0o600
+            );
+        }
+    }
+
+    #[test]
+    fn https_configuration_rejects_existing_data_and_unsafe_paths() {
+        let fixture = Fixture::new();
+        let package = fixture.path("program");
+        let data = fixture.path("private-data");
+        fs::create_dir(&package).unwrap();
+        fs::create_dir(&data).unwrap();
+        fs::create_dir(data.join("media")).unwrap();
+        let database = data.join("legura.db");
+        initialize(&database).unwrap();
+        fs::write(data.join("media/existing"), b"do not mix stores").unwrap();
+        assert!(configure_https(&package, &data).is_err());
+        assert!(!package.join(".env").exists());
+        fs::remove_file(data.join("media/existing")).unwrap();
+        let connection = Connection::open(&database).unwrap();
+        connection.execute("INSERT INTO legura_posts(id,title,slug,body,status) VALUES ('post','Post','post','Content','draft')", []).unwrap();
+        drop(connection);
+        assert!(configure_https(&package, &data).is_err());
+        assert!(!package.join(".env").exists());
+        fs::create_dir(package.join("data")).unwrap();
+        assert!(configure_https(&package, &package.join("data")).is_err());
+        for path in [
+            "/private/new\nAX_SECRET_DB_URL=other",
+            "/private/quote\"/file",
+            "/private/control\0/file",
+        ] {
+            assert!(dotenv_path(Path::new(path)).is_err());
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn https_configuration_rejects_linked_package_data_and_media() {
+        use std::os::unix::fs::symlink;
+
+        let fixture = Fixture::new();
+        let package = fixture.path("program");
+        let data = fixture.path("private-data");
+        fs::create_dir(&package).unwrap();
+        fs::create_dir(&data).unwrap();
+        fs::create_dir(data.join("media")).unwrap();
+        initialize(&data.join("legura.db")).unwrap();
+
+        let package_link = fixture.path("program-link");
+        symlink(&package, &package_link).unwrap();
+        assert!(configure_https(&package_link, &data).is_err());
+        let data_link = fixture.path("data-link");
+        symlink(&data, &data_link).unwrap();
+        assert!(configure_https(&package, &data_link).is_err());
+        fs::rename(data.join("media"), data.join("media-real")).unwrap();
+        symlink(data.join("media-real"), data.join("media")).unwrap();
+        assert!(configure_https(&package, &data).is_err());
+        assert!(!package.join(".env").exists());
     }
 
     #[test]

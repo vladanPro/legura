@@ -114,6 +114,33 @@ starting. Start the server, open /setup and supply the owner token to
 create the first administrator. Setup locks after success. Repeating init cannot
 reset the installation; this is not a migration/upgrade command.
 
+## Fresh HTTPS-Mode Configuration
+
+For a new installation intended to run behind an operator-managed HTTPS proxy,
+keep persistent data outside the replaceable program package. In a private
+directory, create `legura.db` with `legura-maintenance init` and an empty
+`media/` directory. Then, from a fresh extracted package with no `.env`:
+
+```sh
+./legura-maintenance init /private/legura-data/legura.db
+./legura-maintenance config-https . /private/legura-data
+```
+
+Use `.exe` on Windows. `config-https` accepts only the current, empty product
+database and an empty media directory. It writes a NEW `.env` with absolute
+SQLite/media paths, independent random session/setup secrets and
+`AX_SECRET_SESSION_COOKIE_SECURE=true`. It never replaces a configuration,
+initializes data, changes an existing installation or prints secret values.
+The media store ID is randomly generated for this fresh configuration. On Unix, the new
+`.env` requests mode 0600; protect the data/media directories separately. On
+Windows, restrict ACLs to the service identity.
+
+This mode does **not** provide TLS, configure a reverse proxy, bind a public
+listener or install a service. `start.ps1` still binds loopback; the operator
+must deliberately configure HTTPS and supervision before external use. Never
+switch a live installation to this command; use the checked recovery path
+instead. Keep ambient `AX_SECRET_*` overrides clear at startup.
+
 ## Run Without Cargo
 
 From the package directory:
