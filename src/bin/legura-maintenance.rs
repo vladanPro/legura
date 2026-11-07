@@ -458,7 +458,7 @@ fn verify(bundle: &Path) -> Result<()> {
     ensure!(
         manifest.format == 1
             && manifest.product == "legura"
-            && manifest.version == env!("CARGO_PKG_VERSION"),
+            && legura::backup_compatibility::current_reader_accepts(&manifest.version),
         "unsupported backup format or product version"
     );
     let database = bundle.join("database.sqlite");

@@ -188,9 +188,11 @@ a media-inclusive archive and starts against external SQLite/media, preserving
 an uploaded image, content, login and configuration. Cross-version schema/media
 upgrade and rollback after new writes remain open. A valid candidate with bad
 media configuration also fails startup, after which the original package is
-restarted and its content checked. Both backup formats currently bind producer
-and reader product versions exactly, so version-policy work precedes a genuine
-two-version package test; see native-package-v0.md.
+restarted and its content checked. A separate CI gate builds the pinned `0.0.1`
+and current `0.0.2` maintenance tools and proves that the new reader restores
+old database-only and media-inclusive backups, while the old reader rejects
+new backups. Full two-version package/server cutover, schema migration and
+rollback after new writes remain open; see native-package-v0.md.
 
 Local source preparation has an executable first-run acceptance gate:
 prepare/init/check/start, secret preservation, local-only database/config

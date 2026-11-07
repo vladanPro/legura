@@ -155,6 +155,18 @@ jobs:
       - name: Verify archive extraction and toolchain-free native flow
         shell: pwsh
         run: ./scripts/smoke-local.ps1 -Port 3943 -Package -Systemd
+      - uses: actions/checkout@v4
+        with:
+          ref: 8d47e6165a6df6d5ea4d510db9b20ba811846493
+          path: prior
+      - name: Verify 0.0.1 backup compatibility with 0.0.2
+        shell: pwsh
+        run: |
+          cargo build --locked --manifest-path prior/Cargo.toml --bin legura-maintenance
+          if ($LASTEXITCODE -ne 0) { throw 'Could not build the pinned 0.0.1 producer' }
+          cargo build --locked --bin legura-maintenance
+          if ($LASTEXITCODE -ne 0) { throw 'Could not build the 0.0.2 reader' }
+          ./scripts/smoke-cross-version.ps1 -PriorTool prior/target/debug/legura-maintenance -CurrentTool target/debug/legura-maintenance
   compiled-auth:
     name: Registry Compiled Auth
     runs-on: ubuntu-latest
