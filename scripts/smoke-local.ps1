@@ -407,9 +407,17 @@ try {
         }
         & $httpsMaintenance config-https $httpsRoot $httpsData
         if ($LASTEXITCODE -eq 0 -or [IO.File]::ReadAllText($httpsConfig) -cne $httpsContent) { throw 'HTTPS-mode config replaced an existing file' }
-        $options.ArgumentList = @('-NoProfile', '-File', (Join-Path $httpsRoot 'start.ps1'), '-Port', "$Port")
+        $options.FilePath = Join-Path $httpsRoot "legura-server$extension"
+        $options.Remove('ArgumentList')
+        $options.WorkingDirectory = $httpsRoot
+        $env:AXONYX_HOST = '127.0.0.1'
+        $env:AXONYX_PORT = "$Port"
+        if (Get-Command cargo,git,node,cargo-ax,pwsh -ErrorAction SilentlyContinue) { throw 'Direct native runtime still exposes developer tools or PowerShell' }
         $process = Start-Process @options
-      } finally { $env:PATH = $pathBefore }
+      } finally {
+        $env:PATH = $pathBefore
+        Remove-Item Env:AXONYX_HOST,Env:AXONYX_PORT -ErrorAction SilentlyContinue
+      }
       $ready = $false
       for ($attempt = 0; $attempt -lt 120; $attempt++) {
         if ($process.HasExited) { throw 'HTTPS-mode native server exited before readiness' }
@@ -456,7 +464,7 @@ try {
       $process.Dispose()
       $process = $null
       if ([IO.File]::ReadAllText($httpsConfig) -cne $httpsContent) { throw 'HTTPS-mode server modified configuration' }
-      Write-Host 'Fresh HTTPS-mode config passed: external data/media, independent private secrets, no clobber and native startup without developer tools. TLS/service setup is not covered.'
+      Write-Host 'Fresh HTTPS-mode config passed: external data/media, independent private secrets, no clobber and direct native startup without developer tools or PowerShell. TLS/service setup is not covered.'
     }
     # The expected no-clobber failure must not become pwsh's final exit status.
     $global:LASTEXITCODE = 0
