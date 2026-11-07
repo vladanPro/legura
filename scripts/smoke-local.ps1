@@ -32,6 +32,26 @@ function Request {
   }
 }
 
+function Assert-PrivateMedia {
+  param([string] $Id, [string] $ObjectPath)
+  $request = [Net.Http.HttpRequestMessage]::new([Net.Http.HttpMethod]::Get, "$baseUrl/api/media/$Id")
+  $response = $null
+  try {
+    $response = $client.SendAsync($request).GetAwaiter().GetResult()
+    if ([int]$response.StatusCode -ne 200 -or $response.Content.Headers.ContentType.MediaType -ne 'image/png') {
+      throw "Private image $Id was not available as PNG"
+    }
+    $actual = $response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
+    $expected = [IO.File]::ReadAllBytes($ObjectPath)
+    if ([Convert]::ToBase64String($actual) -cne [Convert]::ToBase64String($expected)) {
+      throw "Private image $Id changed across package replacement"
+    }
+  } finally {
+    if ($response) { $response.Dispose() }
+    $request.Dispose()
+  }
+}
+
 function Assert-InitRefused {
   param([string] $Message)
   $refused = $false
@@ -388,11 +408,17 @@ try {
       $process.Dispose()
       $process = $null
       $upgradeData = Join-Path $fixture 'upgrade-private'
-      New-Item -ItemType Directory -Path $upgradeData | Out-Null
+      $upgradeMedia = Join-Path $upgradeData 'media'
+      New-Item -ItemType Directory -Path $upgradeData, $upgradeMedia | Out-Null
+      if (!$IsWindows) {
+        [IO.File]::SetUnixFileMode($upgradeData, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute)
+        [IO.File]::SetUnixFileMode($upgradeMedia, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute)
+      }
       $upgradeDatabase = Join-Path $upgradeData 'legura.db'
       & $freshMaintenance restore $freshBundle $upgradeDatabase
       if ($LASTEXITCODE -ne 0) { throw 'Could not prepare external replacement database' }
       $upgradeConfig = $freshConfig.Replace('sqlite://data/legura.db', "sqlite:$($upgradeDatabase.Replace('\', '/'))")
+      $upgradeConfig += "AX_SECRET_MEDIA_DRIVER=local`nAX_SECRET_MEDIA_ROOT=$($upgradeMedia.Replace('\', '/'))`nAX_SECRET_MEDIA_STORE_ID=local-media`n"
       [IO.File]::WriteAllText($packageConfig, $upgradeConfig)
       $options.ArgumentList = @('-NoProfile', '-File', (Join-Path $freshRoot 'start.ps1'), '-Port', "$Port")
       $process = Start-Process @options
@@ -403,6 +429,34 @@ try {
       }
       if (!$ready) { throw 'Original package was not ready for replacement rehearsal' }
       if (!(Request -Path '/posts/native-first' -Status 200).Contains('Native published content')) { throw 'External database lost published content' }
+      Request -Path '/admin' -Status 403 | Out-Null
+      $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+      Request -Path '/__axonyx/action?path=%2Flogin&name=SignIn' -Status 303 -Body "email=native%40example.com&password=$password" -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
+      Request -Path '/admin/media' -Status 200 | Out-Null
+      $image = [Convert]::FromBase64String('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNwqzjxHwAFFAKG7uYx/AAAAABJRU5ErkJggg==')
+      $upload = [Net.Http.HttpRequestMessage]::new([Net.Http.HttpMethod]::Post, "$baseUrl/__axonyx/action?path=%2Fadmin%2Fmedia&name=UploadLibraryImage")
+      $multipart = [Net.Http.MultipartFormDataContent]::new()
+      $part = [Net.Http.ByteArrayContent]::new($image)
+      $part.Headers.ContentType = [Net.Http.Headers.MediaTypeHeaderValue]::new('image/png')
+      $multipart.Add($part, 'image', 'fixture.png')
+      $upload.Content = $multipart
+      $upload.Headers.Add('Origin', $baseUrl)
+      $upload.Headers.Add('Accept', 'application/ax-patch+json')
+      $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+      $upload.Headers.Add('X-Axonyx-CSRF', $proof)
+      try {
+        $uploadResponse = $client.SendAsync($upload).GetAwaiter().GetResult()
+        try {
+          if ([int]$uploadResponse.StatusCode -ne 200) { throw "Native package media upload failed: $([int]$uploadResponse.StatusCode)" }
+          $uploaded = $uploadResponse.Content.ReadAsStringAsync().GetAwaiter().GetResult() | ConvertFrom-Json
+          if (!$uploaded.ok -or $uploaded.value.storage -ne 'local-media') { throw 'Native package upload returned an invalid media reference' }
+          $mediaId = [string]$uploaded.value.id
+        } finally { $uploadResponse.Dispose() }
+      } finally { $upload.Dispose() }
+      $mediaObject = Join-Path $upgradeMedia $mediaId
+      Assert-PrivateMedia -Id $mediaId -ObjectPath $mediaObject
+      & $freshMaintenance media-check $upgradeDatabase local-media $upgradeMedia | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw 'Original package media audit failed' }
       $badRoot = Join-Path $fixture 'invalid-upgrade-candidate'
       $candidateRoot = Join-Path $fixture 'valid-upgrade-candidate'
       foreach ($destination in @($badRoot, $candidateRoot)) {
@@ -424,11 +478,18 @@ try {
       $candidateMaintenance = Join-Path $candidateRoot "legura-maintenance$extension"
       & $candidateMaintenance verify-package $candidateRoot
       if ($LASTEXITCODE -ne 0) { throw 'Valid replacement candidate failed preflight' }
-      $upgradeBackup = Join-Path $fixture 'backups/before-package-replacement'
-      & $freshMaintenance backup $upgradeDatabase $upgradeBackup
-      if ($LASTEXITCODE -ne 0) { throw 'Pre-replacement backup failed' }
-      & $candidateMaintenance verify $upgradeBackup
-      if ($LASTEXITCODE -ne 0) { throw 'Replacement candidate cannot verify pre-replacement backup' }
+      $upgradeBackup = Join-Path $fixture 'backups/before-package-replacement.legura'
+      & $freshMaintenance archive-backup $upgradeDatabase local-media $upgradeMedia $upgradeBackup | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw 'Pre-replacement media-inclusive backup failed' }
+      & $candidateMaintenance archive-verify $upgradeBackup | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw 'Replacement candidate cannot verify pre-replacement archive' }
+      $upgradeRecovery = Join-Path $fixture 'upgrade-inactive-recovery'
+      & $candidateMaintenance archive-restore $upgradeBackup $upgradeRecovery | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw 'Replacement candidate cannot recover pre-replacement archive' }
+      & $candidateMaintenance archive-check-recovery $upgradeBackup $upgradeRecovery | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw 'Replacement candidate cannot validate database and media compatibility' }
+      $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+      Request -Path '/__axonyx/action?path=%2Fadmin&name=SignOut' -Status 303 -Body 'submit=1' -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
       $configHash = (Get-FileHash -LiteralPath $packageConfig -Algorithm SHA256).Hash
       $process.Kill($true)
       $process.WaitForExit()
@@ -450,12 +511,17 @@ try {
       $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
       Request -Path '/__axonyx/action?path=%2Flogin&name=SignIn' -Status 303 -Body "email=native%40example.com&password=$password" -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
       Request -Path '/admin' -Status 200 | Out-Null
+      $library = Request -Path '/admin/media' -Status 200
+      if (!$library.Contains($mediaId)) { throw 'Replacement media library lost its image' }
+      Assert-PrivateMedia -Id $mediaId -ObjectPath $mediaObject
+      & $candidateMaintenance media-check $upgradeDatabase local-media $upgradeMedia | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw 'Replacement media audit failed' }
       Request -Path '/setup' -Status 403 | Out-Null
       if ((Get-FileHash -LiteralPath $packageConfig -Algorithm SHA256).Hash -ne $configHash -or
           (Get-FileHash -LiteralPath $candidateConfig -Algorithm SHA256).Hash -ne $configHash) {
         throw 'Replacement modified private configuration'
       }
-      Write-Host 'Native package replacement passed: rejected corrupt candidate kept old server online; valid candidate used external data, verified backup and preserved config, published content and login.'
+      Write-Host 'Native package replacement passed: rejected corrupt candidate kept old server online; media-inclusive backup and candidate compatibility passed; replacement preserved external data, image bytes, config, content and login.'
       $process.Kill($true)
       $process.WaitForExit()
       $process.Dispose()
