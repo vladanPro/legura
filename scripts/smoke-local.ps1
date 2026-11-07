@@ -495,6 +495,55 @@ try {
       $process.WaitForExit()
       $process.Dispose()
       $process = $null
+      $failedRoot = Join-Path $fixture 'failed-start-candidate'
+      New-Item -ItemType Directory -Path $failedRoot | Out-Null
+      Copy-Item -LiteralPath (Join-Path $candidateRoot 'package.json') -Destination $failedRoot
+      foreach ($entry in $manifest.files) {
+        $target = Join-Path $failedRoot $entry.path
+        New-Item -ItemType Directory -Path (Split-Path $target) -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path $candidateRoot $entry.path) -Destination $target
+      }
+      $failedMaintenance = Join-Path $failedRoot "legura-maintenance$extension"
+      & $failedMaintenance verify-package $failedRoot
+      if ($LASTEXITCODE -ne 0) { throw 'Failed-start candidate did not pass package preflight' }
+      $missingMedia = (Join-Path $fixture 'missing-media-root').Replace('\', '/')
+      if (Test-Path -LiteralPath $missingMedia) { throw 'Failure fixture media root unexpectedly exists' }
+      $failedConfig = $upgradeConfig.Replace($upgradeMedia.Replace('\', '/'), $missingMedia)
+      [IO.File]::WriteAllText((Join-Path $failedRoot '.env'), $failedConfig)
+      $options.ArgumentList = @('-NoProfile', '-File', (Join-Path $failedRoot 'start.ps1'), '-Port', "$Port")
+      $process = Start-Process @options
+      if (!$process.WaitForExit(30000)) {
+        $process.Kill($true)
+        $process.WaitForExit()
+        throw 'Misconfigured candidate reached a running state'
+      }
+      if ($process.ExitCode -eq 0) { throw 'Misconfigured candidate exited successfully' }
+      $process.Dispose()
+      $process = $null
+      if ((Get-FileHash -LiteralPath $packageConfig -Algorithm SHA256).Hash -ne $configHash) {
+        throw 'Failed candidate changed the original configuration'
+      }
+      $options.ArgumentList = @('-NoProfile', '-File', (Join-Path $freshRoot 'start.ps1'), '-Port', "$Port")
+      $process = Start-Process @options
+      $ready = $false
+      for ($attempt = 0; $attempt -lt 120; $attempt++) {
+        if ($process.HasExited) { throw 'Original package could not restart after failed candidate' }
+        try { Request -Path '/__axonyx/ready' -Status 200 | Out-Null; $ready = $true; break } catch { Start-Sleep -Milliseconds 250 }
+      }
+      if (!$ready) { throw 'Original package did not recover after failed candidate' }
+      if (!(Request -Path '/posts/native-first' -Status 200).Contains('Native published content')) { throw 'Failed candidate lost original post' }
+      $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+      Request -Path '/__axonyx/action?path=%2Flogin&name=SignIn' -Status 303 -Body "email=native%40example.com&password=$password" -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
+      Request -Path '/admin' -Status 200 | Out-Null
+      Assert-PrivateMedia -Id $mediaId -ObjectPath $mediaObject
+      & $freshMaintenance media-check $upgradeDatabase local-media $upgradeMedia | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw 'Failed candidate damaged original media' }
+      $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+      Request -Path '/__axonyx/action?path=%2Fadmin&name=SignOut' -Status 303 -Body 'submit=1' -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
+      $process.Kill($true)
+      $process.WaitForExit()
+      $process.Dispose()
+      $process = $null
       Copy-Item -LiteralPath $packageConfig -Destination $candidateRoot
       $candidateConfig = Join-Path $candidateRoot '.env'
       if ((Get-FileHash -LiteralPath $candidateConfig -Algorithm SHA256).Hash -ne $configHash) { throw 'Replacement changed private configuration' }
@@ -521,7 +570,7 @@ try {
           (Get-FileHash -LiteralPath $candidateConfig -Algorithm SHA256).Hash -ne $configHash) {
         throw 'Replacement modified private configuration'
       }
-      Write-Host 'Native package replacement passed: rejected corrupt candidate kept old server online; media-inclusive backup and candidate compatibility passed; replacement preserved external data, image bytes, config, content and login.'
+      Write-Host 'Native package replacement passed: corrupt candidate rejected online; misconfigured candidate failed startup and old server recovered; media-inclusive backup and successful replacement preserved external data, image bytes, config, content and login.'
       $process.Kill($true)
       $process.WaitForExit()
       $process.Dispose()
