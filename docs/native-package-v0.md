@@ -183,6 +183,33 @@ The compatible maintenance binary embeds migration checksums and rejects
 unsupported migration histories. Automatic upgrades and schema conversion are
 not supported. Replace program files/assets deliberately, never .env or data/.
 
+## Package Replacement Rehearsal V0
+
+The isolated `-Package` smoke also tests a **same-version package replacement**.
+It runs the original package against a separate SQLite file, rejects a damaged
+candidate while the original remains online, verifies a clean candidate and a
+fresh backup, stops the original, copies its private `.env` into the new package
+directory and starts that candidate against the same external database. The
+published post, administrator login, locked setup and configuration bytes must
+survive. The test uses disposable data only; it does not prove an upgrade
+between two Legura versions or preservation of uploaded media.
+
+For a manual compatible-package rehearsal, keep private database/media outside
+the replaceable program directory and obtain the candidate from a trusted
+source. Verify its archive checksum separately, extract it to a **new**
+directory, run `verify-package` before adding `.env`, then take and verify a
+backup using the running installation's maintenance tool. Check schema and
+migration compatibility with the candidate before cutover. Stop all server
+instances, copy the private configuration without changing its paths or
+permissions, start the candidate, and verify readiness, public content,
+administrator login and private assets. Keep the old package and backup until
+the new installation is accepted. Do not overwrite files in a live package.
+The package checksum and manifest are integrity checks, not publisher
+authentication. There is no supported cross-version migration procedure yet;
+if the candidate writes new schema or content, switching back to an older
+binary is **not** a safe database rollback. Recover from a verified backup into
+a new private location only after separately validating compatibility.
+
 ## Build From Source
 
 Build prerequisites are Git, Rust/native toolchain, CLI 0.8.8 and PowerShell
