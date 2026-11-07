@@ -1,5 +1,6 @@
-param([ValidateRange(1024, 65535)][int] $Port = 3943, [switch] $Package)
+param([ValidateRange(1024, 65535)][int] $Port = 3943, [switch] $Package, [switch] $Systemd)
 $ErrorActionPreference = "Stop"
+if ($Systemd -and (!$Package -or $IsWindows)) { throw 'Systemd smoke requires -Package on Linux' }
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $temporaryRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
 $fixture = Join-Path $temporaryRoot ("legura-local-" + [Guid]::NewGuid().ToString("N"))
@@ -502,6 +503,58 @@ try {
       $process.WaitForExit()
       $process.Dispose()
       $process = $null
+      if ($Systemd) {
+        $unitName = "legura-ci-$([Guid]::NewGuid().ToString('N')).service"
+        $serviceUser = (& id -un).Trim()
+        $serviceGroup = (& id -gn).Trim()
+        $startedUnit = $false
+        try {
+          $serviceOptions = @(
+            "--unit=$unitName"
+            '--property=Type=simple'
+            "--property=User=$serviceUser"
+            "--property=Group=$serviceGroup"
+            "--property=WorkingDirectory=$httpsRoot"
+            '--property=Environment=AXONYX_HOST=127.0.0.1'
+            "--property=Environment=AXONYX_PORT=$Port"
+            '--property=Restart=on-failure'
+            '--property=RestartSec=1s'
+            '--property=NoNewPrivileges=yes'
+            '--property=ProtectSystem=strict'
+            "--property=ReadWritePaths=$httpsData"
+          )
+          & sudo -n systemd-run @serviceOptions $options.FilePath
+          if ($LASTEXITCODE -ne 0) { throw 'Transient systemd service did not start' }
+          $startedUnit = $true
+          $ready = $false
+          for ($attempt = 0; $attempt -lt 120; $attempt++) {
+            try { Request -Path '/__axonyx/ready' -Status 200 | Out-Null; $ready = $true; break } catch { Start-Sleep -Milliseconds 250 }
+          }
+          if (!$ready) { throw 'Transient systemd service was not ready' }
+          $firstPid = (& sudo -n systemctl show --property=MainPID --value $unitName).Trim()
+          if ($firstPid -notmatch '^[1-9][0-9]*$') { throw 'Transient systemd service has no main process' }
+          & /bin/kill -KILL $firstPid
+          if ($LASTEXITCODE -ne 0) { throw 'Could not terminate the supervised server' }
+          $restarted = $false
+          for ($attempt = 0; $attempt -lt 120; $attempt++) {
+            $nextPid = (& sudo -n systemctl show --property=MainPID --value $unitName).Trim()
+            if ($nextPid -match '^[1-9][0-9]*$' -and $nextPid -ne $firstPid) {
+              try { Request -Path '/__axonyx/ready' -Status 200 | Out-Null; $restarted = $true; break } catch {}
+            }
+            Start-Sleep -Milliseconds 250
+          }
+          if (!$restarted) { throw 'Systemd did not restart the failed native server' }
+          Request -Path '/setup' -Status 403 | Out-Null
+          Request -Path '/login' -Status 200 | Out-Null
+          Write-Host 'Transient systemd service passed: isolated native start, restart on failure and preserved installation.'
+        } finally {
+          if ($startedUnit) {
+            & sudo -n systemctl stop $unitName
+            if ($LASTEXITCODE -ne 0) { throw 'Could not stop the transient systemd service' }
+            & sudo -n systemctl reset-failed $unitName 2>$null
+          }
+        }
+      }
       if ([IO.File]::ReadAllText($httpsConfig) -cne $httpsContent) { throw 'HTTPS-mode server modified configuration' }
       Write-Host 'Fresh HTTPS-mode config passed: external data/media, independent private secrets, no clobber and direct native startup without developer tools or PowerShell. TLS/service setup is not covered.'
     }

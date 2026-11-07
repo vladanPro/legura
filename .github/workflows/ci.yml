@@ -154,7 +154,7 @@ jobs:
         run: cargo install cargo-axonyx --version '=0.8.8' --locked --debug
       - name: Verify archive extraction and toolchain-free native flow
         shell: pwsh
-        run: ./scripts/smoke-local.ps1 -Port 3943 -Package
+        run: ./scripts/smoke-local.ps1 -Port 3943 -Package -Systemd
   compiled-auth:
     name: Registry Compiled Auth
     runs-on: ubuntu-latest
