@@ -185,14 +185,17 @@ See native-package-v0.md. No signed archive or production platform matrix yet.
 The native-package smoke now includes a disposable same-version replacement:
 an invalid candidate leaves the old server online; a verified candidate checks
 a media-inclusive archive and starts against external SQLite/media, preserving
-an uploaded image, content, login and configuration. Cross-version schema/media
-upgrade and rollback after new writes remain open. A valid candidate with bad
+an uploaded image, content, login and configuration. A valid candidate with bad
 media configuration also fails startup, after which the original package is
 restarted and its content checked. A separate CI gate builds the pinned `0.0.1`
 and current `0.0.2` maintenance tools and proves that the new reader restores
 old database-only and media-inclusive backups, while the old reader rejects
-new backups. Full two-version package/server cutover, schema migration and
-rollback after new writes remain open; see native-package-v0.md.
+new backups. A separate native-package CI gate builds both versions and tests
+a disposable `0.0.1` to `0.0.2` server cutover over external SQLite/media,
+preserving a published post, fresh administrator login and exact private image
+bytes.
+Operator-driven upgrade, schema evolution and rollback after new writes remain
+open; see native-package-v0.md.
 
 Local source preparation has an executable first-run acceptance gate:
 prepare/init/check/start, secret preservation, local-only database/config
