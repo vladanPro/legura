@@ -83,8 +83,10 @@ regular USTAR payloads with exact allowed paths. It rejects path traversal,
 absolute/backslash paths, links, directories/devices/FIFOs, extension headers,
 duplicates, hidden concatenated entries, missing/changed inventories, mismatched
 hashes, unknown product/format/version and entries after the final manifest.
-The current pilot accepts only its own application version; future compatibility
-policy is a separate release gate.
+The `0.0.2` maintenance reader accepts archives produced by `0.0.1` or `0.0.2`.
+Other producer versions are refused; the older `0.0.1` reader rejects `0.0.2`.
+This explicit backup-reader policy does not perform a schema migration or
+authorize automatic replacement of a running server.
 
 Provisional bounds: SQLite up to 1 GiB, each image up to 8 MiB, 10,000 images,
 manifest up to 4 MiB and the physical archive up to 8 GiB. Database/object hashing
@@ -177,5 +179,5 @@ migration rows without switching the running application.
 The explicit read-only `archive-check-recovery` command now checks current product
 schema/migrations, plain/rich content and recovered bytes against the original
 archive. It does not modify this receipt or activate a service. See the strict
-current-version policy in recovery-compatibility-v0.md; a separately approved
+current-schema policy in recovery-compatibility-v0.md; a separately approved
 activation procedure remains next. Operator media remains inactive.

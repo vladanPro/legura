@@ -232,10 +232,13 @@ authentication. There is no supported cross-version migration procedure yet;
 if the candidate writes new schema or content, switching back to an older
 binary is **not** a safe database rollback. Recover from a verified backup into
 a new private location only after separately validating compatibility.
-Both current backup formats bind their producer version to this binary's
-`CARGO_PKG_VERSION`; an eventual `0.0.2` requires an explicit, tested reader
-compatibility policy and two independently built package versions. Merely
-changing the version string would strand `0.0.1` backups.
+Both backup formats record their producer version. The `0.0.2` maintenance
+reader explicitly accepts `0.0.1` and `0.0.2` backups; the `0.0.1` reader
+still rejects `0.0.2` backups. CI builds the pinned `0.0.1` maintenance binary
+and the current `0.0.2` binary separately, then verifies and restores both
+database-only and media-inclusive `0.0.1` backups with the new reader. It also
+checks that the old reader refuses new backups. This is backup compatibility,
+not a tested server/package cutover or schema migration.
 
 ## Build From Source
 
@@ -279,3 +282,6 @@ rehearsal, not a cross-platform prebuilt download or production upgrade test.
 It also rehearses replacing an installed package with external SQLite/media:
 the failed candidate leaves the original available, while the valid candidate
 preserves a real uploaded image after archive compatibility checks and restart.
+The separate `smoke-cross-version.ps1` CI gate proves `0.0.1` backup producer
+compatibility with the `0.0.2` maintenance reader; it does not switch a running
+installation between product versions.

@@ -463,7 +463,7 @@ fn scan(
     ensure!(
         manifest.format == 1
             && manifest.product == "legura"
-            && manifest.version == env!("CARGO_PKG_VERSION"),
+            && crate::backup_compatibility::current_reader_accepts(&manifest.version),
         "Unsupported archive contract"
     );
     StoreId::parse(&manifest.store)?;
@@ -556,7 +556,9 @@ pub fn restore(archive: &Path, destination: &Path) -> Result<ArchiveReport> {
     file.rewind()?;
     let (manifest, report) = scan(&mut file, |path, input| workspace.copy(path, input))?;
     ensure!(
-        manifest.files == expected.files && manifest.store == expected.store,
+        manifest.version == expected.version
+            && manifest.files == expected.files
+            && manifest.store == expected.store,
         "Archive changed during recovery"
     );
     let database = Connection::open_with_flags(
