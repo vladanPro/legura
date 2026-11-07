@@ -143,7 +143,7 @@ jobs:
   native-package:
     name: Native Package Archive
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -162,11 +162,14 @@ jobs:
       - name: Verify 0.0.1 backup compatibility with 0.0.2
         shell: pwsh
         run: |
-          cargo build --locked --manifest-path prior/Cargo.toml --bin legura-maintenance
-          if ($LASTEXITCODE -ne 0) { throw 'Could not build the pinned 0.0.1 producer' }
-          cargo build --locked --bin legura-maintenance
-          if ($LASTEXITCODE -ne 0) { throw 'Could not build the 0.0.2 reader' }
-          ./scripts/smoke-cross-version.ps1 -PriorTool prior/target/debug/legura-maintenance -CurrentTool target/debug/legura-maintenance
+          $priorPackage = Join-Path $env:RUNNER_TEMP ('legura-prior-package-' + [Guid]::NewGuid().ToString('N'))
+          $currentPackage = Join-Path $env:RUNNER_TEMP ('legura-current-package-' + [Guid]::NewGuid().ToString('N'))
+          ./prior/scripts/local.ps1 -Task init
+          ./prior/scripts/package.ps1 -OutputDirectory $priorPackage
+          ./scripts/local.ps1 -Task init
+          ./scripts/package.ps1 -OutputDirectory $currentPackage
+          ./scripts/smoke-cross-version.ps1 -PriorTool (Join-Path $priorPackage 'legura-maintenance') -CurrentTool (Join-Path $currentPackage 'legura-maintenance')
+          ./scripts/smoke-package-cutover.ps1 -PriorPackage $priorPackage -CurrentPackage $currentPackage -Port 3947
   compiled-auth:
     name: Registry Compiled Auth
     runs-on: ubuntu-latest

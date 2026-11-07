@@ -238,7 +238,11 @@ still rejects `0.0.2` backups. CI builds the pinned `0.0.1` maintenance binary
 and the current `0.0.2` binary separately, then verifies and restores both
 database-only and media-inclusive `0.0.1` backups with the new reader. It also
 checks that the old reader refuses new backups. This is backup compatibility,
-not a tested server/package cutover or schema migration.
+not a schema migration. The separate cross-version native-package gate builds
+both versions as independent packages and exercises a disposable server cutover
+with external SQLite/media, a verified pre-cutover archive, public content,
+fresh administrator login and exact private image bytes. It does not test
+rollback after the new version writes or provide an operator upgrade command.
 
 ## Build From Source
 
@@ -283,5 +287,8 @@ It also rehearses replacing an installed package with external SQLite/media:
 the failed candidate leaves the original available, while the valid candidate
 preserves a real uploaded image after archive compatibility checks and restart.
 The separate `smoke-cross-version.ps1` CI gate proves `0.0.1` backup producer
-compatibility with the `0.0.2` maintenance reader; it does not switch a running
-installation between product versions.
+compatibility with the `0.0.2` maintenance reader. The
+`smoke-package-cutover.ps1` gate then starts a real `0.0.1` package, stops it
+after verifying a backup, and starts a real `0.0.2` package over the same
+external data and unchanged private configuration. Both use disposable CI
+fixtures; this is not a supported production upgrade/rollback procedure.
