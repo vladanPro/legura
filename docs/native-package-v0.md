@@ -162,6 +162,10 @@ This direct command is for Unix shells. Working directory must be the package
 root because dist/ and .env are resolved there. Readiness endpoint:
 /__axonyx/ready; health endpoint: /__axonyx/health. Readiness is not proof that
 all CMS migrations or operator security settings are correct.
+The isolated native-package smoke also starts this binary directly with an
+external SQLite/media directory and checks setup and Secure/HttpOnly cookies.
+For an operator-managed Linux service example, see
+[Native Service V0](native-service-v0.md).
 
 ## Maintenance
 
