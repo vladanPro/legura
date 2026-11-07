@@ -76,3 +76,4 @@ with sqlite3.connect(sys.argv[1]) as db:
     if (Test-Path -LiteralPath $resolved) { Remove-Item -LiteralPath $resolved -Recurse -Force }
   } else { throw 'Refusing cleanup outside the isolated cross-version fixture' }
 }
+exit 0
