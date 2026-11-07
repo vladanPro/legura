@@ -496,8 +496,7 @@ try {
         Request -Path '/admin' -Status 403 | Out-Null
         $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
         Request -Path '/__axonyx/action?path=%2Flogin&name=SignIn' -Status 303 -Body "email=https%40example.com&password=$password" -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
-        Request -Path '/admin' -Status 200 | Out-Null
-        Write-Host 'Linux native SIGTERM/restart passed: setup stayed locked and administrator login survived.'
+        Write-Host 'Linux native SIGTERM/restart passed: setup stayed locked and administrator credentials were accepted. Secure cookies require HTTPS for subsequent admin requests.'
       }
       $process.Kill($true)
       $process.WaitForExit()

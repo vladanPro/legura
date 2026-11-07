@@ -48,7 +48,9 @@ proxy before admitting traffic. Do not put secrets in `Environment=` lines.
 
 The isolated package smoke proves direct native binary startup, setup and
 Secure/HttpOnly cookies. On Linux it also sends SIGTERM, restarts the same
-binary, and checks that setup stays locked and administrator login still works.
+binary, and checks that setup stays locked and the login action accepts the
+administrator credentials. The smoke uses HTTP, so its Secure cookie cannot
+be replayed to verify an authenticated admin page; that needs an HTTPS proxy.
 It does **not** install this unit, exercise systemd's restart policy, prove TLS
 or certify production hosting. Upgrades, rollback and migration/service
 coordination remain separate work.
