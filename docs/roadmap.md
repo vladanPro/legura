@@ -182,6 +182,11 @@ Windows acceptance and the Linux package smoke passed, including fresh setup,
 publication, restart and backup/restore in disposable installations. This is
 not yet a public download, signed artifact or supported production upgrade.
 See native-package-v0.md. No signed archive or production platform matrix yet.
+The native-package smoke now includes a disposable same-version replacement:
+invalid candidate leaves the old server online; a verified candidate starts
+against an external SQLite copy after a verified backup, preserving content,
+login and configuration. Cross-version schema/media upgrade and rollback after
+new writes remain open; see native-package-v0.md.
 
 Local source preparation has an executable first-run acceptance gate:
 prepare/init/check/start, secret preservation, local-only database/config

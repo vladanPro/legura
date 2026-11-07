@@ -387,6 +387,79 @@ try {
       $process.WaitForExit()
       $process.Dispose()
       $process = $null
+      $upgradeData = Join-Path $fixture 'upgrade-private'
+      New-Item -ItemType Directory -Path $upgradeData | Out-Null
+      $upgradeDatabase = Join-Path $upgradeData 'legura.db'
+      & $freshMaintenance restore $freshBundle $upgradeDatabase
+      if ($LASTEXITCODE -ne 0) { throw 'Could not prepare external replacement database' }
+      $upgradeConfig = $freshConfig.Replace('sqlite://data/legura.db', "sqlite:$($upgradeDatabase.Replace('\', '/'))")
+      [IO.File]::WriteAllText($packageConfig, $upgradeConfig)
+      $options.ArgumentList = @('-NoProfile', '-File', (Join-Path $freshRoot 'start.ps1'), '-Port', "$Port")
+      $process = Start-Process @options
+      $ready = $false
+      for ($attempt = 0; $attempt -lt 120; $attempt++) {
+        if ($process.HasExited) { throw 'Original package exited before replacement rehearsal' }
+        try { Request -Path '/__axonyx/ready' -Status 200 | Out-Null; $ready = $true; break } catch { Start-Sleep -Milliseconds 250 }
+      }
+      if (!$ready) { throw 'Original package was not ready for replacement rehearsal' }
+      if (!(Request -Path '/posts/native-first' -Status 200).Contains('Native published content')) { throw 'External database lost published content' }
+      $badRoot = Join-Path $fixture 'invalid-upgrade-candidate'
+      $candidateRoot = Join-Path $fixture 'valid-upgrade-candidate'
+      foreach ($destination in @($badRoot, $candidateRoot)) {
+        New-Item -ItemType Directory -Path $destination | Out-Null
+        Copy-Item -LiteralPath (Join-Path $packageRoot 'package.json') -Destination $destination
+        foreach ($entry in $manifest.files) {
+          $target = Join-Path $destination $entry.path
+          New-Item -ItemType Directory -Path (Split-Path $target) -Force | Out-Null
+          Copy-Item -LiteralPath (Join-Path $packageRoot $entry.path) -Destination $target
+        }
+      }
+      [IO.File]::AppendAllText((Join-Path $badRoot 'README.md'), "`ncorrupt candidate`n")
+      $badMaintenance = Join-Path $badRoot "legura-maintenance$extension"
+      & $badMaintenance verify-package $badRoot *> $null
+      if ($LASTEXITCODE -eq 0) { throw 'Corrupt replacement candidate passed preflight' }
+      if ($process.HasExited -or !(Request -Path '/posts/native-first' -Status 200).Contains('Native published content')) {
+        throw 'Rejected candidate interrupted the original installation'
+      }
+      $candidateMaintenance = Join-Path $candidateRoot "legura-maintenance$extension"
+      & $candidateMaintenance verify-package $candidateRoot
+      if ($LASTEXITCODE -ne 0) { throw 'Valid replacement candidate failed preflight' }
+      $upgradeBackup = Join-Path $fixture 'backups/before-package-replacement'
+      & $freshMaintenance backup $upgradeDatabase $upgradeBackup
+      if ($LASTEXITCODE -ne 0) { throw 'Pre-replacement backup failed' }
+      & $candidateMaintenance verify $upgradeBackup
+      if ($LASTEXITCODE -ne 0) { throw 'Replacement candidate cannot verify pre-replacement backup' }
+      $configHash = (Get-FileHash -LiteralPath $packageConfig -Algorithm SHA256).Hash
+      $process.Kill($true)
+      $process.WaitForExit()
+      $process.Dispose()
+      $process = $null
+      Copy-Item -LiteralPath $packageConfig -Destination $candidateRoot
+      $candidateConfig = Join-Path $candidateRoot '.env'
+      if ((Get-FileHash -LiteralPath $candidateConfig -Algorithm SHA256).Hash -ne $configHash) { throw 'Replacement changed private configuration' }
+      $options.ArgumentList = @('-NoProfile', '-File', (Join-Path $candidateRoot 'start.ps1'), '-Port', "$Port")
+      $process = Start-Process @options
+      $ready = $false
+      for ($attempt = 0; $attempt -lt 120; $attempt++) {
+        if ($process.HasExited) { throw 'Replacement package exited before readiness' }
+        try { Request -Path '/__axonyx/ready' -Status 200 | Out-Null; $ready = $true; break } catch { Start-Sleep -Milliseconds 250 }
+      }
+      if (!$ready) { throw 'Replacement package was not ready' }
+      if (!(Request -Path '/posts/native-first' -Status 200).Contains('Native published content')) { throw 'Replacement lost published content' }
+      Request -Path '/admin' -Status 403 | Out-Null
+      $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+      Request -Path '/__axonyx/action?path=%2Flogin&name=SignIn' -Status 303 -Body "email=native%40example.com&password=$password" -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
+      Request -Path '/admin' -Status 200 | Out-Null
+      Request -Path '/setup' -Status 403 | Out-Null
+      if ((Get-FileHash -LiteralPath $packageConfig -Algorithm SHA256).Hash -ne $configHash -or
+          (Get-FileHash -LiteralPath $candidateConfig -Algorithm SHA256).Hash -ne $configHash) {
+        throw 'Replacement modified private configuration'
+      }
+      Write-Host 'Native package replacement passed: rejected corrupt candidate kept old server online; valid candidate used external data, verified backup and preserved config, published content and login.'
+      $process.Kill($true)
+      $process.WaitForExit()
+      $process.Dispose()
+      $process = $null
       $httpsRoot = Join-Path $fixture 'https-native-package'
       $httpsData = Join-Path $fixture 'https-private-data'
       New-Item -ItemType Directory -Path $httpsRoot, $httpsData | Out-Null
