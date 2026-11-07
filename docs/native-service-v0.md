@@ -46,7 +46,11 @@ operator must validate the unit (`systemd-analyze verify`), check readiness at
 `/__axonyx/ready`, inspect service logs and test setup/login through the actual
 proxy before admitting traffic. Do not put secrets in `Environment=` lines.
 
-CI currently proves direct native binary startup, setup and Secure/HttpOnly
-cookies on an isolated package. It does **not** install this unit, exercise
-systemd restart behavior, prove TLS or certify production hosting. Upgrades,
-rollback and migration/service coordination remain separate work.
+The isolated package smoke proves direct native binary startup, setup and
+Secure/HttpOnly cookies. On Linux it also sends SIGTERM, restarts the same
+binary, and checks that setup stays locked and the login action accepts the
+administrator credentials. The smoke uses HTTP, so its Secure cookie cannot
+be replayed to verify an authenticated admin page; that needs an HTTPS proxy.
+It does **not** install this unit, exercise systemd's restart policy, prove TLS
+or certify production hosting. Upgrades, rollback and migration/service
+coordination remain separate work.
