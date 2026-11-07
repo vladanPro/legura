@@ -471,6 +471,34 @@ try {
         $httpsClient.Dispose()
         $httpsHandler.Dispose()
       }
+      if (!$IsWindows) {
+        & /bin/kill -TERM $process.Id
+        if ($LASTEXITCODE -ne 0 -or !$process.WaitForExit(10000)) { throw 'HTTPS-mode native server did not stop on SIGTERM' }
+        $process.Dispose()
+        $process = $null
+        $pathBefore = $env:PATH
+        try {
+          $env:PATH = Join-Path $fixture 'no-toolchain-path'
+          $env:AXONYX_HOST = '127.0.0.1'
+          $env:AXONYX_PORT = "$Port"
+          $process = Start-Process @options
+        } finally {
+          $env:PATH = $pathBefore
+          Remove-Item Env:AXONYX_HOST,Env:AXONYX_PORT -ErrorAction SilentlyContinue
+        }
+        $ready = $false
+        for ($attempt = 0; $attempt -lt 120; $attempt++) {
+          if ($process.HasExited) { throw 'HTTPS-mode native server exited during restart' }
+          try { Request -Path '/__axonyx/ready' -Status 200 | Out-Null; $ready = $true; break } catch { Start-Sleep -Milliseconds 250 }
+        }
+        if (!$ready) { throw 'HTTPS-mode native server did not restart' }
+        Request -Path '/setup' -Status 403 | Out-Null
+        Request -Path '/admin' -Status 403 | Out-Null
+        $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+        Request -Path '/__axonyx/action?path=%2Flogin&name=SignIn' -Status 303 -Body "email=https%40example.com&password=$password" -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
+        Request -Path '/admin' -Status 200 | Out-Null
+        Write-Host 'Linux native SIGTERM/restart passed: setup stayed locked and administrator login survived.'
+      }
       $process.Kill($true)
       $process.WaitForExit()
       $process.Dispose()
