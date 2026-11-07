@@ -84,6 +84,7 @@ pub fn verify(root: &Path) -> Result<()> {
         format!("legura-server{executable_suffix}"),
         format!("legura-maintenance{executable_suffix}"),
         "README.md".into(),
+        "native-service-v0.md".into(),
         "start.ps1".into(),
     ] {
         ensure!(
@@ -137,6 +138,7 @@ fn valid_package_path(path: &str) -> bool {
     matches!(
         path,
         "README.md"
+            | "native-service-v0.md"
             | "start.ps1"
             | "legura-server"
             | "legura-server.exe"
@@ -238,6 +240,7 @@ mod tests {
                 format!("legura-server{suffix}"),
                 format!("legura-maintenance{suffix}"),
                 "README.md".into(),
+                "native-service-v0.md".into(),
                 "start.ps1".into(),
                 "dist/site.css".into(),
             ];
@@ -291,6 +294,16 @@ mod tests {
             .to_string()
             .contains("unexpected package file"));
         fs::remove_file(fixture.0.join("extra.txt")).unwrap();
+        fs::remove_file(fixture.0.join("native-service-v0.md")).unwrap();
+        assert!(verify(&fixture.0)
+            .unwrap_err()
+            .to_string()
+            .contains("package file missing"));
+        fs::write(
+            fixture.0.join("native-service-v0.md"),
+            "native-service-v0.md",
+        )
+        .unwrap();
         fs::remove_file(fixture.0.join("README.md")).unwrap();
         assert!(verify(&fixture.0)
             .unwrap_err()
