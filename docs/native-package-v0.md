@@ -182,24 +182,40 @@ change configuration. Stop all instances before switching DB configuration.
 The compatible maintenance binary embeds migration checksums and rejects
 unsupported migration histories. Automatic upgrades and schema conversion are
 not supported. Replace program files/assets deliberately, never .env or data/.
+If the database references uploaded images, the database-only `backup` refuses
+it. Use the media-inclusive `archive-backup` with the configured store ID and
+private media root instead (use your actual paths and store ID):
+
+```sh
+./legura-maintenance archive-backup /private/legura.db local-media /private/media /private/before-change.legura
+./legura-maintenance archive-verify /private/before-change.legura
+```
+
+This archive contains private database content and referenced image bytes.
+Keep it outside the package and protect it like credentials.
 
 ## Package Replacement Rehearsal V0
 
 The isolated `-Package` smoke also tests a **same-version package replacement**.
-It runs the original package against a separate SQLite file, rejects a damaged
-candidate while the original remains online, verifies a clean candidate and a
-fresh backup, stops the original, copies its private `.env` into the new package
-directory and starts that candidate against the same external database. The
-published post, administrator login, locked setup and configuration bytes must
-survive. The test uses disposable data only; it does not prove an upgrade
-between two Legura versions or preservation of uploaded media.
+It runs the original package against separate SQLite/media paths, uploads an
+image, rejects a damaged candidate while the original remains online, and
+verifies a clean candidate. Before stopping the original, it creates a
+media-inclusive archive and has the candidate verify, recover and check that
+archive's database, content and media compatibility. The candidate then starts
+against the same external database/media and a byte-identical copy of the
+private `.env`. The published post, private image bytes, media library,
+administrator login, locked setup and configuration must survive. Only
+disposable data is used; this does not prove an upgrade between two versions.
 
 For a manual compatible-package rehearsal, keep private database/media outside
 the replaceable program directory and obtain the candidate from a trusted
 source. Verify its archive checksum separately, extract it to a **new**
-directory, run `verify-package` before adding `.env`, then take and verify a
-backup using the running installation's maintenance tool. Check schema and
-migration compatibility with the candidate before cutover. Stop all server
+directory, run `verify-package` before adding `.env`, then take a media-inclusive
+backup using the running installation's maintenance tool. Run the candidate's
+`archive-verify`, `archive-restore` into a NEW inactive directory, and
+`archive-check-recovery` there before cutover. The latter validates the exact
+schema, migration history, post content and referenced image bytes; neither
+command switches the running database. Stop all server
 instances, copy the private configuration without changing its paths or
 permissions, start the candidate, and verify readiness, public content,
 administrator login and private assets. Keep the old package and backup until
@@ -249,3 +265,6 @@ It then restarts that same installation, backs up its live database, verifies
 the snapshot, restores into a NEW file, rotates the session key and checks the
 recovered published post and administrator login. This is a same-host native
 rehearsal, not a cross-platform prebuilt download or production upgrade test.
+It also rehearses replacing an installed package with external SQLite/media:
+the failed candidate leaves the original available, while the valid candidate
+preserves a real uploaded image after archive compatibility checks and restart.
