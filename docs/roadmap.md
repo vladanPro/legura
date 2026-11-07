@@ -186,7 +186,11 @@ The native-package smoke now includes a disposable same-version replacement:
 an invalid candidate leaves the old server online; a verified candidate checks
 a media-inclusive archive and starts against external SQLite/media, preserving
 an uploaded image, content, login and configuration. Cross-version schema/media
-upgrade and rollback after new writes remain open; see native-package-v0.md.
+upgrade and rollback after new writes remain open. A valid candidate with bad
+media configuration also fails startup, after which the original package is
+restarted and its content checked. Both backup formats currently bind producer
+and reader product versions exactly, so version-policy work precedes a genuine
+two-version package test; see native-package-v0.md.
 
 Local source preparation has an executable first-run acceptance gate:
 prepare/init/check/start, secret preservation, local-only database/config

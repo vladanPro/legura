@@ -201,7 +201,10 @@ It runs the original package against separate SQLite/media paths, uploads an
 image, rejects a damaged candidate while the original remains online, and
 verifies a clean candidate. Before stopping the original, it creates a
 media-inclusive archive and has the candidate verify, recover and check that
-archive's database, content and media compatibility. The candidate then starts
+archive's database, content and media compatibility. A valid package with a
+broken media-root configuration must then fail startup; the original package
+is restarted and its post, image, login and private configuration are checked.
+After that, the correctly configured candidate starts
 against the same external database/media and a byte-identical copy of the
 private `.env`. The published post, private image bytes, media library,
 administrator login, locked setup and configuration must survive. Only
@@ -220,11 +223,19 @@ instances, copy the private configuration without changing its paths or
 permissions, start the candidate, and verify readiness, public content,
 administrator login and private assets. Keep the old package and backup until
 the new installation is accepted. Do not overwrite files in a live package.
+If a candidate fails before readiness, investigate its logs and configuration;
+the old package can be restarted only when its database/schema remains
+compatible. This isolated test deliberately injects a missing media directory,
+not a migration failure or an arbitrary partially written database.
 The package checksum and manifest are integrity checks, not publisher
 authentication. There is no supported cross-version migration procedure yet;
 if the candidate writes new schema or content, switching back to an older
 binary is **not** a safe database rollback. Recover from a verified backup into
 a new private location only after separately validating compatibility.
+Both current backup formats bind their producer version to this binary's
+`CARGO_PKG_VERSION`; an eventual `0.0.2` requires an explicit, tested reader
+compatibility policy and two independently built package versions. Merely
+changing the version string would strand `0.0.1` backups.
 
 ## Build From Source
 
