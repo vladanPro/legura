@@ -41,6 +41,16 @@ function Assert-InitRefused {
   if (!$refused) { throw "Unsafe local initialization was accepted" }
 }
 
+function Assert-PackageServiceGuide {
+  param([string] $PackageRoot)
+  $readme = Join-Path $PackageRoot 'README.md'
+  $guide = Join-Path $PackageRoot 'native-service-v0.md'
+  if (!(Test-Path -LiteralPath $guide -PathType Leaf) -or
+      !([IO.File]::ReadAllText($readme).Contains('(native-service-v0.md)'))) {
+    throw 'Packaged README has a missing native service guide'
+  }
+}
+
 try {
   $reservation = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, $Port)
   try { $reservation.Start() } finally { $reservation.Stop() }
@@ -182,6 +192,7 @@ try {
       $maintenance = Join-Path $packageRoot "legura-maintenance$extension"
       & $maintenance verify-package $packageRoot
       if ($LASTEXITCODE -ne 0) { throw "Native package integrity check failed" }
+      Assert-PackageServiceGuide -PackageRoot $packageRoot
       $artifactRoot = Join-Path $fixture 'artifacts'
       New-Item -ItemType Directory -Path $artifactRoot | Out-Null
       & ./scripts/archive-package.ps1 -PackageDirectory $packageRoot -OutputDirectory $artifactRoot
@@ -198,6 +209,7 @@ try {
       $maintenance = Join-Path $packageRoot "legura-maintenance$extension"
       & $maintenance verify-package $packageRoot
       if ($LASTEXITCODE -ne 0) { throw 'Extracted package integrity check failed' }
+      Assert-PackageServiceGuide -PackageRoot $packageRoot
       $packageData = Join-Path $packageRoot "data"
       New-Item -ItemType Directory -Path $packageData | Out-Null
       if (!$IsWindows) { [IO.File]::SetUnixFileMode($packageData, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute) }
