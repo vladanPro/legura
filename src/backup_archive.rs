@@ -623,6 +623,16 @@ pub(crate) fn check_recovery_with_store(
     archive: &Path,
     root: &Path,
 ) -> Result<(ArchiveReport, StoreId)> {
+    let (report, store, ()) =
+        check_recovery_contract(archive, root, crate::database_contract::validate_current)?;
+    Ok((report, store))
+}
+
+fn check_recovery_contract<T>(
+    archive: &Path,
+    root: &Path,
+    validate: impl FnOnce(&Connection) -> Result<T>,
+) -> Result<(ArchiveReport, StoreId, T)> {
     // Strip trailing separators/`.` before lstat so a final symlink cannot be
     // treated as a directory merely because the supplied path ends in `/`.
     let root = root.components().collect::<PathBuf>();
@@ -686,7 +696,7 @@ pub(crate) fn check_recovery_with_store(
         OpenFlags::SQLITE_OPEN_READ_ONLY,
     )?;
     database.execute_batch("PRAGMA trusted_schema = OFF; PRAGMA query_only = ON;")?;
-    crate::database_contract::validate_current(&database)?;
+    let schema = validate(&database)?;
     let store = StoreId::parse(&manifest.store)?;
     let storage = crate::storage::LocalStorage::open(
         &root.join("media").join(store.as_str()),
@@ -698,7 +708,61 @@ pub(crate) fn check_recovery_with_store(
         inventory.objects == (report.files - 1) as u64,
         "Recovered media inventory differs from archive"
     );
-    Ok((report, store))
+    Ok((report, store, schema))
+}
+
+#[derive(Serialize)]
+pub struct UpgradeRehearsalReport {
+    migrations_applied: usize,
+    archive: ArchiveReport,
+}
+
+/// Rehearse an upgrade inside a new private directory. Keep every artifact
+/// inactive; a failed rehearsal may leave its workspace for inspection.
+pub fn rehearse_upgrade(archive: &Path, workspace: &Path) -> Result<UpgradeRehearsalReport> {
+    use crate::database_contract::{embedded_migrations, validate_rehearsal_schema};
+    use axonyx_runtime::backend::{runtime_from_env, AxEnv, AxMigrationExecutor};
+
+    private_directory(workspace).context("Upgrade rehearsal workspace must be a new directory")?;
+    let source = workspace.join("restored-source");
+    restore(archive, &source).context("Upgrade rehearsal could not restore the input archive")?;
+    let (_, store, applied) = check_recovery_contract(archive, &source, validate_rehearsal_schema)
+        .context("Upgrade rehearsal input is not a supported product schema")?;
+    let database = source.join("database.sqlite").canonicalize()?;
+    let path = database
+        .to_str()
+        .context("Rehearsal database path must be UTF-8")?;
+    let migrations = embedded_migrations();
+    let migrations_applied = {
+        let runtime = runtime_from_env(
+            AxEnv::new()
+                .with_secret("db_url", format!("sqlite:{path}"))
+                .with_secret("db_dialect", "sqlite"),
+        )?;
+        AxMigrationExecutor::apply_migrations(&runtime, &migrations)
+            .context("Upgrade rehearsal migration failed on the isolated copy")?
+            .len()
+    };
+    ensure!(
+        migrations_applied == migrations.len() - applied,
+        "Unexpected rehearsal migration count"
+    );
+
+    let media = crate::storage::LocalStorage::open(
+        &source.join("media").join(store.as_str()),
+        store.clone(),
+        MAX_OBJECT_BYTES,
+    )?;
+    let output = workspace.join("rehearsed.legura");
+    backup(&database, &media, &store, &output).context("Could not archive the rehearsed copy")?;
+    let verified = workspace.join("verified-recovery");
+    restore(&output, &verified).context("Could not restore the rehearsal output archive")?;
+    let archive = check_recovery(&output, &verified)
+        .context("Rehearsal output failed the current recovery checks")?;
+    Ok(UpgradeRehearsalReport {
+        migrations_applied,
+        archive,
+    })
 }
 
 #[cfg(test)]

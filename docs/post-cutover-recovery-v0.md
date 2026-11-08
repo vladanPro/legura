@@ -45,8 +45,8 @@ with a published post and its attached image. The old recovery receipt cannot
 verify the migrated copy: it describes the original bytes. The test builds a
 new archive from the migrated copy, restores it separately, and verifies the
 current schema, post-to-image link and exact image bytes. The source and
-original archive stay unchanged. This is still fixture-only, not a procedure
-for migrating or activating customer archives.
+original archive stay unchanged. The test exercises the `upgrade-rehearse`
+command; see the native package guide for its inactive-only operator workflow.
 
 ## Operator boundary
 
