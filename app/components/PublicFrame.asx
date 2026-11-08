@@ -13,7 +13,7 @@ component PublicFrame(theme = "default") {
         <a class="legura-skip-link" href="#main-content">Skip to content</a>
         <Container max="xl">
           <header class="legura-header legura-public-header">
-            <a class="legura-brand" href="/"><img src="/assets/legura-mark.svg" alt="" width="36" height="36" />Legura</a>
+            <a class="legura-brand" href="/"><img src="/legura-mark.svg" alt="" width="36" height="36" />Legura</a>
             <nav class="legura-editorial-nav" aria-label="Public navigation">
               <a href="/">Home</a>
               <a href="/posts">Stories</a>
@@ -36,7 +36,7 @@ component PublicFrame(theme = "default") {
         <a class="legura-skip-link" href="#main-content">Skip to content</a>
         <Container max="lg">
           <header class="legura-header legura-public-header">
-            <a class="legura-brand" href="/"><img src="/assets/legura-mark.svg" alt="" width="36" height="36" />Legura</a>
+            <a class="legura-brand" href="/"><img src="/legura-mark.svg" alt="" width="36" height="36" />Legura</a>
             <span>Content, forged together.</span>
           </header>
           <div class="legura-main" id="main-content" tabindex="-1">

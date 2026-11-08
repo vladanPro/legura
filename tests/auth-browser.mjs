@@ -92,7 +92,7 @@ async function checkForm(heading, fields) {
     return rect.top === 0 && rect.left === 0 && rect.right === innerWidth;
   }), true, 'Application canvas must cover the viewport without dark scaffold gutters');
   const logo = page.locator('.legura-brand img');
-  assert.equal(await logo.getAttribute('src'), '/assets/legura-mark.svg');
+  assert.equal(await logo.getAttribute('src'), '/legura-mark.svg');
   assert.equal(await logo.evaluate(node => node.complete && node.naturalWidth > 0), true);
   assert.equal(await page.getByRole("main").count(), 1, "Duplicate main landmarks");
   assert.equal(await page.locator("html").getAttribute("lang"), "en");

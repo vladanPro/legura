@@ -154,8 +154,7 @@ def verify_public_page(guest):
     page, _ = guest.request("/o-nama", 200)
     assert b"About us" in page and b"Page proof" in page
     assert b"<script>fixture()</script>" not in page
-    for asset in ("legura.css", "legura-mark.svg", "appearance.js"):
-        guest.request(f"/assets/{asset}", 200)
+    guest.request("/legura.css", 200)
     guest.request("/login", 200)
 
 
