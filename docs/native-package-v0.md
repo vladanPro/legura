@@ -219,10 +219,14 @@ accepted after that instant. For the **final** archive, stop all server and
 worker instances that can write to this database or media store, prevent new
 write traffic, and confirm the writer processes have exited. Then take a
 media-inclusive archive with the old maintenance tool while those writers
-remain stopped. Run the candidate's `archive-verify`, `archive-restore` into a
-NEW inactive directory, and `archive-check-recovery` there before cutover.
-The latter validates the exact schema, migration history, post content and
-referenced image bytes; neither command switches the running database. Keep
+remain stopped. Run the candidate's `archive-restore` into a NEW inactive
+directory, then run its maintenance executable with
+`upgrade-preflight <fresh-candidate-directory> <archive> <inactive-recovery-directory>`
+before adding the candidate's `.env`. Preflight checks the package inventory
+and hashes, verifies the recovery against the archive, and validates the
+current schema, migration history, post content and referenced image bytes.
+It does not run migrations, prove that all writers stopped, or activate the
+recovery. Keep
 the old writers stopped. Copy the private configuration without changing its
 paths or permissions. Start the candidate, then verify readiness, public
 content, administrator login and private assets. Keep the old package and

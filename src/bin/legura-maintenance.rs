@@ -96,6 +96,14 @@ fn run() -> Result<()> {
             println!("{}", serde_json::to_string(&report)?);
             eprintln!("Current SQLite schema, migrations, content and media checked. Recovery is still inactive; no configuration or secrets were changed.");
         }
+        [command, package, archive, recovery] if command == "upgrade-preflight" => {
+            legura::package_verify::verify(Path::new(package))
+                .context("Candidate package verification failed")?;
+            let report = legura::backup_archive::check_recovery(Path::new(archive), Path::new(recovery))
+                .context("Inactive recovery verification failed")?;
+            println!("{}", serde_json::to_string(&report)?);
+            eprintln!("Read-only preflight passed for the candidate package and inactive recovery. No configuration or service was changed. This does not verify writer shutdown, run migrations or authorize rollback.");
+        }
         [command, snapshot, store, root, archive] if command == "archive-pack-snapshot" => {
             let store = legura::storage::StoreId::parse(store.to_str().context("store ID must be UTF-8")?)?;
             let storage = legura::storage::LocalStorage::open(Path::new(root), store.clone(), legura::storage::MAX_OBJECT_BYTES)?;
@@ -120,6 +128,7 @@ fn run() -> Result<()> {
             " | archive-backup <database-file> <store-id> <private-media-directory> <new-archive>",
             " | archive-verify <archive> | archive-restore <archive> <new-private-directory>",
             " | archive-check-recovery <archive> <inactive-recovery-directory>",
+            " | upgrade-preflight <fresh-candidate-directory> <archive> <inactive-recovery-directory>",
             " | config-recovery <archive> <inactive-recovery-directory> <package-directory> <https|local-http>"
         )),
     }

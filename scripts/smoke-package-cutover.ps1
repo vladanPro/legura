@@ -172,13 +172,16 @@ try {
   $backup = Join-Path $fixture 'before-cutover.legura'
   & $oldMaintenance archive-backup $database local-media $media $backup | Out-Null
   if ($LASTEXITCODE -ne 0) { throw '0.0.1 could not back up its stopped database and image' }
-  & $newMaintenance archive-verify $backup | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw '0.0.2 could not verify the pre-cutover archive' }
   $recovery = Join-Path $fixture 'inactive-recovery'
+  & $newMaintenance upgrade-preflight $current $backup $recovery | Out-Null
+  if ($LASTEXITCODE -eq 0 -or (Test-Path -LiteralPath $recovery)) { throw 'Upgrade preflight accepted or created a missing recovery' }
   & $newMaintenance archive-restore $backup $recovery | Out-Null
   if ($LASTEXITCODE -ne 0) { throw '0.0.2 could not restore the pre-cutover archive' }
-  & $newMaintenance archive-check-recovery $backup $recovery | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw '0.0.2 rejected pre-cutover data or media' }
+  & $newMaintenance upgrade-preflight $prior $backup $recovery | Out-Null
+  if ($LASTEXITCODE -eq 0) { throw '0.0.2 accepted the old package as the upgrade candidate' }
+  & $newMaintenance upgrade-preflight $current $backup $recovery | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw '0.0.2 upgrade preflight rejected its package or the recovered data' }
+  if (Test-Path -LiteralPath $newConfig) { throw 'Upgrade preflight created candidate configuration' }
 
   Copy-Item -LiteralPath $oldConfig -Destination $newConfig
   if (!$IsWindows) { [IO.File]::SetUnixFileMode($newConfig, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite) }
