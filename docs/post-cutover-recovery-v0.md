@@ -20,7 +20,10 @@ not make new writes disappear safely.
 
 1. Publishes a post and image under `0.0.1`, stops the test server, confirms
    it no longer accepts HTTP connections, then verifies a media-inclusive pre-cutover archive
-   before starting `0.0.2`.
+   before starting `0.0.2`. The packaged candidate rehearses that archive,
+   preflights the output, and preserves the original database, archive,
+   configuration and image bytes. This pair shares a schema, so the packaged
+   rehearsal expects zero migrations.
 2. Publishes a second post under `0.0.2`, stops that test server and confirms
    there is no HTTP listener before creating the new archive. The old maintenance reader
    must refuse this newer archive.
