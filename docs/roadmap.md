@@ -195,7 +195,9 @@ a disposable `0.0.1` to `0.0.2` server cutover over external SQLite/media,
 preserving a published post, fresh administrator login and exact private image
 bytes.
 Operator-driven upgrade, schema evolution and rollback after new writes remain
-open; see native-package-v0.md.
+open. The isolated cutover gate now verifies archives from both sides of
+a new `0.0.2` post and proves that an automatic return to the `0.0.1` snapshot
+would discard it; see native-package-v0.md and post-cutover-recovery-v0.md.
 
 Local source preparation has an executable first-run acceptance gate:
 prepare/init/check/start, secret preservation, local-only database/config
