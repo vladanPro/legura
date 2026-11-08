@@ -124,12 +124,13 @@ def verify_pages(client):
     client.action("/admin/pages/new", "CreatePage", 422, fields=dict(draft, slug="login"))
     client.action("/admin/pages/new", "CreatePage", 422, fields=dict(draft, slug="a/b"))
     _, headers = client.action("/admin/pages/new", "CreatePage", fields=draft)
-    edit = headers["Location"]
-    assert re.fullmatch(r"/admin/pages/[0-9a-f-]{36}/edit", edit)
+    assert headers["Location"] == "/admin/pages"
+    listing, _ = client.request("/admin/pages", 200)
+    match = re.search(rb'/admin/pages/[0-9a-f-]{36}/edit', listing)
+    assert match and b"About us" in listing
+    edit = match[0].decode()
     preview = edit.removesuffix("edit") + "preview"
     client.request(edit, 200)
-    listing, _ = client.request("/admin/pages", 200)
-    assert edit.encode() in listing and b"About us" in listing
     guest.request(edit, 403)
     guest.request(preview, 403)
     guest.request("/o-nama", 404)

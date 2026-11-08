@@ -10,5 +10,5 @@ action CreatePage(title: String, slug: String, body: String) {
   require prepared.columns != null else invalid(prepared.errors)
   data id = Uuid.new()
   db.legura_pages.insert({ id: id, title: input.title, slug: input.slug, body: prepared.columns.body, status: "draft" })
-  return redirect("/admin/pages/" + id + "/edit")
+  return redirect("/admin/pages")
 }
