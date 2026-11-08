@@ -173,12 +173,37 @@ Native Package V0 adds a runtime-only directory (server, maintenance tool, asset
 and file inventory), with disposable relocated/no-toolchain acceptance. It is
 for a restored installation or a new SQLite DB using embedded migrations.
 Fresh DB init and native local HTTP configuration are no-clobber. Session/setup
-secrets are generated independently from OS randomness; production settings
-remain operator-managed.
+secrets are generated independently from OS randomness. A new-only HTTPS-mode
+configuration now supports external SQLite/media paths, but TLS, proxy binding,
+service supervision and live upgrades remain operator-managed.
 The same-host fresh-package rehearsal now also verifies publication after
 restart and live backup/restore into a new DB with rotated session secrets.
-Windows acceptance passed; Linux must pass CI before integration.
+Windows acceptance and the Linux package smoke passed, including fresh setup,
+publication, restart and backup/restore in disposable installations. This is
+not yet a public download, signed artifact or supported production upgrade.
 See native-package-v0.md. No signed archive or production platform matrix yet.
+The native-package smoke now includes a disposable same-version replacement:
+an invalid candidate leaves the old server online; a verified candidate checks
+a media-inclusive archive and starts against external SQLite/media, preserving
+an uploaded image, content, login and configuration. A valid candidate with bad
+media configuration also fails startup, after which the original package is
+restarted and its content checked. A separate CI gate builds the pinned `0.0.1`
+and current `0.0.2` maintenance tools and proves that the new reader restores
+old database-only and media-inclusive backups, while the old reader rejects
+new backups. A separate native-package CI gate builds both versions and tests
+a disposable `0.0.1` to `0.0.2` server cutover over external SQLite/media,
+preserving a published post, fresh administrator login and exact private image
+bytes.
+Operator-driven upgrade, schema evolution and rollback after new writes remain
+open. The isolated cutover gate now verifies archives from both sides of
+a new `0.0.2` post and proves that an automatic return to the `0.0.1` snapshot
+would discard it. The final test archives now follow a stopped-writer boundary
+before verification and inactive recovery; this proves only the isolated
+single-server flow, not a multi-instance write freeze. The
+[operator rehearsal](native-package-v0.md#operator-rehearsal-backup-to-preflight)
+ends at read-only preflight. The separate `upgrade-rehearse` command can apply
+schema migrations to an inactive copy and verify a new archive without cutover.
+See [post-cutover recovery](post-cutover-recovery-v0.md) for rollback limits.
 
 Local source preparation has an executable first-run acceptance gate:
 prepare/init/check/start, secret preservation, local-only database/config

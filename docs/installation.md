@@ -9,11 +9,23 @@ directory for a new or restored compatible SQLite installation. Native DB init
 uses embedded migrations without the CLI. Native `config-local` generates a new
 local HTTP .env with independent random secrets; production configuration remains
 operator-managed. Neither command overwrites existing operator files.
+The native `config-https` command can prepare a new-only HTTPS-mode `.env`
+with persistent SQLite/media paths outside the program package, but it does
+not provide TLS, a reverse proxy or a supervised service. For a Linux service
+unit example (not an installer or production guarantee), see
+[Native Service V0](native-service-v0.md).
+The native package is verified on disposable Windows and Linux CI installations,
+but is not yet a published download. A candidate archive and checksum can be
+built and exercised locally. Its `verify-package` command checks a fresh
+extracted package's file inventory before initialization; it does not
+authenticate the publisher or establish production readiness.
 
 ## Prebuilt Native Package
 
-Download a package matching the server OS/architecture and supported system
-libraries. Upload it using SFTP or another deployment method. Set execution
+When a release artifact exists, download a package matching the server
+OS/architecture and supported system libraries. Upload it using SFTP or another
+deployment method. Verify the fresh extracted package before initialization as
+described in [Native Package V0](native-package-v0.md). Set execution
 permissions, configure storage/database/secrets, and start it as a supervised
 service behind the hosting provider's reverse proxy and TLS configuration.
 
@@ -89,8 +101,9 @@ preservation and unsafe-config refusal, then completes native HTTP browser-setup
 requests and verifies administration/setup locking. It stops only its own
 process tree and deletes only its checked temporary fixture. Linux CI repeats
 this gate alongside the existing registry auth/posts/browser acceptance.
-With `-Package`, it also rehearses a runtime-only native directory without
-developer tools in PATH, including fresh setup, publication, restart and
+With `-Package`, it creates and extracts a candidate archive, checks its
+checksum, then rehearses the runtime-only native directory without developer
+tools in PATH, including fresh setup, publication, restart and
 backup/restore into a new database. This remains a same-host acceptance test,
 not a downloadable installer or a production upgrade guarantee.
 

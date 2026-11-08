@@ -875,6 +875,117 @@ fn intact_archives_with_wrong_product_contract_are_not_certified() {
 }
 
 #[test]
+fn media_archive_migration_rehearsal_requires_a_new_archive() {
+    use axonyx_runtime::backend::{runtime_from_env, AxEnv, AxMigrationExecutor};
+    let fixture = Fixture::product();
+    let source = fixture.0.join("snapshot.sqlite");
+    let migrations = legura::database_contract::embedded_migrations();
+    let runtime = |path: &std::path::Path| {
+        runtime_from_env(
+            AxEnv::new()
+                .with_secret("db_url", format!("sqlite:{}", path.display()))
+                .with_secret("db_dialect", "sqlite"),
+        )
+        .unwrap()
+    };
+    {
+        let source_runtime = runtime(&source);
+        for migration in migrations[6..].iter().rev() {
+            AxMigrationExecutor::rollback_migration(&source_runtime, migration).unwrap();
+        }
+    }
+    let key = fixture.upload();
+    {
+        let database = Connection::open(&source).unwrap();
+        database.execute("INSERT INTO legura_posts(id,title,slug,body,status) VALUES('post','Title','title','Original body','published')", []).unwrap();
+        database.execute("INSERT INTO legura_post_images(post_id,media_id,alt) VALUES('post',?,'Original image')", [&key]).unwrap();
+        assert_eq!(
+            legura::database_contract::validate_structure(&database).unwrap(),
+            6
+        );
+    }
+    let original_database = fs::read(&source).unwrap();
+    let original_image = fs::read(fixture.0.join("objects").join(&key)).unwrap();
+    let before = fixture.0.join("before.legura");
+    let report = fixture.pack("before.legura").unwrap();
+    let original_archive = fs::read(&before).unwrap();
+    let rehearsal = fixture.0.join("rehearsal");
+    backup_archive::restore(&before, &rehearsal).unwrap();
+    let error = backup_archive::check_recovery(&before, &rehearsal).unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("requires the current product migrations"));
+
+    let workspace = fixture.0.join("upgrade workspace");
+    let run = |archive: &std::path::Path, destination: &std::path::Path| {
+        Command::new(env!("CARGO_BIN_EXE_legura-maintenance"))
+            .arg("upgrade-rehearse")
+            .arg(archive)
+            .arg(destination)
+            .env("AX_SECRET_DB_URL", "not-the-source")
+            .output()
+            .unwrap()
+    };
+    let output = run(&before, &workspace);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(result["migrations_applied"], migrations.len() - 6);
+    let migrated = workspace.join("restored-source");
+    assert_eq!(
+        fs::read(migrated.join("recovery.json")).unwrap(),
+        fs::read(rehearsal.join("recovery.json")).unwrap()
+    );
+    assert!(backup_archive::check_recovery(&before, &migrated).is_err());
+    let after = workspace.join("rehearsed.legura");
+    let upgraded = backup_archive::verify(&after).unwrap();
+    assert_eq!(upgraded.files, report.files);
+    let archive_bytes = fs::read(&after).unwrap();
+    assert!(!run(&before, &workspace).status.success());
+    assert_eq!(fs::read(&after).unwrap(), archive_bytes);
+    let checked = workspace.join("verified-recovery");
+    assert!(!checked.join(".env").exists());
+    assert_eq!(
+        backup_archive::check_recovery(&after, &checked).unwrap(),
+        upgraded
+    );
+    let database = Connection::open(checked.join("database.sqlite")).unwrap();
+    let post: (String, String, String) = database.query_row(
+        "SELECT p.body,i.media_id,i.alt FROM legura_posts p JOIN legura_post_images i ON i.post_id=p.id WHERE p.id='post' AND p.status='published'",
+        [],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+    ).unwrap();
+    assert_eq!(
+        post,
+        ("Original body".into(), key.clone(), "Original image".into())
+    );
+    assert_eq!(
+        fs::read(checked.join("media/local-media").join(&key)).unwrap(),
+        original_image
+    );
+    assert_eq!(
+        fs::read(fixture.0.join("objects").join(&key)).unwrap(),
+        original_image
+    );
+    assert_eq!(fs::read(&source).unwrap(), original_database);
+    assert_eq!(fs::read(&before).unwrap(), original_archive);
+
+    Connection::open(&source)
+        .unwrap()
+        .execute_batch("CREATE TABLE foreign_table(value TEXT)")
+        .unwrap();
+    fixture.pack("drift.legura").unwrap();
+    let rejected = fixture.0.join("rejected");
+    let failure = run(&fixture.0.join("drift.legura"), &rejected);
+    assert!(!failure.status.success());
+    assert!(String::from_utf8_lossy(&failure.stderr).contains("product schema differs"));
+    assert!(!rejected.join("rehearsed.legura").exists());
+}
+
+#[test]
 fn media_migration_rollback_preserves_referenced_rows_then_allows_empty_table() {
     use axonyx_runtime::backend::{runtime_from_env, AxEnv, AxMigrationExecutor};
     let fixture = Fixture::product();

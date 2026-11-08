@@ -11,11 +11,17 @@ without forcing the user to learn the framework underneath.
 
 ## Status
 
-Initial setup/auth pilot is integrated into dev. This repository does not yet
-contain an installable CMS. There is no production release, installer, or
-published package. The isolated compiled setup/auth smoke passes with source
-Axonyx tooling, including setup races, CSRF, sessions and authorization. Required
-typed-action-query/expression fixes (#323/#324) are published in core 0.6.4,
+Legura is a source and native-package pilot with setup, administration, posts,
+editor, media and backup/restore flows. The runtime-only package can initialize
+a fresh local SQLite installation without Cargo at runtime, but there is no
+public binary release, production installer or supported upgrade path yet.
+The isolated compiled setup/auth smoke covers setup races, CSRF, sessions and
+authorization. The following paragraphs record earlier implementation steps;
+current dependency pins live in `Cargo.toml` and `.github/workflows/ci.yml`.
+
+### Earlier acceptance milestones
+
+Typed-action-query/expression fixes (#323/#324) were published in core 0.6.4,
 runtime 0.6.3 and CLI 0.6.7. Registry-only compiled HTTP acceptance passed on
 2026-10-09; no source framework checkout is needed for that test.
 
@@ -55,7 +61,9 @@ The experimental [Native Package V0](docs/native-package-v0.md) runs an already
 initialized compatible installation without source or Cargo at runtime. Native
 DB initialization and new local HTTP configuration with random secrets are
 available through the native maintenance tool; a
-production installer remains a separate gate.
+production installer remains a separate gate. See the
+[native upgrade rehearsal](docs/native-package-v0.md#operator-rehearsal-backup-to-preflight)
+for package verification, backup, and inactive recovery checks.
 
 Setup/login now have keyboard skip navigation, named forms, linked field errors
 and small-screen acceptance with and without JavaScript. See the scoped
@@ -98,13 +106,13 @@ validated, server-owned boolean for product navigation, not an upload grant.
 An isolated protected-upload proof is merged in `dev` (PR #48), after all seven
 CI gates passed. Its startup hook (framework PR #357) is published in CLI 0.6.15,
 first adopted from crates.io; the current private-image CI uses registry CLI
-0.7.1. The
+0.8.8. The
 [library view pilot](docs/media-library-view-v0.md) is the basis of the opt-in
 product page. Existing operator installations are not automatically activated.
 
 The read-only [media integrity check](docs/media-integrity-check-v0.md) prepares
 the backup boundary. Database-only backup refuses media references; coordinated
-file-inclusive recovery remains incomplete. No media is activated here.
+file-inclusive recovery was still separate at this stage.
 
 An experimental [`.legura` archive container](docs/legura-archive-v0.md) can package
 an explicitly supplied frozen snapshot or capture live SQLite through its backup
@@ -118,8 +126,8 @@ stop/check/switch/start with new session secrets and source rollback, without
 changing the developer's running CMS or claiming an operator activation command.
 The [native media configuration](docs/native-media-config-v0.md) now uses Legura's
 own startup hook and the application DB settings, disabled by default. Operator
-media pages and delivery remain inactive; the current private-image feature requires the
-registry CLI/runtime 0.7.1 documented above.
+media pages and delivery were still inactive at that stage. The current pilot
+uses registry CLI 0.8.8 and runtime 0.8.3.
 
 The native tool can now generate a NEW [private recovery configuration](docs/recovery-private-config-v0.md)
 with independent session/setup secrets after archive compatibility checks. It
@@ -134,7 +142,8 @@ never replaces an existing `.env` or activates a service.
 - Use native binaries or source builds; Docker is optional.
 
 Legura is an independent product, not a WordPress fork or compatibility layer.
-Its official presentation website will be separate from the installed CMS.
+Its [presentation website](https://legura.axonyx.dev/) is separate from the
+installed CMS.
 
 ## First Milestone
 

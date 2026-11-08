@@ -1,5 +1,6 @@
-param([ValidateRange(1024, 65535)][int] $Port = 3943, [switch] $Package)
+param([ValidateRange(1024, 65535)][int] $Port = 3943, [switch] $Package, [switch] $Systemd)
 $ErrorActionPreference = "Stop"
+if ($Systemd -and (!$Package -or $IsWindows)) { throw 'Systemd smoke requires -Package on Linux' }
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
 $temporaryRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
 $fixture = Join-Path $temporaryRoot ("legura-local-" + [Guid]::NewGuid().ToString("N"))
@@ -31,6 +32,26 @@ function Request {
   }
 }
 
+function Assert-PrivateMedia {
+  param([string] $Id, [string] $ObjectPath)
+  $request = [Net.Http.HttpRequestMessage]::new([Net.Http.HttpMethod]::Get, "$baseUrl/api/media/$Id")
+  $response = $null
+  try {
+    $response = $client.SendAsync($request).GetAwaiter().GetResult()
+    if ([int]$response.StatusCode -ne 200 -or $response.Content.Headers.ContentType.MediaType -ne 'image/png') {
+      throw "Private image $Id was not available as PNG"
+    }
+    $actual = $response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()
+    $expected = [IO.File]::ReadAllBytes($ObjectPath)
+    if ([Convert]::ToBase64String($actual) -cne [Convert]::ToBase64String($expected)) {
+      throw "Private image $Id changed across package replacement"
+    }
+  } finally {
+    if ($response) { $response.Dispose() }
+    $request.Dispose()
+  }
+}
+
 function Assert-InitRefused {
   param([string] $Message)
   $refused = $false
@@ -39,6 +60,16 @@ function Assert-InitRefused {
     $refused = $true
   }
   if (!$refused) { throw "Unsafe local initialization was accepted" }
+}
+
+function Assert-PackageServiceGuide {
+  param([string] $PackageRoot)
+  $readme = Join-Path $PackageRoot 'README.md'
+  $guide = Join-Path $PackageRoot 'native-service-v0.md'
+  if (!(Test-Path -LiteralPath $guide -PathType Leaf) -or
+      !([IO.File]::ReadAllText($readme).Contains('(native-service-v0.md)'))) {
+    throw 'Packaged README has a missing native service guide'
+  }
 }
 
 try {
@@ -180,6 +211,26 @@ try {
       }
       $extension = if ($IsWindows) { '.exe' } else { '' }
       $maintenance = Join-Path $packageRoot "legura-maintenance$extension"
+      & $maintenance verify-package $packageRoot
+      if ($LASTEXITCODE -ne 0) { throw "Native package integrity check failed" }
+      Assert-PackageServiceGuide -PackageRoot $packageRoot
+      $artifactRoot = Join-Path $fixture 'artifacts'
+      New-Item -ItemType Directory -Path $artifactRoot | Out-Null
+      & ./scripts/archive-package.ps1 -PackageDirectory $packageRoot -OutputDirectory $artifactRoot
+      $archives = @(Get-ChildItem -LiteralPath $artifactRoot -File -Filter 'legura-*.tar.gz')
+      if ($archives.Count -ne 1) { throw 'Expected exactly one candidate archive' }
+      $archive = $archives[0]
+      $checksum = [IO.File]::ReadAllText("$($archive.FullName).sha256").TrimEnd()
+      $archiveHash = (Get-FileHash -LiteralPath $archive.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+      if ($checksum -cne "$archiveHash  $($archive.Name)") { throw 'Candidate archive checksum mismatch' }
+      $packageRoot = Join-Path $fixture 'extracted-package'
+      New-Item -ItemType Directory -Path $packageRoot | Out-Null
+      & tar -xzf $archive.FullName -C $packageRoot
+      if ($LASTEXITCODE -ne 0) { throw 'Candidate archive extraction failed' }
+      $maintenance = Join-Path $packageRoot "legura-maintenance$extension"
+      & $maintenance verify-package $packageRoot
+      if ($LASTEXITCODE -ne 0) { throw 'Extracted package integrity check failed' }
+      Assert-PackageServiceGuide -PackageRoot $packageRoot
       $packageData = Join-Path $packageRoot "data"
       New-Item -ItemType Directory -Path $packageData | Out-Null
       if (!$IsWindows) { [IO.File]::SetUnixFileMode($packageData, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute) }
@@ -231,7 +282,7 @@ try {
       if (!$asset.StartsWith('/')) { throw "Packaged CSS reference missing" }
       Request -Path $asset -Status 200 | Out-Null
       if ([IO.File]::ReadAllText($packageConfig) -cne $original.Replace($config.AX_SECRET_SESSION_KEY, $newKey)) { throw "Packaged startup modified secrets" }
-      Write-Host "Native package passed: complete hashes, no source/secrets, relocated launcher, no developer tools, restored login/admin, private setup and CSS assets."
+      Write-Host "Native archive passed: checksum, extracted package integrity, no source/secrets, relocated launcher, no developer tools, restored login/admin, private setup and CSS assets."
       $process.Kill($true)
       $process.WaitForExit()
       $process.Dispose()
@@ -352,6 +403,348 @@ try {
       Request -Path '/admin' -Status 200 | Out-Null
       if ([IO.File]::ReadAllText($packageConfig) -cne $restoredConfig) { throw "Recovered server modified configuration" }
       Write-Host "Fresh native DB passed without CLI: setup, publication, restart persistence, live backup/verify, no-clobber restore, rotated sessions and recovered login."
+      $process.Kill($true)
+      $process.WaitForExit()
+      $process.Dispose()
+      $process = $null
+      $upgradeData = Join-Path $fixture 'upgrade-private'
+      $upgradeMedia = Join-Path $upgradeData 'media'
+      New-Item -ItemType Directory -Path $upgradeData, $upgradeMedia | Out-Null
+      if (!$IsWindows) {
+        [IO.File]::SetUnixFileMode($upgradeData, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute)
+        [IO.File]::SetUnixFileMode($upgradeMedia, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute)
+      }
+      $upgradeDatabase = Join-Path $upgradeData 'legura.db'
+      & $freshMaintenance restore $freshBundle $upgradeDatabase
+      if ($LASTEXITCODE -ne 0) { throw 'Could not prepare external replacement database' }
+      $upgradeConfig = $freshConfig.Replace('sqlite://data/legura.db', "sqlite:$($upgradeDatabase.Replace('\', '/'))")
+      $upgradeConfig += "AX_SECRET_MEDIA_DRIVER=local`nAX_SECRET_MEDIA_ROOT=$($upgradeMedia.Replace('\', '/'))`nAX_SECRET_MEDIA_STORE_ID=local-media`n"
+      [IO.File]::WriteAllText($packageConfig, $upgradeConfig)
+      $options.ArgumentList = @('-NoProfile', '-File', (Join-Path $freshRoot 'start.ps1'), '-Port', "$Port")
+      $process = Start-Process @options
+      $ready = $false
+      for ($attempt = 0; $attempt -lt 120; $attempt++) {
+        if ($process.HasExited) { throw 'Original package exited before replacement rehearsal' }
+        try { Request -Path '/__axonyx/ready' -Status 200 | Out-Null; $ready = $true; break } catch { Start-Sleep -Milliseconds 250 }
+      }
+      if (!$ready) { throw 'Original package was not ready for replacement rehearsal' }
+      if (!(Request -Path '/posts/native-first' -Status 200).Contains('Native published content')) { throw 'External database lost published content' }
+      Request -Path '/admin' -Status 403 | Out-Null
+      $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+      Request -Path '/__axonyx/action?path=%2Flogin&name=SignIn' -Status 303 -Body "email=native%40example.com&password=$password" -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
+      Request -Path '/admin/media' -Status 200 | Out-Null
+      $image = [Convert]::FromBase64String('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNwqzjxHwAFFAKG7uYx/AAAAABJRU5ErkJggg==')
+      $upload = [Net.Http.HttpRequestMessage]::new([Net.Http.HttpMethod]::Post, "$baseUrl/__axonyx/action?path=%2Fadmin%2Fmedia&name=UploadLibraryImage")
+      $multipart = [Net.Http.MultipartFormDataContent]::new()
+      $part = [Net.Http.ByteArrayContent]::new($image)
+      $part.Headers.ContentType = [Net.Http.Headers.MediaTypeHeaderValue]::new('image/png')
+      $multipart.Add($part, 'image', 'fixture.png')
+      $upload.Content = $multipart
+      $upload.Headers.Add('Origin', $baseUrl)
+      $upload.Headers.Add('Accept', 'application/ax-patch+json')
+      $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+      $upload.Headers.Add('X-Axonyx-CSRF', $proof)
+      try {
+        $uploadResponse = $client.SendAsync($upload).GetAwaiter().GetResult()
+        try {
+          if ([int]$uploadResponse.StatusCode -ne 200) { throw "Native package media upload failed: $([int]$uploadResponse.StatusCode)" }
+          $uploaded = $uploadResponse.Content.ReadAsStringAsync().GetAwaiter().GetResult() | ConvertFrom-Json
+          if (!$uploaded.ok -or $uploaded.value.storage -ne 'local-media') { throw 'Native package upload returned an invalid media reference' }
+          $mediaId = [string]$uploaded.value.id
+        } finally { $uploadResponse.Dispose() }
+      } finally { $upload.Dispose() }
+      $mediaObject = Join-Path $upgradeMedia $mediaId
+      Assert-PrivateMedia -Id $mediaId -ObjectPath $mediaObject
+      & $freshMaintenance media-check $upgradeDatabase local-media $upgradeMedia | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw 'Original package media audit failed' }
+      $badRoot = Join-Path $fixture 'invalid-upgrade-candidate'
+      $candidateRoot = Join-Path $fixture 'valid-upgrade-candidate'
+      foreach ($destination in @($badRoot, $candidateRoot)) {
+        New-Item -ItemType Directory -Path $destination | Out-Null
+        Copy-Item -LiteralPath (Join-Path $packageRoot 'package.json') -Destination $destination
+        foreach ($entry in $manifest.files) {
+          $target = Join-Path $destination $entry.path
+          New-Item -ItemType Directory -Path (Split-Path $target) -Force | Out-Null
+          Copy-Item -LiteralPath (Join-Path $packageRoot $entry.path) -Destination $target
+        }
+      }
+      [IO.File]::AppendAllText((Join-Path $badRoot 'README.md'), "`ncorrupt candidate`n")
+      $badMaintenance = Join-Path $badRoot "legura-maintenance$extension"
+      & $badMaintenance verify-package $badRoot *> $null
+      if ($LASTEXITCODE -eq 0) { throw 'Corrupt replacement candidate passed preflight' }
+      if ($process.HasExited -or !(Request -Path '/posts/native-first' -Status 200).Contains('Native published content')) {
+        throw 'Rejected candidate interrupted the original installation'
+      }
+      $candidateMaintenance = Join-Path $candidateRoot "legura-maintenance$extension"
+      & $candidateMaintenance verify-package $candidateRoot
+      if ($LASTEXITCODE -ne 0) { throw 'Valid replacement candidate failed preflight' }
+      $upgradeBackup = Join-Path $fixture 'backups/before-package-replacement.legura'
+      & $freshMaintenance archive-backup $upgradeDatabase local-media $upgradeMedia $upgradeBackup | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw 'Pre-replacement media-inclusive backup failed' }
+      & $candidateMaintenance archive-verify $upgradeBackup | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw 'Replacement candidate cannot verify pre-replacement archive' }
+      $upgradeRecovery = Join-Path $fixture 'upgrade-inactive-recovery'
+      & $candidateMaintenance archive-restore $upgradeBackup $upgradeRecovery | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw 'Replacement candidate cannot recover pre-replacement archive' }
+      & $candidateMaintenance archive-check-recovery $upgradeBackup $upgradeRecovery | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw 'Replacement candidate cannot validate database and media compatibility' }
+      $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+      Request -Path '/__axonyx/action?path=%2Fadmin&name=SignOut' -Status 303 -Body 'submit=1' -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
+      $configHash = (Get-FileHash -LiteralPath $packageConfig -Algorithm SHA256).Hash
+      $process.Kill($true)
+      $process.WaitForExit()
+      $process.Dispose()
+      $process = $null
+      $failedRoot = Join-Path $fixture 'failed-start-candidate'
+      New-Item -ItemType Directory -Path $failedRoot | Out-Null
+      Copy-Item -LiteralPath (Join-Path $candidateRoot 'package.json') -Destination $failedRoot
+      foreach ($entry in $manifest.files) {
+        $target = Join-Path $failedRoot $entry.path
+        New-Item -ItemType Directory -Path (Split-Path $target) -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path $candidateRoot $entry.path) -Destination $target
+      }
+      $failedMaintenance = Join-Path $failedRoot "legura-maintenance$extension"
+      & $failedMaintenance verify-package $failedRoot
+      if ($LASTEXITCODE -ne 0) { throw 'Failed-start candidate did not pass package preflight' }
+      $missingMedia = (Join-Path $fixture 'missing-media-root').Replace('\', '/')
+      if (Test-Path -LiteralPath $missingMedia) { throw 'Failure fixture media root unexpectedly exists' }
+      $failedConfig = $upgradeConfig.Replace($upgradeMedia.Replace('\', '/'), $missingMedia)
+      [IO.File]::WriteAllText((Join-Path $failedRoot '.env'), $failedConfig)
+      $options.ArgumentList = @('-NoProfile', '-File', (Join-Path $failedRoot 'start.ps1'), '-Port', "$Port")
+      $process = Start-Process @options
+      if (!$process.WaitForExit(30000)) {
+        $process.Kill($true)
+        $process.WaitForExit()
+        throw 'Misconfigured candidate reached a running state'
+      }
+      if ($process.ExitCode -eq 0) { throw 'Misconfigured candidate exited successfully' }
+      $process.Dispose()
+      $process = $null
+      if ((Get-FileHash -LiteralPath $packageConfig -Algorithm SHA256).Hash -ne $configHash) {
+        throw 'Failed candidate changed the original configuration'
+      }
+      $options.ArgumentList = @('-NoProfile', '-File', (Join-Path $freshRoot 'start.ps1'), '-Port', "$Port")
+      $process = Start-Process @options
+      $ready = $false
+      for ($attempt = 0; $attempt -lt 120; $attempt++) {
+        if ($process.HasExited) { throw 'Original package could not restart after failed candidate' }
+        try { Request -Path '/__axonyx/ready' -Status 200 | Out-Null; $ready = $true; break } catch { Start-Sleep -Milliseconds 250 }
+      }
+      if (!$ready) { throw 'Original package did not recover after failed candidate' }
+      if (!(Request -Path '/posts/native-first' -Status 200).Contains('Native published content')) { throw 'Failed candidate lost original post' }
+      $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+      Request -Path '/__axonyx/action?path=%2Flogin&name=SignIn' -Status 303 -Body "email=native%40example.com&password=$password" -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
+      Request -Path '/admin' -Status 200 | Out-Null
+      Assert-PrivateMedia -Id $mediaId -ObjectPath $mediaObject
+      & $freshMaintenance media-check $upgradeDatabase local-media $upgradeMedia | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw 'Failed candidate damaged original media' }
+      $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+      Request -Path '/__axonyx/action?path=%2Fadmin&name=SignOut' -Status 303 -Body 'submit=1' -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
+      $process.Kill($true)
+      $process.WaitForExit()
+      $process.Dispose()
+      $process = $null
+      Copy-Item -LiteralPath $packageConfig -Destination $candidateRoot
+      $candidateConfig = Join-Path $candidateRoot '.env'
+      if ((Get-FileHash -LiteralPath $candidateConfig -Algorithm SHA256).Hash -ne $configHash) { throw 'Replacement changed private configuration' }
+      $options.ArgumentList = @('-NoProfile', '-File', (Join-Path $candidateRoot 'start.ps1'), '-Port', "$Port")
+      $process = Start-Process @options
+      $ready = $false
+      for ($attempt = 0; $attempt -lt 120; $attempt++) {
+        if ($process.HasExited) { throw 'Replacement package exited before readiness' }
+        try { Request -Path '/__axonyx/ready' -Status 200 | Out-Null; $ready = $true; break } catch { Start-Sleep -Milliseconds 250 }
+      }
+      if (!$ready) { throw 'Replacement package was not ready' }
+      if (!(Request -Path '/posts/native-first' -Status 200).Contains('Native published content')) { throw 'Replacement lost published content' }
+      Request -Path '/admin' -Status 403 | Out-Null
+      $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+      Request -Path '/__axonyx/action?path=%2Flogin&name=SignIn' -Status 303 -Body "email=native%40example.com&password=$password" -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
+      Request -Path '/admin' -Status 200 | Out-Null
+      $library = Request -Path '/admin/media' -Status 200
+      if (!$library.Contains($mediaId)) { throw 'Replacement media library lost its image' }
+      Assert-PrivateMedia -Id $mediaId -ObjectPath $mediaObject
+      & $candidateMaintenance media-check $upgradeDatabase local-media $upgradeMedia | Out-Null
+      if ($LASTEXITCODE -ne 0) { throw 'Replacement media audit failed' }
+      Request -Path '/setup' -Status 403 | Out-Null
+      if ((Get-FileHash -LiteralPath $packageConfig -Algorithm SHA256).Hash -ne $configHash -or
+          (Get-FileHash -LiteralPath $candidateConfig -Algorithm SHA256).Hash -ne $configHash) {
+        throw 'Replacement modified private configuration'
+      }
+      Write-Host 'Native package replacement passed: corrupt candidate rejected online; misconfigured candidate failed startup and old server recovered; media-inclusive backup and successful replacement preserved external data, image bytes, config, content and login.'
+      $process.Kill($true)
+      $process.WaitForExit()
+      $process.Dispose()
+      $process = $null
+      $httpsRoot = Join-Path $fixture 'https-native-package'
+      $httpsData = Join-Path $fixture 'https-private-data'
+      New-Item -ItemType Directory -Path $httpsRoot, $httpsData | Out-Null
+      foreach ($entry in Get-ChildItem -LiteralPath $packageRoot) {
+        if ($entry.Name -notin @('data', '.env')) { Copy-Item -LiteralPath $entry.FullName -Destination $httpsRoot -Recurse }
+      }
+      $httpsMedia = Join-Path $httpsData 'media'
+      New-Item -ItemType Directory -Path $httpsMedia | Out-Null
+      if (!$IsWindows) {
+        [IO.File]::SetUnixFileMode($httpsData, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute)
+        [IO.File]::SetUnixFileMode($httpsMedia, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite -bor [IO.UnixFileMode]::UserExecute)
+      }
+      $httpsMaintenance = Join-Path $httpsRoot "legura-maintenance$extension"
+      $httpsDatabase = Join-Path $httpsData 'legura.db'
+      $httpsConfig = Join-Path $httpsRoot '.env'
+      $pathBefore = $env:PATH
+      try {
+        $env:PATH = Join-Path $fixture 'no-toolchain-path'
+        & $httpsMaintenance init $httpsDatabase
+        if ($LASTEXITCODE -ne 0) { throw 'HTTPS-mode fresh database initialization failed' }
+        $httpsDatabaseHash = (Get-FileHash -LiteralPath $httpsDatabase).Hash
+        $httpsOutput = & $httpsMaintenance config-https $httpsRoot $httpsData
+        if ($LASTEXITCODE -ne 0) { throw 'HTTPS-mode fresh configuration failed' }
+        $httpsContent = [IO.File]::ReadAllText($httpsConfig)
+        if (!$httpsContent.Contains('AX_SECRET_SESSION_COOKIE_SECURE=true') -or
+            !$httpsContent.Contains('AX_SECRET_MEDIA_DRIVER=local') -or
+            $httpsContent -notmatch '(?m)^AX_SECRET_MEDIA_ROOT=.*https-private-data[/\\]media$' -or
+            "$httpsOutput" -match '(?i)[a-f0-9]{64}' -or
+            (Get-FileHash -LiteralPath $httpsDatabase).Hash -ne $httpsDatabaseHash) {
+          throw 'HTTPS-mode config leaked secrets or changed external data'
+        }
+        & $httpsMaintenance config-https $httpsRoot $httpsData
+        if ($LASTEXITCODE -eq 0 -or [IO.File]::ReadAllText($httpsConfig) -cne $httpsContent) { throw 'HTTPS-mode config replaced an existing file' }
+        $options.FilePath = Join-Path $httpsRoot "legura-server$extension"
+        $options.Remove('ArgumentList')
+        $options.WorkingDirectory = $httpsRoot
+        $env:AXONYX_HOST = '127.0.0.1'
+        $env:AXONYX_PORT = "$Port"
+        if (Get-Command cargo,git,node,cargo-ax,pwsh -ErrorAction SilentlyContinue) { throw 'Direct native runtime still exposes developer tools or PowerShell' }
+        $process = Start-Process @options
+      } finally {
+        $env:PATH = $pathBefore
+        Remove-Item Env:AXONYX_HOST,Env:AXONYX_PORT -ErrorAction SilentlyContinue
+      }
+      $ready = $false
+      for ($attempt = 0; $attempt -lt 120; $attempt++) {
+        if ($process.HasExited) { throw 'HTTPS-mode native server exited before readiness' }
+        try { Request -Path '/__axonyx/ready' -Status 200 | Out-Null; $ready = $true; break } catch { Start-Sleep -Milliseconds 250 }
+      }
+      if (!$ready) { throw 'HTTPS-mode native server was not ready' }
+      Request -Path '/setup' -Status 200 | Out-Null
+      $httpsHandler = [Net.Http.HttpClientHandler]::new()
+      $httpsHandler.AllowAutoRedirect = $false
+      $httpsHandler.CookieContainer = [Net.CookieContainer]::new()
+      $httpsClient = [Net.Http.HttpClient]::new($httpsHandler)
+      try {
+        $csrfRequest = [Net.Http.HttpRequestMessage]::new([Net.Http.HttpMethod]::Get, "$baseUrl/__axonyx/csrf")
+        $csrfRequest.Headers.Add('Origin', $baseUrl)
+        try {
+          $csrfResponse = $httpsClient.SendAsync($csrfRequest).GetAwaiter().GetResult()
+          try {
+            if ([int]$csrfResponse.StatusCode -ne 200) { throw 'HTTPS-mode CSRF bootstrap failed' }
+            $httpsProof = ($csrfResponse.Content.ReadAsStringAsync().GetAwaiter().GetResult() | ConvertFrom-Json).token
+          } finally { $csrfResponse.Dispose() }
+        } finally { $csrfRequest.Dispose() }
+        $httpsToken = [regex]::Match($httpsContent, '(?m)^AX_SECRET_SETUP_TOKEN=([a-f0-9]{64})$').Groups[1].Value
+        if (!$httpsProof -or !$httpsToken) { throw 'HTTPS-mode private setup credentials are incomplete' }
+        $setupRequest = [Net.Http.HttpRequestMessage]::new([Net.Http.HttpMethod]::Post, "$baseUrl/__axonyx/action?path=%2Fsetup&name=Install")
+        $setupRequest.Content = [Net.Http.StringContent]::new("siteName=HTTPS+proof&email=https%40example.com&password=$password&setupToken=$httpsToken", [Text.Encoding]::UTF8, 'application/x-www-form-urlencoded')
+        $setupRequest.Headers.Add('Origin', $baseUrl)
+        $setupRequest.Headers.Add('Accept', 'text/html')
+        $setupRequest.Headers.Add('X-Axonyx-CSRF', $httpsProof)
+        try {
+          $setupResponse = $httpsClient.SendAsync($setupRequest).GetAwaiter().GetResult()
+          try {
+            $cookies = [string]::Join(';', $setupResponse.Headers.GetValues('Set-Cookie'))
+            if ([int]$setupResponse.StatusCode -ne 303 -or $cookies -notmatch '(?i)(^|;)\s*Secure(\s*;|$)' -or $cookies -notmatch '(?i)(^|;)\s*HttpOnly(\s*;|$)') {
+              throw 'HTTPS-mode setup did not issue a Secure, HttpOnly session cookie'
+            }
+          } finally { $setupResponse.Dispose() }
+        } finally { $setupRequest.Dispose() }
+      } finally {
+        $httpsClient.Dispose()
+        $httpsHandler.Dispose()
+      }
+      if (!$IsWindows) {
+        & /bin/kill -TERM $process.Id
+        if ($LASTEXITCODE -ne 0 -or !$process.WaitForExit(10000)) { throw 'HTTPS-mode native server did not stop on SIGTERM' }
+        $process.Dispose()
+        $process = $null
+        $pathBefore = $env:PATH
+        try {
+          $env:PATH = Join-Path $fixture 'no-toolchain-path'
+          $env:AXONYX_HOST = '127.0.0.1'
+          $env:AXONYX_PORT = "$Port"
+          $process = Start-Process @options
+        } finally {
+          $env:PATH = $pathBefore
+          Remove-Item Env:AXONYX_HOST,Env:AXONYX_PORT -ErrorAction SilentlyContinue
+        }
+        $ready = $false
+        for ($attempt = 0; $attempt -lt 120; $attempt++) {
+          if ($process.HasExited) { throw 'HTTPS-mode native server exited during restart' }
+          try { Request -Path '/__axonyx/ready' -Status 200 | Out-Null; $ready = $true; break } catch { Start-Sleep -Milliseconds 250 }
+        }
+        if (!$ready) { throw 'HTTPS-mode native server did not restart' }
+        Request -Path '/setup' -Status 403 | Out-Null
+        Request -Path '/admin' -Status 403 | Out-Null
+        $proof = (Request -Path '/__axonyx/csrf' -Status 200 -Headers @{ Origin = $baseUrl } | ConvertFrom-Json).token
+        Request -Path '/__axonyx/action?path=%2Flogin&name=SignIn' -Status 303 -Body "email=https%40example.com&password=$password" -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = $proof } | Out-Null
+        Write-Host 'Linux native SIGTERM/restart passed: setup stayed locked and administrator credentials were accepted. Secure cookies require HTTPS for subsequent admin requests.'
+      }
+      $process.Kill($true)
+      $process.WaitForExit()
+      $process.Dispose()
+      $process = $null
+      if ($Systemd) {
+        $unitName = "legura-ci-$([Guid]::NewGuid().ToString('N')).service"
+        $serviceUser = (& id -un).Trim()
+        $serviceGroup = (& id -gn).Trim()
+        $startedUnit = $false
+        try {
+          $serviceOptions = @(
+            "--unit=$unitName"
+            '--property=Type=simple'
+            "--property=User=$serviceUser"
+            "--property=Group=$serviceGroup"
+            "--property=WorkingDirectory=$httpsRoot"
+            '--property=Environment=AXONYX_HOST=127.0.0.1'
+            "--property=Environment=AXONYX_PORT=$Port"
+            '--property=Restart=on-failure'
+            '--property=RestartSec=1s'
+            '--property=NoNewPrivileges=yes'
+            '--property=ProtectSystem=strict'
+            "--property=ReadWritePaths=$httpsData"
+          )
+          & sudo -n systemd-run @serviceOptions $options.FilePath
+          if ($LASTEXITCODE -ne 0) { throw 'Transient systemd service did not start' }
+          $startedUnit = $true
+          $ready = $false
+          for ($attempt = 0; $attempt -lt 120; $attempt++) {
+            try { Request -Path '/__axonyx/ready' -Status 200 | Out-Null; $ready = $true; break } catch { Start-Sleep -Milliseconds 250 }
+          }
+          if (!$ready) { throw 'Transient systemd service was not ready' }
+          $firstPid = (& sudo -n systemctl show --property=MainPID --value $unitName).Trim()
+          if ($firstPid -notmatch '^[1-9][0-9]*$') { throw 'Transient systemd service has no main process' }
+          & /bin/kill -KILL $firstPid
+          if ($LASTEXITCODE -ne 0) { throw 'Could not terminate the supervised server' }
+          $restarted = $false
+          for ($attempt = 0; $attempt -lt 120; $attempt++) {
+            $nextPid = (& sudo -n systemctl show --property=MainPID --value $unitName).Trim()
+            if ($nextPid -match '^[1-9][0-9]*$' -and $nextPid -ne $firstPid) {
+              try { Request -Path '/__axonyx/ready' -Status 200 | Out-Null; $restarted = $true; break } catch {}
+            }
+            Start-Sleep -Milliseconds 250
+          }
+          if (!$restarted) { throw 'Systemd did not restart the failed native server' }
+          Request -Path '/setup' -Status 403 | Out-Null
+          Request -Path '/login' -Status 200 | Out-Null
+          Write-Host 'Transient systemd service passed: isolated native start, restart on failure and preserved installation.'
+        } finally {
+          if ($startedUnit) {
+            & sudo -n systemctl stop $unitName
+            if ($LASTEXITCODE -ne 0) { throw 'Could not stop the transient systemd service' }
+            & sudo -n systemctl reset-failed $unitName 2>$null
+          }
+        }
+      }
+      if ([IO.File]::ReadAllText($httpsConfig) -cne $httpsContent) { throw 'HTTPS-mode server modified configuration' }
+      Write-Host 'Fresh HTTPS-mode config passed: external data/media, independent private secrets, no clobber and direct native startup without developer tools or PowerShell. TLS/service setup is not covered.'
     }
     # The expected no-clobber failure must not become pwsh's final exit status.
     $global:LASTEXITCODE = 0

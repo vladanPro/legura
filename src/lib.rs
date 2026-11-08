@@ -1,5 +1,6 @@
 //! Product contracts and explicitly registered native helpers.
 pub mod backup_archive;
+pub mod backup_compatibility;
 pub mod content;
 pub mod content_audit;
 pub mod content_loading;
@@ -15,6 +16,7 @@ pub mod media_image;
 pub mod media_library;
 pub mod media_read;
 pub mod media_upload;
+pub mod package_verify;
 pub mod pagination;
 pub mod post_images;
 pub mod published_image;

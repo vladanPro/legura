@@ -45,6 +45,9 @@ product/version, database SHA-256). The manifest is written last; an interrupted
 or failed directory is not a verified backup. Never modify a bundle during
 verification or restore. Do not use network filesystems or untrusted shared
 directories. Symlink files and SQLite sidecars are rejected.
+The `0.0.2` maintenance reader accepts bundles produced by `0.0.1` or `0.0.2`;
+the older reader cannot read `0.0.2` bundles. This does not upgrade the
+restored database schema or establish a supported server cutover procedure.
 
 The database includes administrator records, password hashes, site settings,
 public posts, private drafts and migration history. Backups are sensitive:

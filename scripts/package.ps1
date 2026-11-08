@@ -26,7 +26,8 @@ try {
     @{ Source = (Join-Path $metadata.target_directory "release/axonyx-production$extension"); Target = "legura-server$extension" },
     @{ Source = (Join-Path $metadata.target_directory "release/legura-maintenance$extension"); Target = "legura-maintenance$extension" },
     @{ Source = (Join-Path $root "scripts/package-start.ps1"); Target = "start.ps1" },
-    @{ Source = (Join-Path $root "docs/native-package-v0.md"); Target = "README.md" }
+    @{ Source = (Join-Path $root "docs/native-package-v0.md"); Target = "README.md" },
+    @{ Source = (Join-Path $root "docs/native-service-v0.md"); Target = "native-service-v0.md" }
   )
   $dist = Join-Path $root "dist"
   if ((Get-Item -LiteralPath $dist -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "Package assets must not be linked" }

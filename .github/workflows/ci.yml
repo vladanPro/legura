@@ -140,10 +140,40 @@ jobs:
         run: |
           ./scripts/smoke-auth.ps1 -ActiveEditor -NativeRetry -Mode javascript -Port 3946
           ./scripts/smoke-auth.ps1 -ActiveEditor -Mode native -Port 3946
+  native-package:
+    name: Native Package Archive
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install published private-binary CLI
+        run: cargo install cargo-axonyx --version '=0.8.8' --locked --debug
+      - name: Verify archive extraction and toolchain-free native flow
+        shell: pwsh
+        run: ./scripts/smoke-local.ps1 -Port 3943 -Package -Systemd
+      - uses: actions/checkout@v4
+        with:
+          ref: 8d47e6165a6df6d5ea4d510db9b20ba811846493
+          path: prior
+      - name: Verify 0.0.1 backup compatibility with 0.0.2
+        shell: pwsh
+        run: |
+          $priorPackage = Join-Path $env:RUNNER_TEMP ('legura-prior-package-' + [Guid]::NewGuid().ToString('N'))
+          $currentPackage = Join-Path $env:RUNNER_TEMP ('legura-current-package-' + [Guid]::NewGuid().ToString('N'))
+          ./prior/scripts/local.ps1 -Task init
+          ./prior/scripts/package.ps1 -OutputDirectory $priorPackage
+          ./scripts/local.ps1 -Task init
+          ./scripts/package.ps1 -OutputDirectory $currentPackage
+          ./scripts/smoke-cross-version.ps1 -PriorTool (Join-Path $priorPackage 'legura-maintenance') -CurrentTool (Join-Path $currentPackage 'legura-maintenance')
+          ./scripts/smoke-package-cutover.ps1 -PriorPackage $priorPackage -CurrentPackage $currentPackage -Port 3947
   compiled-auth:
     name: Registry Compiled Auth
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -166,9 +196,6 @@ jobs:
       - name: Verify isolated compiled setup and identity
         shell: pwsh
         run: ./scripts/smoke-auth.ps1 -Port 3941 -Posts -Theme -BackupRestore
-      - name: Verify first-run local preparation
-        shell: pwsh
-        run: ./scripts/smoke-local.ps1 -Port 3943 -Package
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
