@@ -199,8 +199,10 @@ open. The isolated cutover gate now verifies archives from both sides of
 a new `0.0.2` post and proves that an automatic return to the `0.0.1` snapshot
 would discard it. The final test archives now follow a stopped-writer boundary
 before verification and inactive recovery; this proves only the isolated
-single-server flow, not a multi-instance write freeze. See native-package-v0.md
-and post-cutover-recovery-v0.md.
+single-server flow, not a multi-instance write freeze. The
+[operator rehearsal](native-package-v0.md#operator-rehearsal-backup-to-preflight)
+ends at read-only preflight; schema migration remains an isolated test.
+See [post-cutover recovery](post-cutover-recovery-v0.md) for rollback limits.
 
 Local source preparation has an executable first-run acceptance gate:
 prepare/init/check/start, secret preservation, local-only database/config

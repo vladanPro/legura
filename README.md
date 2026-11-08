@@ -61,7 +61,9 @@ The experimental [Native Package V0](docs/native-package-v0.md) runs an already
 initialized compatible installation without source or Cargo at runtime. Native
 DB initialization and new local HTTP configuration with random secrets are
 available through the native maintenance tool; a
-production installer remains a separate gate.
+production installer remains a separate gate. See the
+[native upgrade rehearsal](docs/native-package-v0.md#operator-rehearsal-backup-to-preflight)
+for package verification, backup, and inactive recovery checks.
 
 Setup/login now have keyboard skip navigation, named forms, linked field errors
 and small-screen acceptance with and without JavaScript. See the scoped
