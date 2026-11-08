@@ -865,6 +865,84 @@ mod tests {
     }
 
     #[test]
+    fn migration_rehearsal_only_writes_to_restored_copies() {
+        let fixture = Fixture::new();
+        let source = fixture.path("active.db");
+        let bundle = fixture.path("rehearsal-backup");
+        let migrations = embedded_migrations();
+        let (baseline, pending) = migrations.split_at(6);
+        initialize_with_migrations(&source, baseline).unwrap();
+        let original = "Published before the upgrade";
+        Connection::open(&source)
+            .unwrap()
+            .execute(
+                "INSERT INTO legura_posts(id,title,slug,body,status) VALUES ('post','Title','post',?1,'published')",
+                [original],
+            )
+            .unwrap();
+        let source_hash = digest(&source).unwrap();
+        backup(&source, &bundle).unwrap();
+        let backup_hash = digest(&bundle.join("database.sqlite")).unwrap();
+
+        let apply = |copy: &Path, plan: &[AxMigration]| {
+            let runtime = runtime_from_env(
+                AxEnv::new()
+                    .with_secret("db_url", format!("sqlite:{}", copy.display()))
+                    .with_secret("db_dialect", "sqlite"),
+            )
+            .unwrap();
+            AxMigrationExecutor::apply_migrations(&runtime, plan)
+        };
+        let assert_post = |db: &Connection| {
+            let body: String = db
+                .query_row(
+                    "SELECT body FROM legura_posts WHERE id='post' AND status='published'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(body, original);
+        };
+
+        let failed = fixture.path("failed-rehearsal.db");
+        restore(&bundle, &failed).unwrap();
+        let mut broken_plan = migrations.clone();
+        let broken = &mut broken_plan[baseline.len()];
+        broken
+            .up_sql
+            .push_str("\nINSERT INTO legura_rehearsal_missing_table VALUES (1);");
+        broken.checksum = migration_hash(&broken.up_sql, &broken.down_sql);
+        let error = apply(&failed, &broken_plan).unwrap_err();
+        assert!(error.to_string().contains("db.unknown_resource"), "{error}");
+        let failed_db = open_readonly(&failed).unwrap();
+        assert_eq!(validate_structure(&failed_db).unwrap(), baseline.len());
+        assert!(!failed_db
+            .prepare("SELECT 1 FROM sqlite_schema WHERE name='legura_public_theme'")
+            .unwrap()
+            .exists([])
+            .unwrap());
+        assert_post(&failed_db);
+        assert_eq!(digest(&source).unwrap(), source_hash);
+        assert_eq!(
+            digest(&bundle.join("database.sqlite")).unwrap(),
+            backup_hash
+        );
+
+        let upgraded = fixture.path("successful-rehearsal.db");
+        restore(&bundle, &upgraded).unwrap();
+        assert_eq!(apply(&upgraded, &migrations).unwrap().len(), pending.len());
+        let upgraded_db = open_readonly(&upgraded).unwrap();
+        validate_current(&upgraded_db).unwrap();
+        assert_post(&upgraded_db);
+        assert_eq!(digest(&source).unwrap(), source_hash);
+        assert_eq!(
+            digest(&bundle.join("database.sqlite")).unwrap(),
+            backup_hash
+        );
+        verify(&bundle).unwrap();
+    }
+
+    #[test]
     fn rich_backup_refuses_invalid_document() {
         let fixture = Fixture::new();
         let db = Connection::open(fixture.path("source.db")).unwrap();

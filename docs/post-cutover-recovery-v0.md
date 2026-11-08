@@ -33,6 +33,13 @@ not make new writes disappear safely.
 CI uses test-only Python to compare recovered SQLite rows. No Python dependency
 is added to the native Legura package or runtime.
 
+A separate maintenance test rehearses the real public-theme schema migration
+on a restored SQLite-only backup. It injects a SQL error after the schema
+change on one copy and checks that the change and migration ledger entry are
+rolled back. A second copy reaches the current schema with the original post
+intact. The source database and backup are checked for unchanged bytes. This
+test does not migrate media archives or add an operator migration command.
+
 ## Operator boundary
 
 Before any real cutover, arrange a maintenance/write-freeze window and retain a
