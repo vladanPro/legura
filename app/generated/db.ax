@@ -82,6 +82,30 @@ export type LeguraMediaCleanupUpdateInput {
   created_at: Optional<Int>
 }
 
+export type LeguraPagesRow {
+  id: String
+  title: String
+  slug: String
+  body: String
+  status: String
+}
+
+export type LeguraPagesCreateInput {
+  id: String
+  title: String
+  slug: String
+  body: String
+  status: Optional<String>
+}
+
+export type LeguraPagesUpdateInput {
+  id: Optional<String>
+  title: Optional<String>
+  slug: Optional<String>
+  body: Optional<String>
+  status: Optional<String>
+}
+
 export type LeguraPostImagesRow {
   post_id: String
   media_id: String

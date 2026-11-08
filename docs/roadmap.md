@@ -284,7 +284,8 @@ references; see media-storage-v0.md. Upload/image validation, library UI, post
 images and media-aware backups are separate gates, not shipped by this foundation.
 
 - Media library with storage limits, safe upload handling, and deletion policy.
-- Pages, navigation, SEO fields, and richer editorial workflow.
+- Pages V0: standalone plain-text drafts, private saved preview and public
+  root URLs. Navigation, SEO fields and richer editorial workflow remain open.
 - Themes with stable content/rendering contracts and installation boundaries.
 - Roles and permissions based on demonstrated needs.
 - Extension API, then optional block editor and marketplace research.
