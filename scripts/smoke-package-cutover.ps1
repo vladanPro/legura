@@ -181,7 +181,32 @@ try {
   if ($LASTEXITCODE -eq 0) { throw '0.0.2 accepted the old package as the upgrade candidate' }
   & $newMaintenance upgrade-preflight $current $backup $recovery | Out-Null
   if ($LASTEXITCODE -ne 0) { throw '0.0.2 upgrade preflight rejected its package or the recovered data' }
-  if (Test-Path -LiteralPath $newConfig) { throw 'Upgrade preflight created candidate configuration' }
+
+  $archiveHash = (Get-FileHash -LiteralPath $backup -Algorithm SHA256).Hash
+  $databaseHash = (Get-FileHash -LiteralPath $database -Algorithm SHA256).Hash
+  $rehearsal = Join-Path $fixture 'upgrade-rehearsal'
+  Push-Location -LiteralPath $current
+  try {
+    $rehearsed = & $newMaintenance upgrade-rehearse $backup $rehearsal
+    if ($LASTEXITCODE -ne 0) { throw 'Packaged 0.0.2 could not rehearse the 0.0.1 archive' }
+    $report = $rehearsed | ConvertFrom-Json -AsHashtable
+    # The pinned 0.0.1 and 0.0.2 packages share a schema.
+    if (!$report.ContainsKey('migrations_applied') -or $report.migrations_applied -ne 0 -or $report.archive.files -ne 2) {
+      throw 'Packaged rehearsal did not report the expected unchanged schema and media inventory'
+    }
+    $verified = Join-Path $rehearsal 'verified-recovery'
+    & $newMaintenance upgrade-preflight $current (Join-Path $rehearsal 'rehearsed.legura') $verified | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw 'Packaged upgrade preflight rejected the rehearsal output' }
+  } finally { Pop-Location }
+  $verifiedImage = Join-Path $verified "media/local-media/$mediaId"
+  if ((Get-FileHash -LiteralPath $verifiedImage -Algorithm SHA256).Hash -ne $mediaHash -or
+      (Get-FileHash -LiteralPath $mediaObject -Algorithm SHA256).Hash -ne $mediaHash -or
+      (Get-FileHash -LiteralPath $backup -Algorithm SHA256).Hash -ne $archiveHash -or
+      (Get-FileHash -LiteralPath $database -Algorithm SHA256).Hash -ne $databaseHash -or
+      (Get-FileHash -LiteralPath $oldConfig -Algorithm SHA256).Hash -ne $configHash) {
+    throw 'Packaged rehearsal changed original data or configuration, or lost the archived image'
+  }
+  if (Test-Path -LiteralPath $newConfig) { throw 'Upgrade checks created candidate configuration' }
 
   Copy-Item -LiteralPath $oldConfig -Destination $newConfig
   if (!$IsWindows) { [IO.File]::SetUnixFileMode($newConfig, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite) }
@@ -239,12 +264,14 @@ def slugs(path):
     uri = pathlib.Path(path).resolve(strict=True).as_uri() + '?mode=ro'
     with sqlite3.connect(uri, uri=True) as db:
         return {row[0] for row in db.execute('SELECT slug FROM legura_posts')}
-before, after = (slugs(path) for path in sys.argv[1:3])
+before, after, rehearsed = (slugs(path) for path in sys.argv[1:])
 if before != {'cross-version'} or after != {'cross-version', 'after-cutover'}:
     raise SystemExit('Post-cutover write was not isolated in the newer archive')
+if rehearsed != before:
+    raise SystemExit('Packaged rehearsal did not preserve the pre-cutover post')
 '@
-  & python -c $compare (Join-Path $beforeRecovery 'database.sqlite') (Join-Path $afterRecovery 'database.sqlite')
-  if ($LASTEXITCODE -ne 0) { throw 'Could not prove the two recovered databases have different posts' }
+  & python -c $compare (Join-Path $beforeRecovery 'database.sqlite') (Join-Path $afterRecovery 'database.sqlite') (Join-Path $verified 'database.sqlite')
+  if ($LASTEXITCODE -ne 0) { throw 'Could not verify post preservation across the recovered databases' }
   foreach ($location in @($beforeRecovery, $afterRecovery)) {
     $restoredImage = Join-Path $location "media/local-media/$mediaId"
     if ((Get-FileHash -LiteralPath $restoredImage -Algorithm SHA256).Hash -ne $mediaHash) { throw 'A recovered archive lost the original image' }
@@ -257,6 +284,7 @@ if before != {'cross-version'} or after != {'cross-version', 'after-cutover'}:
   if ((Get-FileHash -LiteralPath $oldConfig -Algorithm SHA256).Hash -ne $configHash -or
       (Get-FileHash -LiteralPath $newConfig -Algorithm SHA256).Hash -ne $configHash) { throw 'Offline recovery changed the private configuration' }
   Write-Host 'Native package cutover passed: genuine 0.0.1 to 0.0.2 server, external SQLite/media, stopped-writer backups, public post, fresh admin login, locked setup and exact private image bytes.'
+  Write-Host 'Packaged upgrade rehearsal passed: compatible 0.0.1 input, verified 0.0.2 archive, unchanged originals and no activation.'
   Write-Host 'Post-cutover safety gate passed: both snapshots were taken with the test server stopped and verified in separate inactive locations; the older archive lacks the new post, so automatic rollback remains unsupported.'
 } finally {
   if ($process) { Stop-Site -Server $process }
