@@ -45,6 +45,11 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         include_str!("../db/migrations/20261109000000_008_pages/up.sql"),
         include_str!("../db/migrations/20261109000000_008_pages/down.sql"),
     ),
+    (
+        "20261110000000_009",
+        include_str!("../db/migrations/20261110000000_009_languages/up.sql"),
+        include_str!("../db/migrations/20261110000000_009_languages/down.sql"),
+    ),
 ];
 
 pub fn migration_hash(up: &str, down: &str) -> String {
@@ -70,6 +75,7 @@ pub fn embedded_migrations() -> Vec<AxMigration> {
                 "20261023000000_006" => "media_cleanup",
                 "20261104000000_007" => "public_theme",
                 "20261109000000_008" => "pages",
+                "20261110000000_009" => "languages",
                 _ => unreachable!("embedded migration name is missing"),
             }
             .into(),
@@ -124,6 +130,14 @@ pub fn validate_structure(connection: &Connection) -> Result<usize> {
             id == 1 && matches!(theme.as_str(), "default" | "editorial"),
             "invalid public theme"
         );
+    }
+    if count >= 9 {
+        let valid: bool = connection.query_row(
+            "SELECT admin_language IN ('en', 'sr-Latn') AND site_language IN ('en', 'sr-Latn') FROM legura_languages WHERE id = 1",
+            [],
+            |row| row.get(0),
+        )?;
+        ensure!(valid, "invalid language preferences");
     }
     Ok(count)
 }

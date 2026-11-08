@@ -1,0 +1,13 @@
+action SetAdminLanguage(admin_language: String) {
+  data administrator = loadAdministrator()
+  require input.admin_language == "en" || input.admin_language == "sr-Latn" else invalid({ admin_language: "Choose a supported language. / Izaberite jezik sa liste." })
+  db.legura_languages.where({ id: 1 }).update({ admin_language: input.admin_language })
+  return redirect("/admin/language")
+}
+
+action SetSiteLanguage(site_language: String) {
+  data administrator = loadAdministrator()
+  require input.site_language == "en" || input.site_language == "sr-Latn" else invalid({ site_language: "Choose a supported language. / Izaberite jezik sa liste." })
+  db.legura_languages.where({ id: 1 }).update({ site_language: input.site_language })
+  return redirect("/admin/language")
+}
