@@ -251,6 +251,14 @@ fn validate_runtime_sessions(connection: &Connection) -> Result<()> {
 /// accepted; alternate DDL, plugin tables and historical versions need a later
 /// explicit compatibility policy. No user database migrations are executed.
 pub fn validate_current(connection: &Connection) -> Result<()> {
+    validate_recovery_schema(connection, true).map(|_| ())
+}
+
+pub(crate) fn validate_rehearsal_schema(connection: &Connection) -> Result<usize> {
+    validate_recovery_schema(connection, false)
+}
+
+fn validate_recovery_schema(connection: &Connection, require_current: bool) -> Result<usize> {
     let ledger_type: String = connection.query_row(
         "SELECT type FROM sqlite_schema WHERE name = '_axonyx_migrations'",
         [],
@@ -260,10 +268,18 @@ pub fn validate_current(connection: &Connection) -> Result<()> {
         ledger_type == "table",
         "Recovered migration history must be a table"
     );
-    ensure!(validate_structure(connection)? == MIGRATIONS.len(),
-        "Recovered database requires the current product migrations; no automatic upgrade was performed");
+    let count = validate_structure(connection)?;
+    if require_current {
+        ensure!(count == MIGRATIONS.len(),
+            "Recovered database requires the current product migrations; no automatic upgrade was performed");
+    } else {
+        ensure!(
+            count >= 6,
+            "Upgrade rehearsal requires the media cleanup migration or newer"
+        );
+    }
     let expected = Connection::open_in_memory()?;
-    for (_, up, _) in MIGRATIONS {
+    for (_, up, _) in &MIGRATIONS[..count] {
         expected.execute_batch(up)?;
     }
     ensure!(
@@ -271,7 +287,7 @@ pub fn validate_current(connection: &Connection) -> Result<()> {
         "Recovered product schema differs from this maintenance build"
     );
     validate_runtime_sessions(connection)?;
-    for migration in embedded_migrations() {
+    for migration in embedded_migrations().into_iter().take(count) {
         let name: String = connection.query_row(
             "SELECT name FROM _axonyx_migrations WHERE version = ?",
             [&migration.version],
@@ -286,5 +302,5 @@ pub fn validate_current(connection: &Connection) -> Result<()> {
         crate::content_audit::audit(connection)?.invalid == 0,
         "Recovered post content is incompatible"
     );
-    Ok(())
+    Ok(count)
 }

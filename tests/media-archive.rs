@@ -916,30 +916,38 @@ fn media_archive_migration_rehearsal_requires_a_new_archive() {
         .to_string()
         .contains("requires the current product migrations"));
 
-    let recovered_database = rehearsal.join("database.sqlite");
-    let receipt = rehearsal.join("recovery.json");
-    let original_receipt = fs::read(&receipt).unwrap();
-    assert_eq!(
-        AxMigrationExecutor::apply_migrations(&runtime(&recovered_database), &migrations)
+    let workspace = fixture.0.join("upgrade workspace");
+    let run = |archive: &std::path::Path, destination: &std::path::Path| {
+        Command::new(env!("CARGO_BIN_EXE_legura-maintenance"))
+            .arg("upgrade-rehearse")
+            .arg(archive)
+            .arg(destination)
+            .env("AX_SECRET_DB_URL", "not-the-source")
+            .output()
             .unwrap()
-            .len(),
-        migrations.len() - 6
+    };
+    let output = run(&before, &workspace);
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
     );
-    assert_eq!(fs::read(&receipt).unwrap(), original_receipt);
-    assert!(backup_archive::check_recovery(&before, &rehearsal).is_err());
-
-    let store = StoreId::parse("local-media").unwrap();
-    let media = LocalStorage::open(
-        &rehearsal.join("media").join(store.as_str()),
-        store.clone(),
-        MAX_OBJECT_BYTES,
-    )
-    .unwrap();
-    let after = fixture.0.join("after.legura");
-    let upgraded = backup_archive::backup(&recovered_database, &media, &store, &after).unwrap();
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(result["migrations_applied"], migrations.len() - 6);
+    let migrated = workspace.join("restored-source");
+    assert_eq!(
+        fs::read(migrated.join("recovery.json")).unwrap(),
+        fs::read(rehearsal.join("recovery.json")).unwrap()
+    );
+    assert!(backup_archive::check_recovery(&before, &migrated).is_err());
+    let after = workspace.join("rehearsed.legura");
+    let upgraded = backup_archive::verify(&after).unwrap();
     assert_eq!(upgraded.files, report.files);
-    let checked = fixture.0.join("upgraded-recovery");
-    backup_archive::restore(&after, &checked).unwrap();
+    let archive_bytes = fs::read(&after).unwrap();
+    assert!(!run(&before, &workspace).status.success());
+    assert_eq!(fs::read(&after).unwrap(), archive_bytes);
+    let checked = workspace.join("verified-recovery");
+    assert!(!checked.join(".env").exists());
     assert_eq!(
         backup_archive::check_recovery(&after, &checked).unwrap(),
         upgraded
@@ -964,6 +972,17 @@ fn media_archive_migration_rehearsal_requires_a_new_archive() {
     );
     assert_eq!(fs::read(&source).unwrap(), original_database);
     assert_eq!(fs::read(&before).unwrap(), original_archive);
+
+    Connection::open(&source)
+        .unwrap()
+        .execute_batch("CREATE TABLE foreign_table(value TEXT)")
+        .unwrap();
+    fixture.pack("drift.legura").unwrap();
+    let rejected = fixture.0.join("rejected");
+    let failure = run(&fixture.0.join("drift.legura"), &rejected);
+    assert!(!failure.status.success());
+    assert!(String::from_utf8_lossy(&failure.stderr).contains("product schema differs"));
+    assert!(!rejected.join("rehearsed.legura").exists());
 }
 
 #[test]

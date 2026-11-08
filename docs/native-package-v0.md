@@ -256,7 +256,24 @@ candidate. A schema mismatch is not an instruction to migrate the live database.
 If the source resumes accepting writes, this archive is no longer the final
 snapshot for any later cutover.
 
-### Schema Changes: Test Only
+### Schema Changes: Isolated Rehearsal
+
+Use the verified candidate's maintenance binary with a trusted archive and a
+new workspace under an operator-controlled private directory:
+
+```sh
+/opt/legura-candidate/legura-maintenance upgrade-rehearse /private/before-upgrade.legura /private/schema-rehearsal
+```
+
+The command accepts the exact known SQLite schema from the media-cleanup
+migration onward, with matching migration history. It restores into
+`restored-source/`, migrates only that copy, writes `rehearsed.legura`, and
+verifies it by restoring again into `verified-recovery/`. Budget space for both
+restores and the new archive. A zero exit code reports the applied migration
+count and archive inventory; a nonzero exit means stop, even if some workspace
+artifacts exist. Retry with a new directory. Keep all outputs private and
+inactive. No configuration, service, or original archive is changed. Success
+does not authorize activation or prove that the input is a final cutover backup.
 
 From a source checkout, run the isolated SQLite-only migration rehearsal:
 
@@ -267,9 +284,8 @@ cargo test --locked --bin legura-maintenance migration_rehearsal_only_writes_to_
 The test uses its own temporary backup and two restores. One copy reaches the
 current schema; on the other, a deliberately failing statement rolls back the
 schema change and its migration ledger entry. The source database and backup
-remain unchanged. This does not rehearse a customer archive or authorize
-migrating a media-inclusive recovery. There is no supported operator schema
-upgrade yet. After new writes, switching back to the old binary or restoring
+remain unchanged. There is no supported in-place operator schema upgrade yet.
+After new writes, switching back to the old binary or restoring
 the old archive in place is not a safe rollback.
 
 Both backup formats record their producer version. The `0.0.2` maintenance

@@ -104,6 +104,11 @@ fn run() -> Result<()> {
             println!("{}", serde_json::to_string(&report)?);
             eprintln!("Read-only preflight passed for the candidate package and inactive recovery. No configuration or service was changed. This does not verify writer shutdown, run migrations or authorize rollback.");
         }
+        [command, archive, workspace] if command == "upgrade-rehearse" => {
+            let report = legura::backup_archive::rehearse_upgrade(Path::new(archive), Path::new(workspace))?;
+            println!("{}", serde_json::to_string(&report)?);
+            eprintln!("Upgrade rehearsal verified a new archive. All copies remain inactive; no configuration or service was changed.");
+        }
         [command, snapshot, store, root, archive] if command == "archive-pack-snapshot" => {
             let store = legura::storage::StoreId::parse(store.to_str().context("store ID must be UTF-8")?)?;
             let storage = legura::storage::LocalStorage::open(Path::new(root), store.clone(), legura::storage::MAX_OBJECT_BYTES)?;
@@ -129,6 +134,7 @@ fn run() -> Result<()> {
             " | archive-verify <archive> | archive-restore <archive> <new-private-directory>",
             " | archive-check-recovery <archive> <inactive-recovery-directory>",
             " | upgrade-preflight <fresh-candidate-directory> <archive> <inactive-recovery-directory>",
+            " | upgrade-rehearse <archive> <new-private-workspace>",
             " | config-recovery <archive> <inactive-recovery-directory> <package-directory> <https|local-http>"
         )),
     }
