@@ -20,8 +20,8 @@ authorization. The following paragraphs record earlier implementation steps;
 current dependency pins live in `Cargo.toml` and `.github/workflows/ci.yml`.
 
 Pages V0 adds standalone plain-text pages under **Administration > Pages**.
-Create a draft, preview the saved content privately, then publish it at its
-root URL (for example, `/o-nama`). Slugs are fixed after creation. Setting the
+Create a draft, preview the saved content privately, then publish it under
+`/pages/` (for example, `/pages/o-nama`). Slugs are fixed after creation. Setting the
 page back to Draft hides it from visitors. Pages are separate from blog posts;
 navigation menus, rich text, and page-specific templates are not included.
 

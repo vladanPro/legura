@@ -121,7 +121,7 @@ def verify_pages(client):
     client.request("/admin/pages/new", 200)
     draft = {"title": "About us", "slug": "o-nama", "body": "Page proof <script>fixture()</script>"}
     guest.action("/admin/pages/new", "CreatePage", 403, fields=draft)
-    client.action("/admin/pages/new", "CreatePage", 422, fields=dict(draft, slug="login"))
+    client.action("/admin/pages/new", "CreatePage", 422, fields=dict(draft, slug="About"))
     client.action("/admin/pages/new", "CreatePage", 422, fields=dict(draft, slug="a/b"))
     _, headers = client.action("/admin/pages/new", "CreatePage", fields=draft)
     assert headers["Location"] == "/admin/pages"
@@ -133,7 +133,7 @@ def verify_pages(client):
     client.request(edit, 200)
     guest.request(edit, 403)
     guest.request(preview, 403)
-    guest.request("/o-nama", 404)
+    guest.request("/pages/o-nama", 404)
     saved, _ = client.request(preview, 200)
     assert b"Private preview" in saved and b"Page proof" in saved
     assert b"<script>fixture()</script>" not in saved
@@ -146,12 +146,12 @@ def verify_pages(client):
     client.action(edit, "UpdatePage", fields=fields)
     verify_public_page(guest)
     client.action(edit, "UpdatePage", fields=dict(fields, status="draft"))
-    guest.request("/o-nama", 404)
+    guest.request("/pages/o-nama", 404)
     client.action(edit, "UpdatePage", fields=fields)
 
 
 def verify_public_page(guest):
-    page, _ = guest.request("/o-nama", 200)
+    page, _ = guest.request("/pages/o-nama", 200)
     assert b"About us" in page and b"Page proof" in page
     assert b"<script>fixture()</script>" not in page
     guest.request("/legura.css", 200)

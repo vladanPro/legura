@@ -21,7 +21,7 @@ page AdminPages() {
         <Each items={listing.items} as="entry">
           <div class="legura-links">
             <a href={"/admin/pages/" + entry.id + "/edit"}>{entry.title}</a>
-            <span>{"/" + entry.slug}</span>
+            <span>{"/pages/" + entry.slug}</span>
             <Badge>{entry.status}</Badge>
           </div>
         </Each>

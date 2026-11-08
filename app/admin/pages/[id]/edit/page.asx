@@ -11,7 +11,7 @@ page EditSitePage() {
   return ASX {
     <AdminFrame section="pages" mediaAvailable={mediaAvailable}>
       <Card title="Edit page">
-        <p>{"Page URL: /" + entry.slug}</p>
+        <p>{"Page URL: /pages/" + entry.slug}</p>
         <form
           method="post"
           action={action UpdatePage}
@@ -41,7 +41,7 @@ page EditSitePage() {
         <nav class="legura-links" aria-label="Page management">
           <a href={"/admin/pages/" + entry.id + "/preview"}>Preview saved page</a>
           <If when={entry.status == "published"}>
-            <a href={"/" + entry.slug}>View public page</a>
+            <a href={"/pages/" + entry.slug}>View public page</a>
           </If>
         </nav>
       </Card>

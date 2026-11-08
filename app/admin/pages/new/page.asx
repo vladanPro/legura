@@ -26,7 +26,7 @@ page NewSitePage() {
               maxlength="120"
               describedBy="page-slug-hint page-slug-error"
             />
-            <p id="page-slug-hint" class="legura-hint">For example, o-nama becomes /o-nama. This URL is fixed after creation.</p>
+            <p id="page-slug-hint" class="legura-hint">For example, o-nama becomes /pages/o-nama. This URL is fixed after creation.</p>
             <p
               id="page-slug-error"
               class="ax-field__error"
