@@ -305,6 +305,15 @@ operator upgrade command.
 See post-cutover-recovery-v0.md for the tested data-loss boundary after the new
 version accepts writes.
 
+## Clean Linux Acceptance
+
+CI also tests a clean Ubuntu 24.04 container with no network, source checkout
+or developer toolchain. It checks the archive checksum, starts the native
+binary as an unprivileged user, completes setup, publishes a post with an
+image, and restores a media-inclusive backup into a separate installation.
+Python drives the HTTP test only; the Legura binaries do not require it.
+This loopback test does not cover a public TLS or VPS deployment.
+
 ## Build From Source
 
 Build prerequisites are Git, Rust/native toolchain, CLI 0.8.8 and PowerShell
