@@ -38,7 +38,15 @@ on a restored SQLite-only backup. It injects a SQL error after the schema
 change on one copy and checks that the change and migration ledger entry are
 rolled back. A second copy reaches the current schema with the original post
 intact. The source database and backup are checked for unchanged bytes. This
-test does not migrate media archives or add an operator migration command.
+test does not add an operator migration command.
+
+The media archive integration test separately rehearses the same schema upgrade
+with a published post and its attached image. The old recovery receipt cannot
+verify the migrated copy: it describes the original bytes. The test builds a
+new archive from the migrated copy, restores it separately, and verifies the
+current schema, post-to-image link and exact image bytes. The source and
+original archive stay unchanged. This is still fixture-only, not a procedure
+for migrating or activating customer archives.
 
 ## Operator boundary
 

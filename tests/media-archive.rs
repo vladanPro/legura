@@ -875,6 +875,98 @@ fn intact_archives_with_wrong_product_contract_are_not_certified() {
 }
 
 #[test]
+fn media_archive_migration_rehearsal_requires_a_new_archive() {
+    use axonyx_runtime::backend::{runtime_from_env, AxEnv, AxMigrationExecutor};
+    let fixture = Fixture::product();
+    let source = fixture.0.join("snapshot.sqlite");
+    let migrations = legura::database_contract::embedded_migrations();
+    let runtime = |path: &std::path::Path| {
+        runtime_from_env(
+            AxEnv::new()
+                .with_secret("db_url", format!("sqlite:{}", path.display()))
+                .with_secret("db_dialect", "sqlite"),
+        )
+        .unwrap()
+    };
+    {
+        let source_runtime = runtime(&source);
+        for migration in migrations[6..].iter().rev() {
+            AxMigrationExecutor::rollback_migration(&source_runtime, migration).unwrap();
+        }
+    }
+    let key = fixture.upload();
+    {
+        let database = Connection::open(&source).unwrap();
+        database.execute("INSERT INTO legura_posts(id,title,slug,body,status) VALUES('post','Title','title','Original body','published')", []).unwrap();
+        database.execute("INSERT INTO legura_post_images(post_id,media_id,alt) VALUES('post',?,'Original image')", [&key]).unwrap();
+        assert_eq!(
+            legura::database_contract::validate_structure(&database).unwrap(),
+            6
+        );
+    }
+    let original_database = fs::read(&source).unwrap();
+    let original_image = fs::read(fixture.0.join("objects").join(&key)).unwrap();
+    let before = fixture.0.join("before.legura");
+    let report = fixture.pack("before.legura").unwrap();
+    let original_archive = fs::read(&before).unwrap();
+    let rehearsal = fixture.0.join("rehearsal");
+    backup_archive::restore(&before, &rehearsal).unwrap();
+    let error = backup_archive::check_recovery(&before, &rehearsal).unwrap_err();
+    assert!(error
+        .to_string()
+        .contains("requires the current product migrations"));
+
+    let recovered_database = rehearsal.join("database.sqlite");
+    let receipt = rehearsal.join("recovery.json");
+    let original_receipt = fs::read(&receipt).unwrap();
+    assert_eq!(
+        AxMigrationExecutor::apply_migrations(&runtime(&recovered_database), &migrations)
+            .unwrap()
+            .len(),
+        migrations.len() - 6
+    );
+    assert_eq!(fs::read(&receipt).unwrap(), original_receipt);
+    assert!(backup_archive::check_recovery(&before, &rehearsal).is_err());
+
+    let store = StoreId::parse("local-media").unwrap();
+    let media = LocalStorage::open(
+        &rehearsal.join("media").join(store.as_str()),
+        store.clone(),
+        MAX_OBJECT_BYTES,
+    )
+    .unwrap();
+    let after = fixture.0.join("after.legura");
+    let upgraded = backup_archive::backup(&recovered_database, &media, &store, &after).unwrap();
+    assert_eq!(upgraded.files, report.files);
+    let checked = fixture.0.join("upgraded-recovery");
+    backup_archive::restore(&after, &checked).unwrap();
+    assert_eq!(
+        backup_archive::check_recovery(&after, &checked).unwrap(),
+        upgraded
+    );
+    let database = Connection::open(checked.join("database.sqlite")).unwrap();
+    let post: (String, String, String) = database.query_row(
+        "SELECT p.body,i.media_id,i.alt FROM legura_posts p JOIN legura_post_images i ON i.post_id=p.id WHERE p.id='post' AND p.status='published'",
+        [],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+    ).unwrap();
+    assert_eq!(
+        post,
+        ("Original body".into(), key.clone(), "Original image".into())
+    );
+    assert_eq!(
+        fs::read(checked.join("media/local-media").join(&key)).unwrap(),
+        original_image
+    );
+    assert_eq!(
+        fs::read(fixture.0.join("objects").join(&key)).unwrap(),
+        original_image
+    );
+    assert_eq!(fs::read(&source).unwrap(), original_database);
+    assert_eq!(fs::read(&before).unwrap(), original_archive);
+}
+
+#[test]
 fn media_migration_rollback_preserves_referenced_rows_then_allows_empty_table() {
     use axonyx_runtime::backend::{runtime_from_env, AxEnv, AxMigrationExecutor};
     let fixture = Fixture::product();
