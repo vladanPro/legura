@@ -210,37 +210,68 @@ private `.env`. The published post, private image bytes, media library,
 administrator login, locked setup and configuration must survive. Only
 disposable data is used; this does not prove an upgrade between two versions.
 
-For a manual compatible-package rehearsal, keep private database/media outside
-the replaceable program directory and obtain the candidate from a trusted
-source. Verify its archive checksum separately, extract it to a **new**
-directory, and run `verify-package` before adding `.env`. A backup made while
-the old installation is running is only preliminary: it does not contain writes
-accepted after that instant. For the **final** archive, stop all server and
-worker instances that can write to this database or media store, prevent new
-write traffic, and confirm the writer processes have exited. Then take a
-media-inclusive archive with the old maintenance tool while those writers
-remain stopped. Run the candidate's `archive-restore` into a NEW inactive
-directory, then run its maintenance executable with
-`upgrade-preflight <fresh-candidate-directory> <archive> <inactive-recovery-directory>`
-before adding the candidate's `.env`. Preflight checks the package inventory
-and hashes, verifies the recovery against the archive, and validates the
-current schema, migration history, post content and referenced image bytes.
-It does not run migrations, prove that all writers stopped, or activate the
-recovery. Keep
-the old writers stopped. Copy the private configuration without changing its
-paths or permissions. Start the candidate, then verify readiness, public
-content, administrator login and private assets. Keep the old package and
-backup until the new installation is accepted. Do not overwrite files in a
-live package.
-If a candidate fails before readiness, investigate its logs and configuration;
-the old package can be restarted only when its database/schema remains
-compatible. This isolated test deliberately injects a missing media directory,
-not a migration failure or an arbitrary partially written database.
-The package checksum and manifest are integrity checks, not publisher
-authentication. There is no supported cross-version migration procedure yet;
-if the candidate writes new schema or content, switching back to an older
-binary is **not** a safe database rollback. Recover from a verified backup into
-a new private location only after separately validating compatibility.
+### Operator Rehearsal: Backup to Preflight
+
+This procedure ends with an **inactive** recovery. It does not configure or
+start the candidate, switch traffic, or run migrations. Use an isolated
+installation for a rehearsal. The examples use absolute paths on one host;
+substitute your actual paths and store ID, and use `.exe` on Windows. Stop at
+the first nonzero exit code.
+
+1. Obtain the candidate from a trusted source, verify the distributed archive
+   checksum separately, and extract it into a **new** directory. Checksums and
+   the package manifest verify integrity, not publisher identity. Before adding
+   `.env`, check the extracted inventory using the candidate's maintenance
+   binary:
+
+   ```sh
+   /opt/legura-candidate/legura-maintenance verify-package /opt/legura-candidate
+   ```
+
+2. Keep the database and media outside either package. For a final backup,
+   block incoming writes, stop every server and worker that can write to those
+   paths, and confirm the processes have exited. A single closed port is not
+   enough. A backup taken earlier while writes were allowed is preliminary.
+   Use the old installation's maintenance binary to create a **new** private
+   archive while writers remain stopped:
+
+   ```sh
+   /opt/legura-old/legura-maintenance archive-backup /private/legura.db local-media /private/media /private/before-upgrade.legura
+   ```
+
+3. Restore to a **new** private directory, never over the source. Run preflight
+   on that same archive and inactive directory, with the candidate still
+   unconfigured:
+
+   ```sh
+   /opt/legura-candidate/legura-maintenance archive-restore /private/before-upgrade.legura /private/upgrade-recovery
+   /opt/legura-candidate/legura-maintenance upgrade-preflight /opt/legura-candidate /private/before-upgrade.legura /private/upgrade-recovery
+   ```
+
+Preflight checks the candidate inventory, archived and restored bytes, schema,
+migration history, content, and media. **Pass** means the candidate understands
+the recovered data as-is, not that the service is ready. **Fail** means stop:
+preserve the archive and source, diagnose the error, and do not activate the
+candidate. A schema mismatch is not an instruction to migrate the live database.
+If the source resumes accepting writes, this archive is no longer the final
+snapshot for any later cutover.
+
+### Schema Changes: Test Only
+
+From a source checkout, run the isolated SQLite-only migration rehearsal:
+
+```sh
+cargo test --locked --bin legura-maintenance migration_rehearsal_only_writes_to_restored_copies
+```
+
+The test uses its own temporary backup and two restores. One copy reaches the
+current schema; on the other, a deliberately failing statement rolls back the
+schema change and its migration ledger entry. The source database and backup
+remain unchanged. This does not rehearse a customer archive or authorize
+migrating a media-inclusive recovery. There is no supported operator schema
+upgrade yet. After new writes, switching back to the old binary or restoring
+the old archive in place is not a safe rollback.
+
 Both backup formats record their producer version. The `0.0.2` maintenance
 reader explicitly accepts `0.0.1` and `0.0.2` backups; the `0.0.1` reader
 still rejects `0.0.2` backups. CI builds the pinned `0.0.1` maintenance binary
