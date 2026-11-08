@@ -192,7 +192,48 @@ try {
   if ($LASTEXITCODE -ne 0 -or (Get-FileHash -LiteralPath $mediaObject -Algorithm SHA256).Hash -ne $mediaHash) { throw '0.0.2 media audit failed or original image changed' }
   if ((Get-FileHash -LiteralPath $oldConfig -Algorithm SHA256).Hash -ne $configHash -or
       (Get-FileHash -LiteralPath $newConfig -Algorithm SHA256).Hash -ne $configHash) { throw 'Server cutover modified private configuration' }
-  Write-Host 'Native package cutover passed: genuine 0.0.1 server to 0.0.2 server, external SQLite/media, verified backup, public post, new admin login, locked setup and exact private image bytes.'
+
+  Request -Path '/__axonyx/action?path=%2Fadmin%2Fposts%2Fnew&name=CreatePost' -Status 303 -Body 'title=Post+after+cutover&slug=after-cutover&body=Do+not+discard+this+write&status=published' -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = (Csrf) } | Out-Null
+  if (!(Request -Path '/posts/after-cutover' -Status 200).Contains('Do not discard this write')) { throw '0.0.2 did not persist its new post' }
+  $afterBackup = Join-Path $fixture 'after-cutover.legura'
+  & $newMaintenance archive-backup $database local-media $media $afterBackup | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw '0.0.2 could not preserve post-cutover writes' }
+  & $newMaintenance archive-verify $afterBackup | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw '0.0.2 could not verify post-cutover writes' }
+  & $oldMaintenance archive-verify $afterBackup *> $null
+  if ($LASTEXITCODE -eq 0) { throw '0.0.1 incorrectly accepted a 0.0.2 archive' }
+
+  $afterRecovery = Join-Path $fixture 'after-cutover-recovery'
+  & $newMaintenance archive-restore $afterBackup $afterRecovery | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw 'Could not recover the post-cutover archive to a new location' }
+  & $newMaintenance archive-check-recovery $afterBackup $afterRecovery | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw 'Post-cutover recovery failed its content/media check' }
+  $beforeRecovery = Join-Path $fixture 'before-cutover-recovery'
+  & $oldMaintenance archive-restore $backup $beforeRecovery | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw 'Could not recover the 0.0.1 archive to a new location' }
+  & $oldMaintenance archive-check-recovery $backup $beforeRecovery | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw 'Pre-cutover recovery failed its content/media check' }
+  $compare = @'
+import pathlib, sqlite3, sys
+def slugs(path):
+    uri = pathlib.Path(path).resolve(strict=True).as_uri() + '?mode=ro'
+    with sqlite3.connect(uri, uri=True) as db:
+        return {row[0] for row in db.execute('SELECT slug FROM legura_posts')}
+before, after = (slugs(path) for path in sys.argv[1:3])
+if before != {'cross-version'} or after != {'cross-version', 'after-cutover'}:
+    raise SystemExit('Post-cutover write was not isolated in the newer archive')
+'@
+  & python -c $compare (Join-Path $beforeRecovery 'database.sqlite') (Join-Path $afterRecovery 'database.sqlite')
+  if ($LASTEXITCODE -ne 0) { throw 'Could not prove the two recovered databases have different posts' }
+  foreach ($location in @($beforeRecovery, $afterRecovery)) {
+    $restoredImage = Join-Path $location "media/local-media/$mediaId"
+    if ((Get-FileHash -LiteralPath $restoredImage -Algorithm SHA256).Hash -ne $mediaHash) { throw 'A recovered archive lost the original image' }
+  }
+  if (!(Request -Path '/posts/after-cutover' -Status 200).Contains('Do not discard this write')) { throw 'Offline recovery changed the running 0.0.2 installation' }
+  if ((Get-FileHash -LiteralPath $oldConfig -Algorithm SHA256).Hash -ne $configHash -or
+      (Get-FileHash -LiteralPath $newConfig -Algorithm SHA256).Hash -ne $configHash) { throw 'Offline recovery changed the private configuration' }
+  Write-Host 'Native package cutover passed: genuine 0.0.1 to 0.0.2 server, external SQLite/media, verified backups, public post, fresh admin login, locked setup and exact private image bytes.'
+  Write-Host 'Post-cutover safety gate passed: both archives verified in separate inactive locations; the older archive lacks the new post, so automatic rollback would discard an accepted write and remains unsupported.'
 } finally {
   if ($process) { Stop-Site -Server $process }
   if ($client) { $client.Dispose() }

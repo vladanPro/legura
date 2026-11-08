@@ -243,6 +243,8 @@ both versions as independent packages and exercises a disposable server cutover
 with external SQLite/media, a verified pre-cutover archive, public content,
 fresh administrator login and exact private image bytes. It does not test
 rollback after the new version writes or provide an operator upgrade command.
+See post-cutover-recovery-v0.md for the tested data-loss boundary after the new
+version accepts writes.
 
 ## Build From Source
 
