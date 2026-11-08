@@ -1,0 +1,40 @@
+import { Field } from "@axonyx/ui/foundry/Field"
+import { FieldLabel } from "@axonyx/ui/foundry/FieldLabel"
+import { Input } from "@axonyx/ui/foundry/Input"
+import { Textarea } from "@axonyx/ui/foundry/Textarea"
+
+component SitePageFields(title = "", body = "") {
+  return ASX {
+    <Field htmlFor="title">
+      <FieldLabel htmlFor="title">Title</FieldLabel>
+      <Input
+        id="title"
+        name="title"
+        value={title}
+        required="true"
+        maxlength="160"
+        describedBy="page-title-error"
+      />
+      <p
+        id="page-title-error"
+        class="ax-field__error"
+        data-ax-field-error="title"
+        aria-live="polite"
+      ></p>
+    </Field>
+    <Field htmlFor="body">
+      <FieldLabel htmlFor="body">Content</FieldLabel>
+      <Textarea
+        id="body"
+        name="body"
+        value={body}
+        required="true"
+        maxlength="20000"
+        rows="12"
+        describedBy="page-body-hint page-body-error"
+      />
+      <p id="page-body-hint" class="legura-hint">Plain text. HTML is displayed literally.</p>
+      <p id="page-body-error" class="ax-field__error" data-ax-field-error="body" aria-live="polite"></p>
+    </Field>
+  }
+}

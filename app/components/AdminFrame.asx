@@ -15,6 +15,7 @@ component AdminFrame(section = "overview", mediaAvailable = false) {
           <SidebarSection title="Content">
             <SidebarItem href="/admin" active={section == "overview"}>Overview</SidebarItem>
             <SidebarItem href="/admin/posts" active={section == "posts"}>Manage posts</SidebarItem>
+            <SidebarItem href="/admin/pages" active={section == "pages"}>Pages</SidebarItem>
             <If when={mediaAvailable}>
               <SidebarItem href="/admin/media" active={section == "media"}>Media library</SidebarItem>
             </If>
