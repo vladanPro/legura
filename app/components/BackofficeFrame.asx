@@ -11,7 +11,7 @@ component BackofficeFrame() {
       <a class="legura-skip-link" href="#main-content">Skip to content</a>
       <Container max="lg">
         <header class="legura-header">
-          <a class="legura-brand" href="/"><img src="/legura-mark.svg" alt="" width="36" height="36" />Legura</a>
+          <a class="legura-brand" href="/"><img src="/assets/legura-mark.svg" alt="" width="36" height="36" />Legura</a>
           <span>Content, forged together.</span>
           <label class="legura-mode-picker" hidden="true">Appearance<select class="ax-select" aria-label="Appearance" data-legura-mode-picker="true"><option value="light">Light</option><option value="dark">Dark</option></select></label>
         </header>

@@ -4,9 +4,9 @@ page RootLayout() {
   return ASX {
     <Head>
       <Title>Legura CMS</Title>
-      <Script src="/appearance.js" />
-      <Link rel="icon" href="/legura-mark.svg" type="image/svg+xml" />
-      <Link rel="stylesheet" href="/legura.css" />
+      <Script src="/assets/appearance.js" />
+      <Link rel="icon" href="/assets/legura-mark.svg" type="image/svg+xml" />
+      <Link rel="stylesheet" href="/assets/legura.css" />
     </Head>
     <Slot />
   }
