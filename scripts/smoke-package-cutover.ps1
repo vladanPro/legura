@@ -96,9 +96,13 @@ function Stop-Site {
   $Server.Dispose()
 }
 
+function Assert-Port-Free {
+  $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, $Port)
+  try { $listener.Start() } catch { throw "Test server port $Port remains occupied after stopping its process" } finally { $listener.Stop() }
+}
+
 try {
-  $reservation = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, $Port)
-  try { $reservation.Start() } finally { $reservation.Stop() }
+  Assert-Port-Free
   New-Item -ItemType Directory -Path $fixture | Out-Null
   $data = Join-Path $fixture 'private-data'
   $media = Join-Path $data 'media'
@@ -153,9 +157,14 @@ try {
   $mediaObject = Join-Path $media $mediaId
   $mediaHash = (Get-FileHash -LiteralPath $mediaObject -Algorithm SHA256).Hash
 
+  Stop-Site -Server $process
+  $process = $null
+  Assert-Port-Free
+  $client.Dispose()
+  $client = New-Client
   $backup = Join-Path $fixture 'before-cutover.legura'
   & $oldMaintenance archive-backup $database local-media $media $backup | Out-Null
-  if ($LASTEXITCODE -ne 0) { throw '0.0.1 could not back up its live database and image' }
+  if ($LASTEXITCODE -ne 0) { throw '0.0.1 could not back up its stopped database and image' }
   & $newMaintenance archive-verify $backup | Out-Null
   if ($LASTEXITCODE -ne 0) { throw '0.0.2 could not verify the pre-cutover archive' }
   $recovery = Join-Path $fixture 'inactive-recovery'
@@ -164,10 +173,6 @@ try {
   & $newMaintenance archive-check-recovery $backup $recovery | Out-Null
   if ($LASTEXITCODE -ne 0) { throw '0.0.2 rejected pre-cutover data or media' }
 
-  Stop-Site -Server $process
-  $process = $null
-  $client.Dispose()
-  $client = New-Client
   Copy-Item -LiteralPath $oldConfig -Destination $newConfig
   if (!$IsWindows) { [IO.File]::SetUnixFileMode($newConfig, [IO.UnixFileMode]::UserRead -bor [IO.UnixFileMode]::UserWrite) }
   if ((Get-FileHash -LiteralPath $newConfig -Algorithm SHA256).Hash -ne $configHash) { throw 'Cutover changed the private configuration' }
@@ -195,6 +200,11 @@ try {
 
   Request -Path '/__axonyx/action?path=%2Fadmin%2Fposts%2Fnew&name=CreatePost' -Status 303 -Body 'title=Post+after+cutover&slug=after-cutover&body=Do+not+discard+this+write&status=published' -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = (Csrf) } | Out-Null
   if (!(Request -Path '/posts/after-cutover' -Status 200).Contains('Do not discard this write')) { throw '0.0.2 did not persist its new post' }
+  Stop-Site -Server $process
+  $process = $null
+  Assert-Port-Free
+  $client.Dispose()
+  $client = New-Client
   $afterBackup = Join-Path $fixture 'after-cutover.legura'
   & $newMaintenance archive-backup $database local-media $media $afterBackup | Out-Null
   if ($LASTEXITCODE -ne 0) { throw '0.0.2 could not preserve post-cutover writes' }
@@ -229,11 +239,15 @@ if before != {'cross-version'} or after != {'cross-version', 'after-cutover'}:
     $restoredImage = Join-Path $location "media/local-media/$mediaId"
     if ((Get-FileHash -LiteralPath $restoredImage -Algorithm SHA256).Hash -ne $mediaHash) { throw 'A recovered archive lost the original image' }
   }
-  if (!(Request -Path '/posts/after-cutover' -Status 200).Contains('Do not discard this write')) { throw 'Offline recovery changed the running 0.0.2 installation' }
+  $process = Start-Site -Package $current
+  if (!(Request -Path '/posts/after-cutover' -Status 200).Contains('Do not discard this write')) { throw 'Offline recovery changed the restarted 0.0.2 installation' }
+  Request -Path '/admin' -Status 403 | Out-Null
+  Request -Path '/__axonyx/action?path=%2Flogin&name=SignIn' -Status 303 -Body "email=cutover%40example.com&password=$password" -Headers @{ Origin = $baseUrl; Accept = 'text/html'; 'X-Axonyx-CSRF' = (Csrf) } | Out-Null
+  Request -Path '/admin' -Status 200 | Out-Null
   if ((Get-FileHash -LiteralPath $oldConfig -Algorithm SHA256).Hash -ne $configHash -or
       (Get-FileHash -LiteralPath $newConfig -Algorithm SHA256).Hash -ne $configHash) { throw 'Offline recovery changed the private configuration' }
-  Write-Host 'Native package cutover passed: genuine 0.0.1 to 0.0.2 server, external SQLite/media, verified backups, public post, fresh admin login, locked setup and exact private image bytes.'
-  Write-Host 'Post-cutover safety gate passed: both archives verified in separate inactive locations; the older archive lacks the new post, so automatic rollback would discard an accepted write and remains unsupported.'
+  Write-Host 'Native package cutover passed: genuine 0.0.1 to 0.0.2 server, external SQLite/media, stopped-writer backups, public post, fresh admin login, locked setup and exact private image bytes.'
+  Write-Host 'Post-cutover safety gate passed: both snapshots were taken with the test server stopped and verified in separate inactive locations; the older archive lacks the new post, so automatic rollback remains unsupported.'
 } finally {
   if ($process) { Stop-Site -Server $process }
   if ($client) { $client.Dispose() }
