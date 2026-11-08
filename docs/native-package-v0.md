@@ -213,16 +213,21 @@ disposable data is used; this does not prove an upgrade between two versions.
 For a manual compatible-package rehearsal, keep private database/media outside
 the replaceable program directory and obtain the candidate from a trusted
 source. Verify its archive checksum separately, extract it to a **new**
-directory, run `verify-package` before adding `.env`, then take a media-inclusive
-backup using the running installation's maintenance tool. Run the candidate's
-`archive-verify`, `archive-restore` into a NEW inactive directory, and
-`archive-check-recovery` there before cutover. The latter validates the exact
-schema, migration history, post content and referenced image bytes; neither
-command switches the running database. Stop all server
-instances, copy the private configuration without changing its paths or
-permissions, start the candidate, and verify readiness, public content,
-administrator login and private assets. Keep the old package and backup until
-the new installation is accepted. Do not overwrite files in a live package.
+directory, and run `verify-package` before adding `.env`. A backup made while
+the old installation is running is only preliminary: it does not contain writes
+accepted after that instant. For the **final** archive, stop all server and
+worker instances that can write to this database or media store, prevent new
+write traffic, and confirm the writer processes have exited. Then take a
+media-inclusive archive with the old maintenance tool while those writers
+remain stopped. Run the candidate's `archive-verify`, `archive-restore` into a
+NEW inactive directory, and `archive-check-recovery` there before cutover.
+The latter validates the exact schema, migration history, post content and
+referenced image bytes; neither command switches the running database. Keep
+the old writers stopped. Copy the private configuration without changing its
+paths or permissions. Start the candidate, then verify readiness, public
+content, administrator login and private assets. Keep the old package and
+backup until the new installation is accepted. Do not overwrite files in a
+live package.
 If a candidate fails before readiness, investigate its logs and configuration;
 the old package can be restarted only when its database/schema remains
 compatible. This isolated test deliberately injects a missing media directory,
@@ -241,8 +246,11 @@ checks that the old reader refuses new backups. This is backup compatibility,
 not a schema migration. The separate cross-version native-package gate builds
 both versions as independent packages and exercises a disposable server cutover
 with external SQLite/media, a verified pre-cutover archive, public content,
-fresh administrator login and exact private image bytes. It does not test
-rollback after the new version writes or provide an operator upgrade command.
+fresh administrator login and exact private image bytes. The final archives in
+that test are made only after the corresponding single test server has exited.
+This does not prove that a real multi-instance deployment has no other writers.
+The gate does not test rollback after the new version writes or provide an
+operator upgrade command.
 See post-cutover-recovery-v0.md for the tested data-loss boundary after the new
 version accepts writes.
 

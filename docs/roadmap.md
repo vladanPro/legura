@@ -197,7 +197,10 @@ bytes.
 Operator-driven upgrade, schema evolution and rollback after new writes remain
 open. The isolated cutover gate now verifies archives from both sides of
 a new `0.0.2` post and proves that an automatic return to the `0.0.1` snapshot
-would discard it; see native-package-v0.md and post-cutover-recovery-v0.md.
+would discard it. The final test archives now follow a stopped-writer boundary
+before verification and inactive recovery; this proves only the isolated
+single-server flow, not a multi-instance write freeze. See native-package-v0.md
+and post-cutover-recovery-v0.md.
 
 Local source preparation has an executable first-run acceptance gate:
 prepare/init/check/start, secret preservation, local-only database/config
