@@ -96,13 +96,20 @@ function Stop-Site {
   $Server.Dispose()
 }
 
-function Assert-Port-Free {
-  $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, $Port)
-  try { $listener.Start() } catch { throw "Test server port $Port remains occupied after stopping its process" } finally { $listener.Stop() }
+function Assert-No-Server-Listener {
+  for ($attempt = 0; $attempt -lt 40; $attempt++) {
+    $probe = [Net.Sockets.TcpClient]::new()
+    try { $probe.Connect([Net.IPAddress]::Loopback, $Port) }
+    catch [Net.Sockets.SocketException] {
+      if ($_.Exception.SocketErrorCode -eq [Net.Sockets.SocketError]::ConnectionRefused) { return }
+    } finally { $probe.Dispose() }
+    Start-Sleep -Milliseconds 100
+  }
+  throw "Test server still accepts connections on port $Port after stopping its process"
 }
 
 try {
-  Assert-Port-Free
+  Assert-No-Server-Listener
   New-Item -ItemType Directory -Path $fixture | Out-Null
   $data = Join-Path $fixture 'private-data'
   $media = Join-Path $data 'media'
@@ -159,9 +166,9 @@ try {
 
   Stop-Site -Server $process
   $process = $null
-  Assert-Port-Free
   $client.Dispose()
   $client = New-Client
+  Assert-No-Server-Listener
   $backup = Join-Path $fixture 'before-cutover.legura'
   & $oldMaintenance archive-backup $database local-media $media $backup | Out-Null
   if ($LASTEXITCODE -ne 0) { throw '0.0.1 could not back up its stopped database and image' }
@@ -202,9 +209,9 @@ try {
   if (!(Request -Path '/posts/after-cutover' -Status 200).Contains('Do not discard this write')) { throw '0.0.2 did not persist its new post' }
   Stop-Site -Server $process
   $process = $null
-  Assert-Port-Free
   $client.Dispose()
   $client = New-Client
+  Assert-No-Server-Listener
   $afterBackup = Join-Path $fixture 'after-cutover.legura'
   & $newMaintenance archive-backup $database local-media $media $afterBackup | Out-Null
   if ($LASTEXITCODE -ne 0) { throw '0.0.2 could not preserve post-cutover writes' }
