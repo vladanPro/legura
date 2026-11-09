@@ -1,0 +1,10 @@
+{
+  "language.title": "Jezik",
+  "language.description": "Jezik panela i jezik teksta na sajtu biraju se odvojeno.",
+  "language.admin.label": "Jezik panela",
+  "language.admin.hint": "Za sada je preveden ovaj ekran. Ostali ekrani su na engleskom.",
+  "language.admin.save": "Primeni jezik panela",
+  "language.site.label": "Jezik sajta",
+  "language.site.hint": "Oznaka jezika za javne objave i stranice. Ne prevodi tekst.",
+  "language.site.save": "Primeni jezik sajta"
+}

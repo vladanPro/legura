@@ -1,0 +1,10 @@
+{
+  "language.title": "Language",
+  "language.description": "Choose the admin language separately from the language of your site content.",
+  "language.admin.label": "Admin language",
+  "language.admin.hint": "This screen is translated. Other admin screens still use English.",
+  "language.admin.save": "Save admin language",
+  "language.site.label": "Site language",
+  "language.site.hint": "Labels public post and page content for assistive technology. Does not translate text.",
+  "language.site.save": "Save site language"
+}
