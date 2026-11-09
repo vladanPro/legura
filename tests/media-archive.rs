@@ -998,9 +998,9 @@ fn media_migration_rollback_preserves_referenced_rows_then_allows_empty_table() 
     )
     .unwrap();
     let migrations = legura::database_contract::embedded_migrations();
-    AxMigrationExecutor::rollback_migration(&runtime, &migrations[6]).unwrap();
-    AxMigrationExecutor::rollback_migration(&runtime, &migrations[5]).unwrap();
-    AxMigrationExecutor::rollback_migration(&runtime, &migrations[4]).unwrap();
+    for migration in migrations[4..].iter().rev() {
+        AxMigrationExecutor::rollback_migration(&runtime, migration).unwrap();
+    }
     assert!(AxMigrationExecutor::rollback_migration(&runtime, &migrations[3]).is_err());
     let database = Connection::open(path).unwrap();
     assert_eq!(
@@ -1051,8 +1051,9 @@ fn post_image_rollback_refuses_editorial_loss_and_preserves_media_after_detach()
     )
     .unwrap();
     let migrations = legura::database_contract::embedded_migrations();
-    AxMigrationExecutor::rollback_migration(&runtime, &migrations[6]).unwrap();
-    AxMigrationExecutor::rollback_migration(&runtime, &migrations[5]).unwrap();
+    for migration in migrations[5..].iter().rev() {
+        AxMigrationExecutor::rollback_migration(&runtime, migration).unwrap();
+    }
     let migration = &migrations[4];
     assert!(AxMigrationExecutor::rollback_migration(&runtime, migration).is_err());
     assert_eq!(

@@ -1,0 +1,42 @@
+import { AdminFrame } from "@/components/AdminFrame"
+import { Badge } from "@axonyx/ui/foundry/Badge"
+import { Card } from "@axonyx/ui/foundry/Card"
+
+page AdminPages() {
+  data listing: SitePageListing = loadSitePages(query.page ?? "1")
+  data mediaAvailable: Bool = loadAdminMediaAvailability()
+  return ASX {
+    <AdminFrame section="pages" mediaAvailable={mediaAvailable}>
+      <header class="legura-page-heading">
+        <div>
+          <h1>Pages</h1>
+          <p>Create standalone pages such as About or Contact, separate from your blog.</p>
+        </div>
+        <a class="ax-button" data-variant="primary" href="/admin/pages/new">New page</a>
+      </header>
+      <Card title="Site pages">
+        <If when={listing.total == 0}>
+          <p>No pages yet. Create your first draft to get started.</p>
+        </If>
+        <Each items={listing.items} as="entry">
+          <div class="legura-links">
+            <a href={"/admin/pages/" + entry.id + "/edit"}>{entry.title}</a>
+            <span>{"/pages/" + entry.slug}</span>
+            <Badge>{entry.status}</Badge>
+          </div>
+        </Each>
+        <If when={listing.total > 10}>
+          <nav class="legura-links" aria-label="Page list pagination">
+            <If when={listing.page > 1}>
+              <a href={"/admin/pages?page=" + (listing.page - 1)}>Previous page</a>
+            </If>
+            <span>{"Page " + listing.page}</span>
+            <If when={listing.page * 10 < listing.total}>
+              <a href={"/admin/pages?page=" + (listing.page + 1)}>Next page</a>
+            </If>
+          </nav>
+        </If>
+      </Card>
+    </AdminFrame>
+  }
+}

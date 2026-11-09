@@ -1,0 +1,50 @@
+import { AdminFrame } from "@/components/AdminFrame"
+import { SitePageFields } from "@/components/SitePageFields"
+import { Card } from "@axonyx/ui/foundry/Card"
+import { Field } from "@axonyx/ui/foundry/Field"
+import { FieldLabel } from "@axonyx/ui/foundry/FieldLabel"
+import { Select } from "@axonyx/ui/foundry/Select"
+
+page EditSitePage() {
+  data entry: SitePage = loadSitePage(params.id)
+  data mediaAvailable: Bool = loadAdminMediaAvailability()
+  return ASX {
+    <AdminFrame section="pages" mediaAvailable={mediaAvailable}>
+      <Card title="Edit page">
+        <p>{"Page URL: /pages/" + entry.slug}</p>
+        <form
+          method="post"
+          action={action UpdatePage}
+          data-ax-retain-fields="title,body,status"
+          class="legura-form"
+        >
+          <input type="hidden" name="id" value={entry.id} />
+          <SitePageFields title={entry.title} body={entry.body} />
+          <Field htmlFor="status">
+            <FieldLabel htmlFor="status">Status</FieldLabel>
+            <Select id="status" name="status" describedBy="page-status-error">
+              <option value="draft" selected={entry.status == "draft"}>Draft</option>
+              <option value="published" selected={entry.status == "published"}>Published</option>
+            </Select>
+            <p
+              id="page-status-error"
+              class="ax-field__error"
+              data-ax-field-error="status"
+              aria-live="polite"
+            ></p>
+          </Field>
+          <div class="legura-form-actions">
+            <button type="submit" class="ax-button" data-variant="primary">Save changes</button>
+            <a href="/admin/pages">All pages</a>
+          </div>
+        </form>
+        <nav class="legura-links" aria-label="Page management">
+          <a href={"/admin/pages/" + entry.id + "/preview"}>Preview saved page</a>
+          <If when={entry.status == "published"}>
+            <a href={"/pages/" + entry.slug}>View public page</a>
+          </If>
+        </nav>
+      </Card>
+    </AdminFrame>
+  }
+}

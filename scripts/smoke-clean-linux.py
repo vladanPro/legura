@@ -113,6 +113,51 @@ def verify_public(image_url):
     return image
 
 
+def verify_pages(client):
+    guest = Client()
+    guest.request("/admin/pages", 403)
+    guest.request("/admin/pages/new", 403)
+    client.request("/admin/pages", 200)
+    client.request("/admin/pages/new", 200)
+    draft = {"title": "About us", "slug": "o-nama", "body": "Page proof <script>fixture()</script>"}
+    guest.action("/admin/pages/new", "CreatePage", 403, fields=draft)
+    client.action("/admin/pages/new", "CreatePage", 422, fields=dict(draft, slug="About"))
+    client.action("/admin/pages/new", "CreatePage", 422, fields=dict(draft, slug="a/b"))
+    _, headers = client.action("/admin/pages/new", "CreatePage", fields=draft)
+    assert headers["Location"] == "/admin/pages"
+    listing, _ = client.request("/admin/pages", 200)
+    match = re.search(rb'/admin/pages/[0-9a-f-]{36}/edit', listing)
+    assert match and b"About us" in listing
+    edit = match[0].decode()
+    preview = edit.removesuffix("edit") + "preview"
+    client.request(edit, 200)
+    guest.request(edit, 403)
+    guest.request(preview, 403)
+    guest.request("/pages/o-nama", 404)
+    saved, _ = client.request(preview, 200)
+    assert b"Private preview" in saved and b"Page proof" in saved
+    assert b"<script>fixture()</script>" not in saved
+    client.action("/admin/pages/new", "CreatePage", 422, fields=draft)
+    fields = {
+        "id": edit.split("/")[-2],
+        "title": draft["title"], "body": draft["body"], "status": "published",
+    }
+    guest.action(edit, "UpdatePage", 403, fields=fields)
+    client.action(edit, "UpdatePage", fields=fields)
+    verify_public_page(guest)
+    client.action(edit, "UpdatePage", fields=dict(fields, status="draft"))
+    guest.request("/pages/o-nama", 404)
+    client.action(edit, "UpdatePage", fields=fields)
+
+
+def verify_public_page(guest):
+    page, _ = guest.request("/pages/o-nama", 200)
+    assert b"About us" in page and b"Page proof" in page
+    assert b"<script>fixture()</script>" not in page
+    guest.request("/legura.css", 200)
+    guest.request("/login", 200)
+
+
 def smoke(archive, root):
     original = root / "package"
     candidate = root / "recovered-package"
@@ -145,6 +190,7 @@ def smoke(archive, root):
         })
         client.request("/admin", 200)
         client.request("/setup", 403)
+        verify_pages(client)
         client.action("/admin/posts/new", "CreatePost", fields={
             "title": "Clean Linux proof", "slug": "clean-linux",
             "body": "Native package proof", "status": "published",
@@ -175,6 +221,7 @@ def smoke(archive, root):
     assert recovered_config["AX_SECRET_SESSION_KEY"] != values["AX_SECRET_SESSION_KEY"]
     with server(candidate):
         assert verify_public(image_url) == image
+        verify_public_page(Client())
         client.request("/admin", 403)  # The original session must not carry over.
         client.action("/login", "SignIn", fields={"email": EMAIL, "password": PASSWORD})
         client.request("/admin", 200)
