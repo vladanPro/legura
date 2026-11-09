@@ -234,6 +234,7 @@ def smoke(archive, root):
         image = verify_public(image_url)
         assert image == (media / image_id).read_bytes()
         verify_languages(client)
+        client.action("/admin/language", "SetAdminLanguage", fields={"admin_language": "sr-Latn"})
 
     backup = root / "backup.legura"
     recovery = root / "inactive"
@@ -251,6 +252,8 @@ def smoke(archive, root):
         client.request("/admin", 403)  # The original session must not carry over.
         client.action("/login", "SignIn", fields={"email": EMAIL, "password": PASSWORD})
         client.request("/admin", 200)
+        settings, _ = client.request("/admin/language", 200)
+        assert b"Primeni jezik panela" in settings, "Recovered admin language was not rendered"
         client.request("/setup", 403)
     assert config.read_bytes() == original_config
     print("Clean Linux package passed: setup, published post/image, backup, recovery and fresh login.")
