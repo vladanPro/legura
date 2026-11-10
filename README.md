@@ -25,6 +25,12 @@ Create a draft, preview the saved content privately, then publish it under
 page back to Draft hides it from visitors. Pages are separate from blog posts;
 navigation menus, rich text, and page-specific templates are not included.
 
+**Administration > Language** stores English or Serbian (Latin) independently
+for the admin interface and the public content. The language settings screen
+is the first translated admin screen. The public preference labels the saved
+post and page content with HTML `lang`; it does not translate text or change
+the public theme. Other admin screens and public navigation remain English.
+
 ### Earlier acceptance milestones
 
 Typed-action-query/expression fixes (#323/#324) were published in core 0.6.4,

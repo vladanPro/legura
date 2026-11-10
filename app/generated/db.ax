@@ -34,6 +34,24 @@ export type LeguraInstallationUpdateInput {
   admin_id: Optional<String>
 }
 
+export type LeguraLanguagesRow {
+  id: Int
+  admin_language: String
+  site_language: String
+}
+
+export type LeguraLanguagesCreateInput {
+  id: Optional<Int>
+  admin_language: String
+  site_language: String
+}
+
+export type LeguraLanguagesUpdateInput {
+  id: Optional<Int>
+  admin_language: Optional<String>
+  site_language: Optional<String>
+}
+
 export type LeguraMediaRow {
   id: String
   store_id: String

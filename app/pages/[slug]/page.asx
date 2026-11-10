@@ -3,10 +3,17 @@ import { PublicFrame } from "@/components/PublicFrame"
 
 page PublicSitePage() {
   data publicTheme: String = loadPublicTheme()
+  data contentLanguage: String = loadSiteContentLanguage()
   data entry: PublishedSitePage = loadPublishedSitePage(params.slug)
   return ASX {
     <PublicFrame theme={publicTheme}>
-      <PostStory title={entry.title} body={entry.body} backHref="/" backLabel="Home" />
+      <PostStory
+        title={entry.title}
+        body={entry.body}
+        backHref="/"
+        backLabel="Home"
+        contentLanguage={contentLanguage}
+      />
     </PublicFrame>
   }
 }

@@ -158,6 +158,30 @@ def verify_public_page(guest):
     guest.request("/login", 200)
 
 
+def verify_languages(client):
+    route = "/admin/language"
+    guest = Client()
+    guest.request(route, 403)
+    guest.action(route, "SetSiteLanguage", 403, fields={"site_language": "sr-Latn"})
+    client.action(route, "SetAdminLanguage", 422, fields={"admin_language": "unsupported"})
+    client.action(route, "SetAdminLanguage", fields={"admin_language": "sr-Latn"})
+    settings, _ = client.request(route, 200)
+    assert b"Jezik panela" in settings and b'lang="sr-Latn"' in settings
+    public, _ = guest.request("/pages/o-nama", 200)
+    assert re.search(rb'<h1[^>]+lang="en"[^>]*>\s*About us', public)
+    client.action(route, "SetSiteLanguage", fields={"site_language": "sr-Latn"})
+    client.action(route, "SetAdminLanguage", fields={"admin_language": "en"})
+    settings, _ = client.request(route, 200)
+    assert b"Save admin language" in settings and b"Jezik panela" not in settings
+    verify_site_language(guest)
+
+
+def verify_site_language(guest):
+    for route, title in (("/pages/o-nama", b"About us"), ("/posts/clean-linux", b"Clean Linux proof")):
+        public, _ = guest.request(route, 200)
+        assert re.search(rb'<h1[^>]+lang="sr-Latn"[^>]*>\s*' + title, public), route
+
+
 def smoke(archive, root):
     original = root / "package"
     candidate = root / "recovered-package"
@@ -209,6 +233,7 @@ def smoke(archive, root):
         image_url = f"/api/post-images/clean-linux/{image_id}"
         image = verify_public(image_url)
         assert image == (media / image_id).read_bytes()
+        verify_languages(client)
 
     backup = root / "backup.legura"
     recovery = root / "inactive"
@@ -222,6 +247,7 @@ def smoke(archive, root):
     with server(candidate):
         assert verify_public(image_url) == image
         verify_public_page(Client())
+        verify_site_language(Client())
         client.request("/admin", 403)  # The original session must not carry over.
         client.action("/login", "SignIn", fields={"email": EMAIL, "password": PASSWORD})
         client.request("/admin", 200)
