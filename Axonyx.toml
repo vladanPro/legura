@@ -30,3 +30,6 @@ sqlite_busy_timeout_ms = 5000
 
 [modules]
 enabled = ["ui"]
+
+[i18n]
+fallback = "en"

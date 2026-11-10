@@ -5,38 +5,33 @@ import { Select } from "@axonyx/ui/foundry/Select"
 page LanguageSettings() {
   data preferences: LanguagePreferences = loadLanguagePreferences()
   data mediaAvailable: Bool = loadAdminMediaAvailability()
-  const serbian = preferences.admin_language == "sr-Latn"
+  const translate = I18n.withLocale(preferences.admin_language)
   return ASX {
     <AdminFrame section="language" mediaAvailable={mediaAvailable}>
       <section lang={preferences.admin_language}>
         <header class="legura-page-heading">
           <div>
-            <h1>
-              <If when={serbian}>Jezik</If>
-              <If when={!serbian}>Language</If>
-            </h1>
-            <p>
-              <If when={serbian}>Jezik ovog ekrana i jezik teksta na sajtu biraju se odvojeno.</If>
-              <If when={!serbian}>Choose the language of this screen separately from the language of your site content.</If>
-            </p>
+            <h1>{translate("language.title")}</h1>
+            <p>{translate("language.description")}</p>
           </div>
         </header>
         <Card>
           <form method="post" action={action SetAdminLanguage} class="legura-form">
-            <label for="admin-language">
-              <If when={serbian}>Jezik panela</If><If when={!serbian}>Admin language</If>
-            </label>
+            <label for="admin-language">{translate("language.admin.label")}</label>
             <Select
               id="admin-language"
               name="admin_language"
               describedBy="admin-language-hint admin-language-error"
             >
-              <option value="en" lang="en" selected={!serbian}>English</option>
-              <option value="sr-Latn" lang="sr-Latn" selected={serbian}>Srpski (latinica)</option>
+              <option value="en" lang="en" selected={preferences.admin_language == "en"}>English</option>
+              <option
+                value="sr-Latn"
+                lang="sr-Latn"
+                selected={preferences.admin_language == "sr-Latn"}
+              >Srpski (latinica)</option>
             </Select>
             <p id="admin-language-hint" class="legura-hint">
-              <If when={serbian}>Za sada je preveden ovaj ekran. Ostali ekrani su na engleskom.</If>
-              <If when={!serbian}>This screen is translated. Other admin screens still use English.</If>
+              {translate("language.admin.hint")}
             </p>
             <p
               id="admin-language-error"
@@ -45,15 +40,13 @@ page LanguageSettings() {
               aria-live="polite"
             ></p>
             <button type="submit" class="ax-button" data-variant="primary">
-              <If when={serbian}>Primeni jezik panela</If><If when={!serbian}>Save admin language</If>
+              {translate("language.admin.save")}
             </button>
           </form>
         </Card>
         <Card>
           <form method="post" action={action SetSiteLanguage} class="legura-form">
-            <label for="site-language">
-              <If when={serbian}>Jezik sajta</If><If when={!serbian}>Site language</If>
-            </label>
+            <label for="site-language">{translate("language.site.label")}</label>
             <Select
               id="site-language"
               name="site_language"
@@ -67,8 +60,7 @@ page LanguageSettings() {
               >Srpski (latinica)</option>
             </Select>
             <p id="site-language-hint" class="legura-hint">
-              <If when={serbian}>Oznaka jezika za javne objave i stranice. Ne prevodi tekst.</If>
-              <If when={!serbian}>Labels public post and page content for assistive technology. Does not translate text.</If>
+              {translate("language.site.hint")}
             </p>
             <p
               id="site-language-error"
@@ -77,7 +69,7 @@ page LanguageSettings() {
               aria-live="polite"
             ></p>
             <button type="submit" class="ax-button" data-variant="primary">
-              <If when={serbian}>Primeni jezik sajta</If><If when={!serbian}>Save site language</If>
+              {translate("language.site.save")}
             </button>
           </form>
         </Card>
