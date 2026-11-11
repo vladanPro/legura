@@ -1,0 +1,23 @@
+import { AdminFrame } from "@/components/AdminFrame"
+import { PostStory } from "@/components/PostStory"
+
+page PreviewSitePage() {
+  data entry: SitePage = loadSitePage(params.id)
+  data mediaAvailable: Bool = loadAdminMediaAvailability()
+  return ASX {
+    <AdminFrame section="pages" mediaAvailable={mediaAvailable}>
+      <section class="legura-preview-notice" aria-label="Private saved preview">
+        <p>
+          <strong>Private preview</strong>
+        </p>
+        <p>This shows the last saved content. Viewing it does not publish the page.</p>
+      </section>
+      <PostStory
+        title={entry.title}
+        body={entry.body}
+        backHref={"/admin/pages/" + entry.id + "/edit"}
+        backLabel="Back to editor"
+      />
+    </AdminFrame>
+  }
+}

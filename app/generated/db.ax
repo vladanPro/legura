@@ -34,6 +34,24 @@ export type LeguraInstallationUpdateInput {
   admin_id: Optional<String>
 }
 
+export type LeguraLanguagesRow {
+  id: Int
+  admin_language: String
+  site_language: String
+}
+
+export type LeguraLanguagesCreateInput {
+  id: Optional<Int>
+  admin_language: String
+  site_language: String
+}
+
+export type LeguraLanguagesUpdateInput {
+  id: Optional<Int>
+  admin_language: Optional<String>
+  site_language: Optional<String>
+}
+
 export type LeguraMediaRow {
   id: String
   store_id: String
@@ -80,6 +98,30 @@ export type LeguraMediaCleanupUpdateInput {
   id: Optional<String>
   store_id: Optional<String>
   created_at: Optional<Int>
+}
+
+export type LeguraPagesRow {
+  id: String
+  title: String
+  slug: String
+  body: String
+  status: String
+}
+
+export type LeguraPagesCreateInput {
+  id: String
+  title: String
+  slug: String
+  body: String
+  status: Optional<String>
+}
+
+export type LeguraPagesUpdateInput {
+  id: Optional<String>
+  title: Optional<String>
+  slug: Optional<String>
+  body: Optional<String>
+  status: Optional<String>
 }
 
 export type LeguraPostImagesRow {

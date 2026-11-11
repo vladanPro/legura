@@ -25,7 +25,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.8.8' --locked --debug --force
+        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug --force
       - name: Check storage hook formatting
         shell: pwsh
         run: |
@@ -72,7 +72,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo install cargo-axonyx --version '=0.8.8' --locked --debug
+      - run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
       - run: bash scripts/format-sources.sh --check
       - name: Check staged-source hook safety
         shell: pwsh
@@ -89,7 +89,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.8.8' --locked --debug
+        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -115,7 +115,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.8.8' --locked --debug
+        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
       - name: Verify compiled native content with disposable SQLite
         shell: pwsh
         run: |
@@ -142,7 +142,7 @@ jobs:
           ./scripts/smoke-auth.ps1 -ActiveEditor -Mode native -Port 3946
   native-package:
     name: Native Package Archive
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -151,7 +151,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.8.8' --locked --debug
+        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
       - name: Verify archive extraction and toolchain-free native flow
         shell: pwsh
         run: ./scripts/smoke-local.ps1 -Port 3943 -Package -Systemd
@@ -159,17 +159,38 @@ jobs:
         with:
           ref: 8d47e6165a6df6d5ea4d510db9b20ba811846493
           path: prior
+      - uses: actions/checkout@v4
+        with:
+          ref: f4b065a60150fe94e98f19f4d8af4b52667f0227
+          path: pilot
       - name: Verify 0.0.1 backup compatibility with 0.0.2
         shell: pwsh
         run: |
           $priorPackage = Join-Path $env:RUNNER_TEMP ('legura-prior-package-' + [Guid]::NewGuid().ToString('N'))
+          $pilotPackage = Join-Path $env:RUNNER_TEMP ('legura-pilot-package-' + [Guid]::NewGuid().ToString('N'))
           $currentPackage = Join-Path $env:RUNNER_TEMP ('legura-current-package-' + [Guid]::NewGuid().ToString('N'))
           ./prior/scripts/local.ps1 -Task init
           ./prior/scripts/package.ps1 -OutputDirectory $priorPackage
+          ./pilot/scripts/local.ps1 -Task init
+          ./pilot/scripts/package.ps1 -OutputDirectory $pilotPackage
+          ./scripts/smoke-cross-version.ps1 -PriorTool (Join-Path $priorPackage 'legura-maintenance') -CurrentTool (Join-Path $pilotPackage 'legura-maintenance')
+          ./scripts/smoke-package-cutover.ps1 -PriorPackage $priorPackage -CurrentPackage $pilotPackage -Port 3947
           ./scripts/local.ps1 -Task init
           ./scripts/package.ps1 -OutputDirectory $currentPackage
-          ./scripts/smoke-cross-version.ps1 -PriorTool (Join-Path $priorPackage 'legura-maintenance') -CurrentTool (Join-Path $currentPackage 'legura-maintenance')
-          ./scripts/smoke-package-cutover.ps1 -PriorPackage $priorPackage -CurrentPackage $currentPackage -Port 3947
+          $inputDirectory = Join-Path $env:RUNNER_TEMP 'legura-clean-linux-input'
+          New-Item -ItemType Directory -Path $inputDirectory | Out-Null
+          ./scripts/archive-package.ps1 -PackageDirectory $currentPackage -OutputDirectory $inputDirectory
+      - name: Install the archive on Linux without a toolchain
+        run: |
+          docker build -t legura-clean-linux - <<'DOCKERFILE'
+          FROM ubuntu:24.04
+          RUN apt-get update && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*
+          DOCKERFILE
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges --user 65534:65534 --tmpfs /tmp:rw,exec,mode=1777 \
+            --mount "type=bind,source=$RUNNER_TEMP/legura-clean-linux-input,target=/input,readonly" \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/scripts/smoke-clean-linux.py,target=/smoke.py,readonly" \
+            legura-clean-linux sh -eu -c 'set -- /input/*.tar.gz; test "$#" -eq 1; exec python3 /smoke.py "$1"'
   compiled-auth:
     name: Registry Compiled Auth
     runs-on: ubuntu-latest
@@ -182,7 +203,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.8.8' --locked --debug
+        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
       - name: Verify SQLite maintenance safety
         run: |
           cargo fmt --all -- --check

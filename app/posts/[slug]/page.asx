@@ -3,12 +3,14 @@ import { PublicFrame } from "@/components/PublicFrame"
 
 page PublicPost() {
   data publicTheme: String = loadPublicTheme()
+  data contentLanguage: String = loadSiteContentLanguage()
   data post: PublishedStory = loadPublishedPost(params.slug)
   return ASX {
     <PublicFrame theme={publicTheme}>
       <PostStory
         title={post.title}
         body={post.body}
+        contentLanguage={contentLanguage}
         contentHtml={post.html}
         imageSelected={post.imageSelected}
         imageSrc={post.imageSrc}

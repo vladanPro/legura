@@ -19,6 +19,18 @@ The isolated compiled setup/auth smoke covers setup races, CSRF, sessions and
 authorization. The following paragraphs record earlier implementation steps;
 current dependency pins live in `Cargo.toml` and `.github/workflows/ci.yml`.
 
+Pages V0 adds standalone plain-text pages under **Administration > Pages**.
+Create a draft, preview the saved content privately, then publish it under
+`/pages/` (for example, `/pages/o-nama`). Slugs are fixed after creation. Setting the
+page back to Draft hides it from visitors. Pages are separate from blog posts;
+navigation menus, rich text, and page-specific templates are not included.
+
+**Administration > Language** stores English or Serbian (Latin) independently
+for the admin interface and the public content. The language settings screen
+is the first translated admin screen. The public preference labels the saved
+post and page content with HTML `lang`; it does not translate text or change
+the public theme. Other admin screens and public navigation remain English.
+
 ### Earlier acceptance milestones
 
 Typed-action-query/expression fixes (#323/#324) were published in core 0.6.4,
@@ -35,7 +47,7 @@ is integrated into dev.
 Posts V0 adds private create/edit, draft/published status, public published pages
 and plain-text rendering. Its typed not-found framework fixes are published in
 core 0.6.6/runtime 0.6.5/CLI 0.6.9/scaffold 0.6.7 after green release CI.
-The current registry pins are core/runtime `0.8.3` and CI CLI `0.8.8` for
+The current registry pins are core `0.8.3`, runtime `0.8.4`, and CI CLI `0.8.9` for
 public/private images and post authoring, replacing temporary source pins. See
 [Private Media HTTP](docs/private-media-http-v0.md) for registry acceptance and
 boundaries. The editor remains on its independent locked Git revision.
@@ -79,6 +91,12 @@ public home/blog frame from setup/login/admin appearance. An administrator can
 select either built-in Default or Editorial at `/admin/appearance`; this changes
 the public layout and palette without changing posts or backoffice settings.
 
+At `/admin/language`, Legura stores separate admin and public content language
+preferences. The settings screen uses Axonyx message catalogs for English and
+Serbian (Latin), with English fallback. Other admin screens remain English.
+The public preference sets the language annotation on published posts and pages;
+it does not translate their content.
+
 The [posts table contract](docs/posts-table-v1.md) explains published Foundry UI
 adoption and why search and pagination remain server-owned.
 
@@ -106,7 +124,7 @@ validated, server-owned boolean for product navigation, not an upload grant.
 An isolated protected-upload proof is merged in `dev` (PR #48), after all seven
 CI gates passed. Its startup hook (framework PR #357) is published in CLI 0.6.15,
 first adopted from crates.io; the current private-image CI uses registry CLI
-0.8.8. The
+0.8.9. The
 [library view pilot](docs/media-library-view-v0.md) is the basis of the opt-in
 product page. Existing operator installations are not automatically activated.
 
@@ -127,7 +145,7 @@ changing the developer's running CMS or claiming an operator activation command.
 The [native media configuration](docs/native-media-config-v0.md) now uses Legura's
 own startup hook and the application DB settings, disabled by default. Operator
 media pages and delivery were still inactive at that stage. The current pilot
-uses registry CLI 0.8.8 and runtime 0.8.3.
+uses registry CLI 0.8.9 and runtime 0.8.4.
 
 The native tool can now generate a NEW [private recovery configuration](docs/recovery-private-config-v0.md)
 with independent session/setup secrets after archive compatibility checks. It

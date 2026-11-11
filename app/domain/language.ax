@@ -1,0 +1,4 @@
+export query loadSiteContentLanguage() -> String {
+  data preferences = db.legura_languages.where({ id: 1 }).first()
+  return preferences["site_language"]
+}
