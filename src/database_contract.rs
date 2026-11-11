@@ -50,6 +50,11 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         include_str!("../db/migrations/20261110000000_009_languages/up.sql"),
         include_str!("../db/migrations/20261110000000_009_languages/down.sql"),
     ),
+    (
+        "20261111000000_010",
+        include_str!("../db/migrations/20261111000000_010_navigation/up.sql"),
+        include_str!("../db/migrations/20261111000000_010_navigation/down.sql"),
+    ),
 ];
 
 pub fn migration_hash(up: &str, down: &str) -> String {
@@ -76,6 +81,7 @@ pub fn embedded_migrations() -> Vec<AxMigration> {
                 "20261104000000_007" => "public_theme",
                 "20261109000000_008" => "pages",
                 "20261110000000_009" => "languages",
+                "20261111000000_010" => "navigation",
                 _ => unreachable!("embedded migration name is missing"),
             }
             .into(),
@@ -138,6 +144,17 @@ pub fn validate_structure(connection: &Connection) -> Result<usize> {
             |row| row.get(0),
         )?;
         ensure!(valid, "invalid language preferences");
+    }
+    if count >= 10 {
+        let locations: usize = connection.query_row(
+            "SELECT COUNT(*) FROM legura_menu_locations WHERE location IN ('header', 'footer')",
+            [],
+            |row| row.get(0),
+        )?;
+        ensure!(locations == 2, "invalid navigation locations");
+        connection.prepare("SELECT id, name FROM legura_menus LIMIT 0")?;
+        connection
+            .prepare("SELECT menu_id, page_id, position, visible FROM legura_menu_items LIMIT 0")?;
     }
     Ok(count)
 }

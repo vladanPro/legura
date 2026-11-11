@@ -1,0 +1,19 @@
+export type PublicMenuItem {
+  slug: String
+  title: String
+}
+
+export type PublicNavigation {
+  header_assigned: Number
+  has_header: Bool
+  has_footer: Bool
+  header: PublicMenuItem[]
+  footer: PublicMenuItem[]
+}
+
+export query loadPublicNavigation() -> PublicNavigation {
+  data assigned = db.query("SELECT CASE WHEN menu_id IS NULL THEN 0 ELSE 1 END AS assigned FROM legura_menu_locations WHERE location = 'header'")
+  data header = db.query("SELECT page.slug, page.title FROM legura_menu_locations AS slot JOIN legura_menu_items AS item ON item.menu_id = slot.menu_id JOIN legura_pages AS page ON page.id = item.page_id WHERE slot.location = 'header' AND item.visible = 1 AND page.status = 'published' ORDER BY item.position, item.page_id")
+  data footer = db.query("SELECT page.slug, page.title FROM legura_menu_locations AS slot JOIN legura_menu_items AS item ON item.menu_id = slot.menu_id JOIN legura_pages AS page ON page.id = item.page_id WHERE slot.location = 'footer' AND item.visible = 1 AND page.status = 'published' ORDER BY item.position, item.page_id")
+  return { header_assigned: assigned[0]["assigned"], has_header: header.length > 0, has_footer: footer.length > 0, header: header, footer: footer }
+}

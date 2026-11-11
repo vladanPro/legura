@@ -182,6 +182,97 @@ def verify_site_language(guest):
         assert re.search(rb'<h1[^>]+lang="sr-Latn"[^>]*>\s*' + title, public), route
 
 
+def public_menu(client, label, route="/"):
+    page, _ = client.request(route, 200)
+    nav = re.search(rb'<nav[^>]*aria-label="' + label + rb'"[^>]*>(.*?)</nav>', page, re.S)
+    return re.findall(rb'href="(/pages/[^" ]+)"', nav[1]) if nav else []
+
+
+def verify_navigation(admin):
+    guest = Client()
+    route = "/admin/navigation"
+    header = b"Public navigation"
+    footer = b"Footer navigation"
+    about = b"/pages/o-nama"
+    docs = b"/pages/read-me"
+    guest.request(route, 403)
+    guest.action(route, "CreateMenu", 403, fields={"name": "Unauthorized"})
+    assert not public_menu(guest, header) and not public_menu(guest, footer)
+
+    def create_menu(name):
+        _, headers = admin.action(route, "CreateMenu", fields={"name": name})
+        assert headers["Location"] == route
+        settings, _ = admin.request(route, 200)
+        match = re.search(rb'<option[^>]*value="([0-9a-f-]{36})"[^>]*>\s*' + name.encode() + rb'\s*</option>', settings)
+        assert match, name
+        return match[1].decode()
+
+    header_id = create_menu("Main menu")
+    footer_id = create_menu("Help menu")
+    assert header_id != footer_id
+    admin.action(route, "CreateMenu", 422, fields={"name": " main menu "})
+    for location, menu_id in (("header", header_id), ("footer", footer_id)):
+        admin.action(route, "AssignMenu", fields={"location": location, "menu_id": menu_id})
+    assert not public_menu(guest, header) and not public_menu(guest, footer)
+
+    def edit_path(title):
+        listing, _ = admin.request("/admin/pages", 200)
+        match = re.search(rb'href="(/admin/pages/[0-9a-f-]{36}/edit)"[^>]*>\s*' + title + rb'\s*</a>', listing)
+        assert match, title
+        return match[1].decode()
+
+    def item(menu, edit, position):
+        return {"menu_id": menu, "page_id": edit.split("/")[-2], "position": position}
+
+    about_edit = edit_path(b"About us")
+    header_item = item(header_id, about_edit, 20)
+    footer_item = item(footer_id, about_edit, 10)
+    for fields in (header_item, footer_item):
+        admin.action(route, "AddMenuPage", fields=fields)
+    admin.action(route, "AddMenuPage", 422, fields=header_item)
+    assert public_menu(guest, header) == [about]
+    assert public_menu(guest, footer) == [about]
+    admin.action(route, "UpdateMenuItem", fields=dict(header_item, visible=0))
+    assert not public_menu(guest, header)
+    assert public_menu(guest, footer) == [about]
+    admin.action(route, "UpdateMenuItem", fields=dict(header_item, visible=1))
+
+    fields = {"title": "Read me", "slug": "read-me", "body": "Read the guide."}
+    admin.action("/admin/pages/new", "CreatePage", fields=fields)
+    docs_edit = edit_path(b"Read me")
+    docs_item = item(header_id, docs_edit, 10)
+    admin.action(route, "AddMenuPage", 422, fields=docs_item)
+    admin.action(docs_edit, "UpdatePage", fields={
+        "id": docs_item["page_id"], "title": fields["title"], "body": fields["body"], "status": "published",
+    })
+    assert public_menu(guest, header) == [about]
+    admin.action(route, "AddMenuPage", fields=docs_item)
+    assert public_menu(guest, header) == [docs, about]
+    admin.action(route, "UpdateMenuItem", fields=dict(header_item, position=5, visible=1))
+    assert public_menu(guest, header, "/posts") == [about, docs]
+
+    about_fields = {"id": header_item["page_id"], "title": "About us", "body": "Page proof <script>fixture()</script>"}
+    admin.action(about_edit, "UpdatePage", fields=dict(about_fields, status="draft"))
+    assert public_menu(guest, header) == [docs] and not public_menu(guest, footer)
+    settings, _ = admin.request(f"{route}?menu={header_id}", 200)
+    assert b"Draft: not displayed on the public site." in settings
+    admin.action(about_edit, "UpdatePage", fields=dict(about_fields, status="published"))
+    admin.action(route, "RemoveMenuItem", fields={"menu_id": footer_id, "page_id": footer_item["page_id"]})
+    assert not public_menu(guest, footer)
+    admin.action(route, "AddMenuPage", fields=footer_item)
+    admin.action(route, "ClearMenu", fields={"location": "footer"})
+    assert not public_menu(guest, footer)
+    admin.action(route, "AssignMenu", fields={"location": "footer", "menu_id": footer_id})
+    admin.action("/admin/appearance", "SelectPublicTheme", fields={"theme": "editorial"})
+    verify_navigation_persistence(guest)
+    admin.action("/admin/appearance", "SelectPublicTheme", fields={"theme": "default"})
+
+
+def verify_navigation_persistence(guest):
+    assert public_menu(guest, b"Public navigation", "/pages/o-nama") == [b"/pages/o-nama", b"/pages/read-me"]
+    assert public_menu(guest, b"Footer navigation", "/posts") == [b"/pages/o-nama"]
+
+
 def smoke(archive, root):
     original = root / "package"
     candidate = root / "recovered-package"
@@ -215,6 +306,7 @@ def smoke(archive, root):
         client.request("/admin", 200)
         client.request("/setup", 403)
         verify_pages(client)
+        verify_navigation(client)
         client.action("/admin/posts/new", "CreatePost", fields={
             "title": "Clean Linux proof", "slug": "clean-linux",
             "body": "Native package proof", "status": "published",
@@ -249,6 +341,7 @@ def smoke(archive, root):
         assert verify_public(image_url) == image
         verify_public_page(Client())
         verify_site_language(Client())
+        verify_navigation_persistence(Client())
         client.request("/admin", 403)  # The original session must not carry over.
         client.action("/login", "SignIn", fields={"email": EMAIL, "password": PASSWORD})
         client.request("/admin", 200)

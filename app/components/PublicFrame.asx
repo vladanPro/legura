@@ -1,6 +1,7 @@
 import { Container } from "@axonyx/ui/foundry/Container"
+import { PublicMenu } from "@/components/PublicMenu"
 
-component PublicFrame(theme = "default") {
+component PublicFrame(theme = "default", headerAssigned = 0, hasHeader = false, hasFooter = false, headerItems = [], footerItems = []) {
   return ASX {
     <If when={theme == "editorial"}>
       <div
@@ -14,14 +15,24 @@ component PublicFrame(theme = "default") {
         <Container max="xl">
           <header class="legura-header legura-public-header">
             <a class="legura-brand" href="/"><img src="/legura-mark.svg" alt="" width="36" height="36" />Legura</a>
-            <nav class="legura-editorial-nav" aria-label="Public navigation">
-              <a href="/">Home</a>
-              <a href="/posts">Stories</a>
-            </nav>
+            <If when={headerAssigned == 0}>
+              <nav class="legura-editorial-nav" aria-label="Public navigation">
+                <a href="/">Home</a>
+                <a href="/posts">Stories</a>
+              </nav>
+            </If>
+            <If when={hasHeader}>
+              <PublicMenu items={headerItems} />
+            </If>
           </header>
           <div class="legura-main" id="main-content" tabindex="-1">
             <Slot />
           </div>
+          <If when={hasFooter}>
+            <footer class="legura-public-footer">
+              <PublicMenu items={footerItems} label="Footer navigation" />
+            </footer>
+          </If>
         </Container>
       </div>
     </If>
@@ -37,11 +48,21 @@ component PublicFrame(theme = "default") {
         <Container max="lg">
           <header class="legura-header legura-public-header">
             <a class="legura-brand" href="/"><img src="/legura-mark.svg" alt="" width="36" height="36" />Legura</a>
-            <span>Content, forged together.</span>
+            <If when={headerAssigned == 0}>
+              <span>Content, forged together.</span>
+            </If>
+            <If when={hasHeader}>
+              <PublicMenu items={headerItems} />
+            </If>
           </header>
           <div class="legura-main" id="main-content" tabindex="-1">
             <Slot />
           </div>
+          <If when={hasFooter}>
+            <footer class="legura-public-footer">
+              <PublicMenu items={footerItems} label="Footer navigation" />
+            </footer>
+          </If>
         </Container>
       </div>
     </If>
