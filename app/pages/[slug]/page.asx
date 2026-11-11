@@ -6,6 +6,8 @@ page PublicSitePage() {
   data navigation: PublicNavigation = loadPublicNavigation()
   data contentLanguage: String = loadSiteContentLanguage()
   data entry: PublishedSitePage = loadPublishedSitePage(params.slug)
+  data language: PublicLocale = loadPublicLocale(query.lang ?? "")
+  const translate = I18n.withLocale(language.locale)
   return ASX {
     <PublicFrame
       theme={publicTheme}
@@ -14,12 +16,16 @@ page PublicSitePage() {
       hasFooter={navigation.has_footer}
       headerItems={navigation.header}
       footerItems={navigation.footer}
+      locale={language.locale}
+      switcher={language.switcher}
+      suffix={language.suffix}
+      currentPath={"/pages/" + params.slug}
     >
       <PostStory
         title={entry.title}
         body={entry.body}
-        backHref="/"
-        backLabel="Home"
+        backHref={"/" + language.suffix}
+        backLabel={translate("public.home")}
         contentLanguage={contentLanguage}
       />
     </PublicFrame>

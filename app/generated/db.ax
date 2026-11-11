@@ -38,18 +38,24 @@ export type LeguraLanguagesRow {
   id: Int
   admin_language: String
   site_language: String
+  interface_language: String
+  interface_switcher: Int
 }
 
 export type LeguraLanguagesCreateInput {
   id: Optional<Int>
   admin_language: String
   site_language: String
+  interface_language: Optional<String>
+  interface_switcher: Optional<Int>
 }
 
 export type LeguraLanguagesUpdateInput {
   id: Optional<Int>
   admin_language: Optional<String>
   site_language: Optional<String>
+  interface_language: Optional<String>
+  interface_switcher: Optional<Int>
 }
 
 export type LeguraMediaRow {

@@ -6,5 +6,12 @@
   "language.admin.save": "Primeni jezik panela",
   "language.site.label": "Jezik sajta",
   "language.site.hint": "Oznaka jezika za javne objave i stranice. Ne prevodi tekst.",
-  "language.site.save": "Primeni jezik sajta"
+  "language.site.save": "Primeni jezik sajta",
+  "language.interface.title": "Jezik javnog interfejsa",
+  "language.interface.default": "Podrazumevani jezik interfejsa",
+  "language.interface.switcher": "Birac jezika za posetioce",
+  "language.interface.disabled": "Iskljucen",
+  "language.interface.enabled": "Ukljucen",
+  "language.interface.hint": "Menja oznake i kontrole, ne jezik objava i stranica.",
+  "language.interface.save": "Sacuvaj podesavanja interfejsa"
 }

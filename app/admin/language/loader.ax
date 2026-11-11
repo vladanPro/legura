@@ -1,6 +1,8 @@
 export type LanguagePreferences {
   admin_language: String
   site_language: String
+  interface_language: String
+  interface_switcher: Number
 }
 
 export query loadLanguagePreferences() -> LanguagePreferences {
@@ -9,5 +11,5 @@ export query loadLanguagePreferences() -> LanguagePreferences {
   require administrator else forbidden()
   require administrator["role"] == "admin" else forbidden()
   data preferences = db.legura_languages.where({ id: 1 }).first()
-  return { admin_language: preferences["admin_language"], site_language: preferences["site_language"] }
+  return { admin_language: preferences["admin_language"], site_language: preferences["site_language"], interface_language: preferences["interface_language"], interface_switcher: preferences["interface_switcher"] }
 }

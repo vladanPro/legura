@@ -1,0 +1,21 @@
+component SiteLanguageSwitcher(locale = "en", path = "/") {
+  return ASX {
+    <nav
+      class="legura-editorial-nav legura-language-switcher"
+      aria-label={t("public.switch.label", locale)}
+    >
+      <If when={locale == "en"}>
+        <strong lang="en" aria-current="true">{t("public.switch.en")}</strong>
+      </If>
+      <If when={locale != "en"}>
+        <a href={path + "?lang=en"} lang="en">{t("public.switch.en")}</a>
+      </If>
+      <If when={locale == "fr"}>
+        <strong lang="fr" aria-current="true">{t("public.switch.fr")}</strong>
+      </If>
+      <If when={locale != "fr"}>
+        <a href={path + "?lang=fr"} lang="fr">{t("public.switch.fr")}</a>
+      </If>
+    </nav>
+  }
+}

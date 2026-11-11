@@ -2,3 +2,15 @@ export query loadSiteContentLanguage() -> String {
   data preferences = db.legura_languages.where({ id: 1 }).first()
   return preferences["site_language"]
 }
+
+export type PublicLocale {
+  locale: String
+  switcher: Bool
+  suffix: String
+}
+
+export query loadPublicLocale(requested: String = "") -> PublicLocale {
+  data rows = db.query("SELECT locale, switcher, CASE WHEN switcher = 1 THEN '?lang=' || locale ELSE '' END AS suffix FROM (SELECT CASE WHEN interface_switcher = 1 AND ? IN ('en', 'fr') THEN ? ELSE interface_language END AS locale, interface_switcher AS switcher FROM legura_languages WHERE id = 1)", input.requested, input.requested)
+  data language = rows[0]
+  return { locale: language["locale"], switcher: language["switcher"] == 1, suffix: language["suffix"] }
+}

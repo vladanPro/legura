@@ -55,6 +55,11 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         include_str!("../db/migrations/20261111000000_010_navigation/up.sql"),
         include_str!("../db/migrations/20261111000000_010_navigation/down.sql"),
     ),
+    (
+        "20261111010000_011",
+        include_str!("../db/migrations/20261111010000_011_public_interface_language/up.sql"),
+        include_str!("../db/migrations/20261111010000_011_public_interface_language/down.sql"),
+    ),
 ];
 
 pub fn migration_hash(up: &str, down: &str) -> String {
@@ -82,6 +87,7 @@ pub fn embedded_migrations() -> Vec<AxMigration> {
                 "20261109000000_008" => "pages",
                 "20261110000000_009" => "languages",
                 "20261111000000_010" => "navigation",
+                "20261111010000_011" => "public_interface_language",
                 _ => unreachable!("embedded migration name is missing"),
             }
             .into(),
@@ -155,6 +161,14 @@ pub fn validate_structure(connection: &Connection) -> Result<usize> {
         connection.prepare("SELECT id, name FROM legura_menus LIMIT 0")?;
         connection
             .prepare("SELECT menu_id, page_id, position, visible FROM legura_menu_items LIMIT 0")?;
+    }
+    if count >= 11 {
+        let valid: bool = connection.query_row(
+            "SELECT interface_language IN ('en', 'fr') AND interface_switcher IN (0, 1) FROM legura_languages WHERE id = 1",
+            [],
+            |row| row.get(0),
+        )?;
+        ensure!(valid, "invalid public interface language preferences");
     }
     Ok(count)
 }

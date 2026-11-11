@@ -5,6 +5,9 @@ page PublicPosts() {
   data publicTheme: String = loadPublicTheme()
   data navigation: PublicNavigation = loadPublicNavigation()
   data posts: Post[] = loadPublishedPosts()
+  data language: PublicLocale = loadPublicLocale(query.lang ?? "")
+  data contentLanguage: String = loadSiteContentLanguage()
+  const translate = I18n.withLocale(language.locale)
   return ASX {
     <PublicFrame
       theme={publicTheme}
@@ -13,18 +16,23 @@ page PublicPosts() {
       hasFooter={navigation.has_footer}
       headerItems={navigation.header}
       footerItems={navigation.footer}
+      locale={language.locale}
+      switcher={language.switcher}
+      suffix={language.suffix}
+      currentPath="/posts"
     >
       <section class="legura-posts">
-        <h1>Published posts</h1>
+        <h1>{translate("public.posts")}</h1>
         <If when={!posts}>
-          <Card title="Nothing published yet">
-            <p>Check back for the first story.</p>
+          <Card title={translate("public.posts.empty")}>
+            <p>{translate("public.posts.empty.hint")}</p>
           </Card>
         </If>
         <div class="legura-post-list">
           <Each items={posts} as="post">
-            <Card title={post.title}>
-              <a href={"/posts/" + post.slug}>Read post</a>
+            <Card>
+              <h2 lang={contentLanguage}>{post.title}</h2>
+              <a href={"/posts/" + post.slug + language.suffix}>{translate("public.posts.read")}</a>
             </Card>
           </Each>
         </div>

@@ -1,8 +1,8 @@
-component PublicMenu(items = [], label = "Public navigation") {
+component PublicMenu(items = [], label = "Public navigation", suffix = "") {
   return ASX {
     <nav class="legura-editorial-nav" aria-label={label}>
       <Each items={items} as="entry">
-        <a href={"/pages/" + entry.slug}>{entry.title}</a>
+        <a href={"/pages/" + entry.slug + suffix}>{entry.title}</a>
       </Each>
     </nav>
   }
