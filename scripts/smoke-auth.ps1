@@ -90,6 +90,7 @@ function Read-Response {
   try {
     $headers = @{}
     foreach ($header in $Response.Headers) { $headers[$header.Key] = $header.Value -join ', ' }
+    foreach ($header in $Response.Content.Headers) { $headers[$header.Key] = $header.Value -join ', ' }
     return @{ Status = [int]$Response.StatusCode; Body = $Response.Content.ReadAsStringAsync().GetAwaiter().GetResult(); Headers = $headers }
   } finally { $Response.Dispose() }
 }
@@ -292,7 +293,14 @@ try {
   $installPath = "/__axonyx/action?path=%2Fsetup&name=Install"
   $body = "siteName=Fixture&email=owner%40example.com&password=$password&setupToken=$setup"
   Invoke-Request -Path $installPath -Method POST -Body $body -Headers @{ Origin = $baseUrl; Accept = "text/html" } -Status 403 | Out-Null
-  Invoke-Request -Path $installPath -Method POST -Body $body.Replace($setup, "wrong") -Headers $proof -Status 403 | Out-Null
+  $wrongToken = 'wrong-setup-token-fixture'
+  $rejectedSetup = Invoke-Request -Path $installPath -Method POST -Body $body.Replace($setup, $wrongToken) -Headers $proof -Status 422
+  if ($rejectedSetup.Headers['Content-Type'] -notmatch 'text/html' -or
+      $rejectedSetup.Body -notmatch 'data-ax-field-error="setupToken"[^>]*>\s*Setup token is incorrect' -or
+      $rejectedSetup.Body.Contains($wrongToken) -or $rejectedSetup.Body.Contains($password) -or
+      $rejectedSetup.Body.Contains($setup) -or $rejectedSetup.Headers['Set-Cookie']) {
+    throw 'Rejected setup did not render safe inline token feedback'
+  }
   $invalid = Invoke-Request -Path $installPath -Method POST -Body $body.Replace("siteName=Fixture", "siteName=Retained+site").Replace("owner%40example.com", "not-an-email") -Headers $proof -Status 422
   if ($invalid.Body -notmatch 'value="Retained site"' -or $invalid.Body.Contains($password) -or $invalid.Body.Contains($setup)) { throw "Native validation did not retain public fields safely" }
   $requests = @()

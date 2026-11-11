@@ -84,9 +84,16 @@ page Setup() {
             type="password"
             required="true"
             autocomplete="off"
-            aria-describedby="setupToken-hint"
+            aria-describedby="setupToken-hint setupToken-error"
           />
-          <p id="setupToken-hint" class="ax-field__hint">Ask the server owner for the one-time setup token. It is not your password.</p>
+          <p id="setupToken-hint" class="ax-field__hint">Use the value after AX_SECRET_SETUP_TOKEN= in this installation's .env file, or ask the server owner. It is not your password.</p>
+          <p
+            id="setupToken-error"
+            class="ax-field__error"
+            data-ax-field-error="setupToken"
+            aria-live="polite"
+            aria-atomic="true"
+          ></p>
         </div>
         <Button type="submit" variant="primary">Create installation</Button>
       </form>
