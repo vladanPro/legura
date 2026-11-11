@@ -1,0 +1,22 @@
+{
+  "public.skip": "Aller au contenu",
+  "public.home": "Accueil",
+  "public.stories": "Articles",
+  "public.nav.main": "Navigation principale",
+  "public.nav.footer": "Navigation de pied de page",
+  "public.tagline": "Du contenu forgé ensemble.",
+  "public.switch.label": "Langue du site",
+  "public.switch.en": "English",
+  "public.switch.fr": "Français",
+  "public.welcome": "Votre installation Legura",
+  "public.welcome.hint": "Lisez les articles publiés ou connectez-vous pour gérer votre contenu.",
+  "public.setup": "Configuration initiale",
+  "public.login": "Se connecter",
+  "public.admin": "Administration",
+  "public.posts": "Articles publiés",
+  "public.posts.empty": "Aucun article publié",
+  "public.posts.empty.hint": "Revenez bientôt pour découvrir le premier article.",
+  "public.posts.read": "Lire l'article",
+  "public.posts.all": "Tous les articles",
+  "public.image.unavailable": "L'image mise en avant est indisponible."
+}

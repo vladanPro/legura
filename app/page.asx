@@ -5,6 +5,8 @@ import { PublicFrame } from "@/components/PublicFrame"
 page Home() {
   data publicTheme: String = loadPublicTheme()
   data navigation: PublicNavigation = loadPublicNavigation()
+  data language: PublicLocale = loadPublicLocale(query.lang ?? "")
+  const translate = I18n.withLocale(language.locale)
   return ASX {
     <PublicFrame
       theme={publicTheme}
@@ -13,14 +15,17 @@ page Home() {
       hasFooter={navigation.has_footer}
       headerItems={navigation.header}
       footerItems={navigation.footer}
+      locale={language.locale}
+      switcher={language.switcher}
+      suffix={language.suffix}
     >
-      <Card title="Your Legura installation">
-        <Copy>Read published stories or sign in to manage your content.</Copy>
+      <Card title={translate("public.welcome")}>
+        <Copy>{translate("public.welcome.hint")}</Copy>
         <nav class="legura-links">
-          <a href="/posts">Published posts</a>
-          <a href="/setup">First-run setup</a>
-          <a href="/login">Sign in</a>
-          <a href="/admin">Administration</a>
+          <a href={"/posts" + language.suffix}>{translate("public.posts")}</a>
+          <a href="/setup">{translate("public.setup")}</a>
+          <a href="/login">{translate("public.login")}</a>
+          <a href="/admin">{translate("public.admin")}</a>
         </nav>
       </Card>
     </PublicFrame>

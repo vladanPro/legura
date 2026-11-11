@@ -11,3 +11,11 @@ action SetSiteLanguage(site_language: String) {
   db.legura_languages.where({ id: 1 }).update({ site_language: input.site_language })
   return redirect("/admin/language")
 }
+
+action SetPublicInterfaceLanguage(interface_language: String, interface_switcher: Int) {
+  data administrator = loadAdministrator()
+  require input.interface_language == "en" || input.interface_language == "fr" else invalid({ interface_language: "Choose English or French." })
+  require input.interface_switcher == 0 || input.interface_switcher == 1 else invalid({ interface_switcher: "Choose disabled or enabled." })
+  db.legura_languages.where({ id: 1 }).update({ interface_language: input.interface_language, interface_switcher: input.interface_switcher })
+  return redirect("/admin/language")
+}

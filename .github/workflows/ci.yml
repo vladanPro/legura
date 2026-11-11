@@ -177,6 +177,8 @@ jobs:
           ./scripts/smoke-package-cutover.ps1 -PriorPackage $priorPackage -CurrentPackage $pilotPackage -Port 3947
           ./scripts/local.ps1 -Task init
           ./scripts/package.ps1 -OutputDirectory $currentPackage
+          python -B ./scripts/smoke-schema-upgrade.py $pilotPackage $currentPackage
+          if ($LASTEXITCODE -ne 0) { throw 'Pre-Pages schema upgrade rehearsal failed' }
           $inputDirectory = Join-Path $env:RUNNER_TEMP 'legura-clean-linux-input'
           New-Item -ItemType Directory -Path $inputDirectory | Out-Null
           ./scripts/archive-package.ps1 -PackageDirectory $currentPackage -OutputDirectory $inputDirectory

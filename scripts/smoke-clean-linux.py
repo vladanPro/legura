@@ -75,14 +75,26 @@ def unpack(archive, package):
     assert not (package / "data").exists()
 
 
-def maintenance(package, *args):
-    subprocess.run([package / "legura-maintenance", *args], cwd=package, check=True, timeout=60)
+def native_executable(package, name):
+    return package / (name + (".exe" if os.name == "nt" else ""))
+
+
+def maintenance(package, *args, capture=False):
+    return subprocess.run(
+        [native_executable(package, "legura-maintenance"), *args], cwd=package,
+        check=True, timeout=60, stdout=subprocess.PIPE if capture else None, text=capture,
+    ).stdout
 
 
 @contextmanager
-def server(package):
-    env = {"PATH": os.environ["PATH"], "AXONYX_HOST": "127.0.0.1", "AXONYX_PORT": "3940"}
-    with subprocess.Popen([package / "legura-server"], cwd=package, env=env) as process:
+def server(package, port=3940):
+    env = {"PATH": os.environ["PATH"], "AXONYX_HOST": "127.0.0.1", "AXONYX_PORT": str(port)}
+    if "SystemRoot" in os.environ:
+        env["SystemRoot"] = os.environ["SystemRoot"]
+    with subprocess.Popen(
+        [native_executable(package, "legura-server")], cwd=package, env=env,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    ) as process:
         try:
             for _ in range(120):
                 assert process.poll() is None, "Native server exited before readiness"
@@ -180,6 +192,46 @@ def verify_site_language(guest):
     for route, title in (("/pages/o-nama", b"About us"), ("/posts/clean-linux", b"Clean Linux proof")):
         public, _ = guest.request(route, 200)
         assert re.search(rb'<h1[^>]+lang="sr-Latn"[^>]*>\s*' + title, public), route
+
+
+def verify_public_interface(admin):
+    guest = Client()
+    settings = "/admin/language"
+    article = "/posts/clean-linux"
+    action = "SetPublicInterfaceLanguage"
+    french_back = b"Tous les articles"
+    chooser = b"legura-language-switcher"
+
+    original, _ = guest.request(article + "?lang=fr", 200)
+    assert b"All posts" in original and chooser not in original
+    assert re.search(rb'<h1[^>]+lang="en"[^>]*>\s*Clean Linux proof', original)
+    guest.action(settings, action, 403, fields={"interface_language": "fr", "interface_switcher": 1})
+    admin.action(settings, action, 422, fields={"interface_language": "de", "interface_switcher": 1})
+    admin.action(settings, action, fields={"interface_language": "fr", "interface_switcher": 0})
+    default_french, _ = guest.request(article + "?lang=en", 200)
+    assert french_back in default_french and chooser not in default_french
+
+    admin.action(settings, action, fields={"interface_language": "en", "interface_switcher": 1})
+    english, _ = guest.request(article, 200)
+    assert f'href="{article}?lang=fr"'.encode() in english
+    french, _ = guest.request(article + "?lang=fr", 200)
+    assert french_back in french and b'href="/posts?lang=fr"' in french
+    assert b'lang="fr"' in french and chooser in french
+    assert re.search(rb'<h1[^>]+lang="en"[^>]*>\s*Clean Linux proof', french)
+    assert b"Native package proof" in french
+    listing, _ = guest.request("/posts?lang=fr", 200)
+    assert "Articles publiés".encode() in listing and b"Clean Linux proof" in listing
+    assert f'href="{article}?lang=fr"'.encode() in listing
+    page, _ = guest.request("/pages/o-nama?lang=fr", 200)
+    assert b"Accueil" in page and b"About us" in page
+    unsupported, _ = guest.request(article + "?lang=de", 200)
+    assert b"All posts" in unsupported and b"?lang=de" not in unsupported
+    admin_page, _ = admin.request(settings + "?lang=fr", 200)
+    assert b"Save admin language" in admin_page
+
+    admin.action(settings, action, fields={"interface_language": "en", "interface_switcher": 0})
+    reset, _ = guest.request(article + "?lang=fr", 200)
+    assert b"All posts" in reset and chooser not in reset
 
 
 def public_menu(client, label, route="/"):
@@ -325,6 +377,7 @@ def smoke(archive, root):
         image_url = f"/api/post-images/clean-linux/{image_id}"
         image = verify_public(image_url)
         assert image == (media / image_id).read_bytes()
+        verify_public_interface(client)
         verify_languages(client)
         client.action("/admin/language", "SetAdminLanguage", fields={"admin_language": "sr-Latn"})
 

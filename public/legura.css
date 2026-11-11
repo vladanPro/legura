@@ -14,6 +14,7 @@
 .legura-editorial-nav a { font-size: 0.95rem; font-weight: 600; }
 .legura-public-footer { margin-top: 2rem; padding-block: 1rem; border-top: 1px solid var(--ax-border, currentColor); }
 .legura-navigation-item { margin-block-start: 1.5rem; }
+.legura-language-switcher { gap: 0.75rem; font-size: 0.875rem; }
 .legura-theme-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
 .legura-theme-choices .ax-card { min-width: 0; }
 .legura-theme-choices form { margin-top: 1.5rem; }

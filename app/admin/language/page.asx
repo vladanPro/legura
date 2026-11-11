@@ -73,6 +73,42 @@ page LanguageSettings() {
             </button>
           </form>
         </Card>
+        <Card title={translate("language.interface.title")}>
+          <form method="post" action={action SetPublicInterfaceLanguage} class="legura-form">
+            <label for="interface-language">{translate("language.interface.default")}</label>
+            <Select
+              id="interface-language"
+              name="interface_language"
+              describedBy="interface-language-error"
+            >
+              <option value="en" lang="en" selected={preferences.interface_language == "en"}>English</option>
+              <option value="fr" lang="fr" selected={preferences.interface_language == "fr"}>{t("public.switch.fr")}</option>
+            </Select>
+            <p
+              id="interface-language-error"
+              class="ax-field__error"
+              data-ax-field-error="interface_language"
+              aria-live="polite"
+            ></p>
+            <label for="interface-switcher">{translate("language.interface.switcher")}</label>
+            <Select
+              id="interface-switcher"
+              name="interface_switcher"
+              describedBy="interface-switcher-error"
+            >
+              <option value="0" selected={preferences.interface_switcher == 0}>{translate("language.interface.disabled")}</option>
+              <option value="1" selected={preferences.interface_switcher == 1}>{translate("language.interface.enabled")}</option>
+            </Select>
+            <p
+              id="interface-switcher-error"
+              class="ax-field__error"
+              data-ax-field-error="interface_switcher"
+              aria-live="polite"
+            ></p>
+            <p class="legura-hint">{translate("language.interface.hint")}</p>
+            <button type="submit" class="ax-button" data-variant="primary">{translate("language.interface.save")}</button>
+          </form>
+        </Card>
       </section>
     </AdminFrame>
   }
