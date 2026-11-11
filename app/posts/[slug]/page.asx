@@ -6,6 +6,8 @@ page PublicPost() {
   data navigation: PublicNavigation = loadPublicNavigation()
   data contentLanguage: String = loadSiteContentLanguage()
   data post: PublishedStory = loadPublishedPost(params.slug)
+  data language: PublicLocale = loadPublicLocale(query.lang ?? "")
+  const translate = I18n.withLocale(language.locale)
   return ASX {
     <PublicFrame
       theme={publicTheme}
@@ -14,10 +16,17 @@ page PublicPost() {
       hasFooter={navigation.has_footer}
       headerItems={navigation.header}
       footerItems={navigation.footer}
+      locale={language.locale}
+      switcher={language.switcher}
+      suffix={language.suffix}
+      currentPath={"/posts/" + params.slug}
     >
       <PostStory
         title={post.title}
         body={post.body}
+        backHref={"/posts" + language.suffix}
+        backLabel={translate("public.posts.all")}
+        unavailableLabel={translate("public.image.unavailable")}
         contentLanguage={contentLanguage}
         contentHtml={post.html}
         imageSelected={post.imageSelected}

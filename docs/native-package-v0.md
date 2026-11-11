@@ -289,8 +289,8 @@ After new writes, switching back to the old binary or restoring
 the old archive in place is not a safe rollback.
 
 Native Package Archive CI also rehearses the upgrade from the pinned pre-Pages
-package (`f4b065a`) to the current Pages, language, and Navigation schema. It
-requires exactly three migrations on an isolated recovery, byte-identical
+package (`f4b065a`) to the current Pages, language, Navigation, and public
+interface schema. It requires exactly four migrations on an isolated recovery, byte-identical
 source data and image, fresh administrator login, and persistent page, menu and
 language changes after restarting the recovered candidate. Run the same check
 with two trusted, unconfigured native package directories:

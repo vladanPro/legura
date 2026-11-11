@@ -1,28 +1,37 @@
 import { Container } from "@axonyx/ui/foundry/Container"
 import { PublicMenu } from "@/components/PublicMenu"
+import { SiteLanguageSwitcher } from "@/components/SiteLanguageSwitcher"
 
-component PublicFrame(theme = "default", headerAssigned = 0, hasHeader = false, hasFooter = false, headerItems = [], footerItems = []) {
+component PublicFrame(theme = "default", headerAssigned = 0, hasHeader = false, hasFooter = false, headerItems = [], footerItems = [], locale = "en", switcher = false, currentPath = "/", suffix = "") {
   return ASX {
     <If when={theme == "editorial"}>
       <div
         class="legura-public"
+        lang={locale}
         data-legura-public-theme="editorial"
         data-foundry="bronze"
         data-foundry-style="alloy"
         data-foundry-mode="light"
       >
-        <a class="legura-skip-link" href="#main-content">Skip to content</a>
+        <a class="legura-skip-link" href="#main-content">{t("public.skip", locale)}</a>
         <Container max="xl">
           <header class="legura-header legura-public-header">
-            <a class="legura-brand" href="/"><img src="/legura-mark.svg" alt="" width="36" height="36" />Legura</a>
+            <a class="legura-brand" href={"/" + suffix}><img src="/legura-mark.svg" alt="" width="36" height="36" />Legura</a>
             <If when={headerAssigned == 0}>
-              <nav class="legura-editorial-nav" aria-label="Public navigation">
-                <a href="/">Home</a>
-                <a href="/posts">Stories</a>
+              <nav class="legura-editorial-nav" aria-label={t("public.nav.main", locale)}>
+                <a href={"/" + suffix}>{t("public.home", locale)}</a>
+                <a href={"/posts" + suffix}>{t("public.stories", locale)}</a>
               </nav>
             </If>
             <If when={hasHeader}>
-              <PublicMenu items={headerItems} />
+              <PublicMenu
+                items={headerItems}
+                label={t("public.nav.main", locale)}
+                suffix={suffix}
+              />
+            </If>
+            <If when={switcher}>
+              <SiteLanguageSwitcher locale={locale} path={currentPath} />
             </If>
           </header>
           <div class="legura-main" id="main-content" tabindex="-1">
@@ -30,7 +39,11 @@ component PublicFrame(theme = "default", headerAssigned = 0, hasHeader = false, 
           </div>
           <If when={hasFooter}>
             <footer class="legura-public-footer">
-              <PublicMenu items={footerItems} label="Footer navigation" />
+              <PublicMenu
+                items={footerItems}
+                label={t("public.nav.footer", locale)}
+                suffix={suffix}
+              />
             </footer>
           </If>
         </Container>
@@ -39,20 +52,28 @@ component PublicFrame(theme = "default", headerAssigned = 0, hasHeader = false, 
     <If when={theme != "editorial"}>
       <div
         class="legura-public"
+        lang={locale}
         data-legura-public-theme="default"
         data-foundry="silver"
         data-foundry-style="classic"
         data-foundry-mode="light"
       >
-        <a class="legura-skip-link" href="#main-content">Skip to content</a>
+        <a class="legura-skip-link" href="#main-content">{t("public.skip", locale)}</a>
         <Container max="lg">
           <header class="legura-header legura-public-header">
-            <a class="legura-brand" href="/"><img src="/legura-mark.svg" alt="" width="36" height="36" />Legura</a>
+            <a class="legura-brand" href={"/" + suffix}><img src="/legura-mark.svg" alt="" width="36" height="36" />Legura</a>
             <If when={headerAssigned == 0}>
-              <span>Content, forged together.</span>
+              <span>{t("public.tagline", locale)}</span>
             </If>
             <If when={hasHeader}>
-              <PublicMenu items={headerItems} />
+              <PublicMenu
+                items={headerItems}
+                label={t("public.nav.main", locale)}
+                suffix={suffix}
+              />
+            </If>
+            <If when={switcher}>
+              <SiteLanguageSwitcher locale={locale} path={currentPath} />
             </If>
           </header>
           <div class="legura-main" id="main-content" tabindex="-1">
@@ -60,7 +81,11 @@ component PublicFrame(theme = "default", headerAssigned = 0, hasHeader = false, 
           </div>
           <If when={hasFooter}>
             <footer class="legura-public-footer">
-              <PublicMenu items={footerItems} label="Footer navigation" />
+              <PublicMenu
+                items={footerItems}
+                label={t("public.nav.footer", locale)}
+                suffix={suffix}
+              />
             </footer>
           </If>
         </Container>

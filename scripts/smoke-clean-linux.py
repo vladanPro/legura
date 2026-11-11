@@ -194,6 +194,46 @@ def verify_site_language(guest):
         assert re.search(rb'<h1[^>]+lang="sr-Latn"[^>]*>\s*' + title, public), route
 
 
+def verify_public_interface(admin):
+    guest = Client()
+    settings = "/admin/language"
+    article = "/posts/clean-linux"
+    action = "SetPublicInterfaceLanguage"
+    french_back = b"Tous les articles"
+    chooser = b"legura-language-switcher"
+
+    original, _ = guest.request(article + "?lang=fr", 200)
+    assert b"All posts" in original and chooser not in original
+    assert re.search(rb'<h1[^>]+lang="en"[^>]*>\s*Clean Linux proof', original)
+    guest.action(settings, action, 403, fields={"interface_language": "fr", "interface_switcher": 1})
+    admin.action(settings, action, 422, fields={"interface_language": "de", "interface_switcher": 1})
+    admin.action(settings, action, fields={"interface_language": "fr", "interface_switcher": 0})
+    default_french, _ = guest.request(article + "?lang=en", 200)
+    assert french_back in default_french and chooser not in default_french
+
+    admin.action(settings, action, fields={"interface_language": "en", "interface_switcher": 1})
+    english, _ = guest.request(article, 200)
+    assert f'href="{article}?lang=fr"'.encode() in english
+    french, _ = guest.request(article + "?lang=fr", 200)
+    assert french_back in french and b'href="/posts?lang=fr"' in french
+    assert b'lang="fr"' in french and chooser in french
+    assert re.search(rb'<h1[^>]+lang="en"[^>]*>\s*Clean Linux proof', french)
+    assert b"Native package proof" in french
+    listing, _ = guest.request("/posts?lang=fr", 200)
+    assert "Articles publiés".encode() in listing and b"Clean Linux proof" in listing
+    assert f'href="{article}?lang=fr"'.encode() in listing
+    page, _ = guest.request("/pages/o-nama?lang=fr", 200)
+    assert b"Accueil" in page and b"About us" in page
+    unsupported, _ = guest.request(article + "?lang=de", 200)
+    assert b"All posts" in unsupported and b"?lang=de" not in unsupported
+    admin_page, _ = admin.request(settings + "?lang=fr", 200)
+    assert b"Save admin language" in admin_page
+
+    admin.action(settings, action, fields={"interface_language": "en", "interface_switcher": 0})
+    reset, _ = guest.request(article + "?lang=fr", 200)
+    assert b"All posts" in reset and chooser not in reset
+
+
 def public_menu(client, label, route="/"):
     page, _ = client.request(route, 200)
     nav = re.search(rb'<nav[^>]*aria-label="' + label + rb'"[^>]*>(.*?)</nav>', page, re.S)
@@ -337,6 +377,7 @@ def smoke(archive, root):
         image_url = f"/api/post-images/clean-linux/{image_id}"
         image = verify_public(image_url)
         assert image == (media / image_id).read_bytes()
+        verify_public_interface(client)
         verify_languages(client)
         client.action("/admin/language", "SetAdminLanguage", fields={"admin_language": "sr-Latn"})
 
