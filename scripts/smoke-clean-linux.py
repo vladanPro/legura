@@ -75,14 +75,26 @@ def unpack(archive, package):
     assert not (package / "data").exists()
 
 
-def maintenance(package, *args):
-    subprocess.run([package / "legura-maintenance", *args], cwd=package, check=True, timeout=60)
+def native_executable(package, name):
+    return package / (name + (".exe" if os.name == "nt" else ""))
+
+
+def maintenance(package, *args, capture=False):
+    return subprocess.run(
+        [native_executable(package, "legura-maintenance"), *args], cwd=package,
+        check=True, timeout=60, stdout=subprocess.PIPE if capture else None, text=capture,
+    ).stdout
 
 
 @contextmanager
-def server(package):
-    env = {"PATH": os.environ["PATH"], "AXONYX_HOST": "127.0.0.1", "AXONYX_PORT": "3940"}
-    with subprocess.Popen([package / "legura-server"], cwd=package, env=env) as process:
+def server(package, port=3940):
+    env = {"PATH": os.environ["PATH"], "AXONYX_HOST": "127.0.0.1", "AXONYX_PORT": str(port)}
+    if "SystemRoot" in os.environ:
+        env["SystemRoot"] = os.environ["SystemRoot"]
+    with subprocess.Popen(
+        [native_executable(package, "legura-server")], cwd=package, env=env,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    ) as process:
         try:
             for _ in range(120):
                 assert process.poll() is None, "Native server exited before readiness"

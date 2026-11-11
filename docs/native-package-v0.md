@@ -288,6 +288,19 @@ remain unchanged. There is no supported in-place operator schema upgrade yet.
 After new writes, switching back to the old binary or restoring
 the old archive in place is not a safe rollback.
 
+Native Package Archive CI also rehearses the upgrade from the pinned pre-Pages
+package (`f4b065a`) to the current Pages, language, and Navigation schema. It
+requires exactly three migrations on an isolated recovery, byte-identical
+source data and image, fresh administrator login, and persistent page, menu and
+language changes after restarting the recovered candidate. Run the same check
+with two trusted, unconfigured native package directories:
+
+```sh
+python -B scripts/smoke-schema-upgrade.py /path/to/prior /path/to/candidate
+```
+
+The test copies both packages before use and does not accept a live installation.
+
 Both backup formats record their producer version. The `0.0.2` maintenance
 reader explicitly accepts `0.0.1` and `0.0.2` backups; the `0.0.1` reader
 still rejects `0.0.2` backups. CI builds the pinned `0.0.1` maintenance binary
