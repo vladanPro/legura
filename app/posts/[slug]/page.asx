@@ -3,10 +3,18 @@ import { PublicFrame } from "@/components/PublicFrame"
 
 page PublicPost() {
   data publicTheme: String = loadPublicTheme()
+  data navigation: PublicNavigation = loadPublicNavigation()
   data contentLanguage: String = loadSiteContentLanguage()
   data post: PublishedStory = loadPublishedPost(params.slug)
   return ASX {
-    <PublicFrame theme={publicTheme}>
+    <PublicFrame
+      theme={publicTheme}
+      headerAssigned={navigation.header_assigned}
+      hasHeader={navigation.has_header}
+      hasFooter={navigation.has_footer}
+      headerItems={navigation.header}
+      footerItems={navigation.footer}
+    >
       <PostStory
         title={post.title}
         body={post.body}

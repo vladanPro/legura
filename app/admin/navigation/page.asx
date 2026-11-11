@@ -1,0 +1,153 @@
+import { AdminFrame } from "@/components/AdminFrame"
+import { Card } from "@axonyx/ui/foundry/Card"
+
+page Navigation() {
+  data settings: NavigationSettings = loadNavigationSettings(query.menu ?? "", query.search ?? "")
+  data mediaAvailable: Bool = loadAdminMediaAvailability()
+  return ASX {
+    <AdminFrame section="navigation" mediaAvailable={mediaAvailable}>
+      <header class="legura-page-heading">
+        <div>
+          <h1>Navigation</h1>
+          <p>Choose which published pages appear in each menu. Publishing a page never adds it automatically.</p>
+        </div>
+        <a href="/">View public site</a>
+      </header>
+      <Card title="Create a menu">
+        <form
+          method="post"
+          action={action CreateMenu}
+          class="legura-form"
+          data-ax-retain-fields="name"
+        >
+          <label for="menu-name">Menu name</label>
+          <input class="ax-input" id="menu-name" name="name" required maxlength="80" />
+          <p class="ax-field__error" data-ax-field-error="name" aria-live="polite"></p>
+          <button type="submit" class="ax-button" data-variant="primary">Create menu</button>
+        </form>
+      </Card>
+      <If when={settings.selected_id != ""}>
+        <Card title="Menu locations">
+          <Each items={["header", "footer"]} as="location">
+            <form
+              method="post"
+              action={action AssignMenu}
+              class="legura-form"
+              aria-label={"Assign " + location + " menu"}
+            >
+              <input type="hidden" name="location" value={location} />
+              <label for={"menu-location-" + location}>{location + " menu"}</label>
+              <select class="ax-select" name="menu_id" id={"menu-location-" + location} required>
+                <option value="">No menu selected</option>
+                <Each items={settings.menus} as="menu">
+                  <option
+                    value={menu.id}
+                    selected={(location == "header" && settings.header_id == menu.id) || (location == "footer" && settings.footer_id == menu.id)}
+                  >{menu.name}</option>
+                </Each>
+              </select>
+              <p class="ax-field__error" data-ax-field-error="menu_id" aria-live="polite"></p>
+              <button type="submit" class="ax-button" data-variant="secondary">Assign menu</button>
+            </form>
+            <If when={(location == "header" && settings.header_id != "") || (location == "footer" && settings.footer_id != "")}>
+              <form method="post" action={action ClearMenu} class="legura-form">
+                <input type="hidden" name="location" value={location} />
+                <button type="submit" class="ax-button" data-variant="secondary">{"Clear " + location}</button>
+              </form>
+            </If>
+          </Each>
+        </Card>
+        <Card title="Edit menu items">
+          <nav class="legura-links" aria-label="Choose a menu">
+            <Each items={settings.menus} as="menu">
+              <If when={settings.selected_id == menu.id}>
+                <strong aria-current="page">{menu.name}</strong>
+              </If>
+              <If when={settings.selected_id != menu.id}>
+                <a href={"/admin/navigation?menu=" + menu.id}>{menu.name}</a>
+              </If>
+            </Each>
+          </nav>
+          <form method="get" action="/admin/navigation" class="legura-form">
+            <input type="hidden" name="menu" value={settings.selected_id} />
+            <label for="navigation-page-search">Find published pages</label>
+            <input
+              class="ax-input"
+              id="navigation-page-search"
+              name="search"
+              value={query.search ?? ""}
+              maxlength="160"
+            />
+            <button type="submit" class="ax-button" data-variant="secondary">Search</button>
+          </form>
+          <If when={!settings.has_pages}>
+            <p>No matching published pages to add.</p>
+          </If>
+          <If when={settings.has_pages}>
+            <form method="post" action={action AddMenuPage} class="legura-form">
+              <input type="hidden" name="menu_id" value={settings.selected_id} />
+              <label for="navigation-page">Page</label>
+              <select class="ax-select" id="navigation-page" name="page_id" required>
+                <option value="">Choose a page</option>
+                <Each items={settings.pages} as="entry">
+                  <option value={entry.id}>{entry.title}</option>
+                </Each>
+              </select>
+              <p class="ax-field__error" data-ax-field-error="page_id" aria-live="polite"></p>
+              <label for="navigation-position">Position</label>
+              <input
+                class="ax-input"
+                id="navigation-position"
+                type="number"
+                name="position"
+                min="1"
+                max="10000"
+                value="100"
+                required
+              />
+              <p class="ax-field__error" data-ax-field-error="position" aria-live="polite"></p>
+              <button type="submit" class="ax-button" data-variant="primary">Add page</button>
+            </form>
+          </If>
+          <If when={!settings.has_items}>
+            <p>This menu has no items yet.</p>
+          </If>
+          <Each items={settings.items} as="item">
+            <section class="legura-navigation-item">
+              <h3>{item.title}</h3>
+              <If when={item.status != "published"}>
+                <p>Draft: not displayed on the public site.</p>
+              </If>
+              <form method="post" action={action UpdateMenuItem} class="legura-form">
+                <input type="hidden" name="menu_id" value={settings.selected_id} />
+                <input type="hidden" name="page_id" value={item.page_id} />
+                <label for={"position-" + item.page_id}>Position</label>
+                <input
+                  class="ax-input"
+                  id={"position-" + item.page_id}
+                  type="number"
+                  name="position"
+                  min="1"
+                  max="10000"
+                  value={item.position}
+                  required
+                />
+                <label for={"visible-" + item.page_id}>Visibility</label>
+                <select class="ax-select" id={"visible-" + item.page_id} name="visible">
+                  <option value="1" selected={item.visible == 1}>Visible</option>
+                  <option value="0" selected={item.visible == 0}>Hidden</option>
+                </select>
+                <button type="submit" class="ax-button" data-variant="secondary">Save item</button>
+              </form>
+              <form method="post" action={action RemoveMenuItem} class="legura-form">
+                <input type="hidden" name="menu_id" value={settings.selected_id} />
+                <input type="hidden" name="page_id" value={item.page_id} />
+                <button type="submit" class="ax-button" data-variant="secondary">Remove from menu</button>
+              </form>
+            </section>
+          </Each>
+        </Card>
+      </If>
+    </AdminFrame>
+  }
+}

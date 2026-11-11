@@ -100,6 +100,57 @@ export type LeguraMediaCleanupUpdateInput {
   created_at: Optional<Int>
 }
 
+export type LeguraMenuItemsRow {
+  menu_id: String
+  page_id: String
+  position: Int
+  visible: Int
+}
+
+export type LeguraMenuItemsCreateInput {
+  menu_id: String
+  page_id: String
+  position: Int
+  visible: Optional<Int>
+}
+
+export type LeguraMenuItemsUpdateInput {
+  menu_id: Optional<String>
+  page_id: Optional<String>
+  position: Optional<Int>
+  visible: Optional<Int>
+}
+
+export type LeguraMenuLocationsRow {
+  location: String
+  menu_id: Optional<String>
+}
+
+export type LeguraMenuLocationsCreateInput {
+  location: String
+  menu_id: Optional<String>
+}
+
+export type LeguraMenuLocationsUpdateInput {
+  location: Optional<String>
+  menu_id: Optional<String>
+}
+
+export type LeguraMenusRow {
+  id: String
+  name: String
+}
+
+export type LeguraMenusCreateInput {
+  id: String
+  name: String
+}
+
+export type LeguraMenusUpdateInput {
+  id: Optional<String>
+  name: Optional<String>
+}
+
 export type LeguraPagesRow {
   id: String
   title: String

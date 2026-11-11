@@ -1,0 +1,42 @@
+export type NavigationMenu {
+  id: String
+  name: String
+}
+
+export type NavigationItem {
+  page_id: String
+  title: String
+  status: String
+  position: Number
+  visible: Number
+}
+
+export type NavigationPageOption {
+  id: String
+  title: String
+}
+
+export type NavigationSettings {
+  selected_id: String
+  menus: NavigationMenu[]
+  items: NavigationItem[]
+  pages: NavigationPageOption[]
+  header_id: String
+  footer_id: String
+  has_items: Bool
+  has_pages: Bool
+}
+
+export query loadNavigationSettings(menu: String = "", search: String = "") -> NavigationSettings {
+  require Auth.subject else forbidden()
+  data administrator = db.legura_users.where({ id: Auth.subject }).first()
+  require administrator else forbidden()
+  require administrator["role"] == "admin" else forbidden()
+  data menus = db.query("SELECT id, name FROM legura_menus ORDER BY name, id")
+  data selected = db.query("SELECT COALESCE((SELECT id FROM legura_menus WHERE id = ?), (SELECT id FROM legura_menus ORDER BY name, id LIMIT 1), '') AS id", input.menu)
+  data selectedId = selected[0]["id"]
+  data items = db.query("SELECT item.page_id, page.title, page.status, item.position, item.visible FROM legura_menu_items AS item JOIN legura_pages AS page ON page.id = item.page_id WHERE item.menu_id = ? ORDER BY item.position, item.page_id", selectedId)
+  data pages = db.query("SELECT id, title FROM legura_pages WHERE status = 'published' AND instr(lower(title), lower(substr(?, 1, 160))) > 0 AND NOT EXISTS (SELECT 1 FROM legura_menu_items WHERE menu_id = ? AND page_id = legura_pages.id) ORDER BY title, id LIMIT 50", input.search, selectedId)
+  data locations = db.query("SELECT COALESCE((SELECT menu_id FROM legura_menu_locations WHERE location = 'header'), '') AS header_id, COALESCE((SELECT menu_id FROM legura_menu_locations WHERE location = 'footer'), '') AS footer_id")
+  return { selected_id: selectedId, menus: menus, items: items, pages: pages, header_id: locations[0]["header_id"], footer_id: locations[0]["footer_id"], has_items: items.length > 0, has_pages: pages.length > 0 }
+}
