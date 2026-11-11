@@ -97,7 +97,7 @@ def rehearse(prior_package, candidate_package, root, port):
 
     workspace = root / "rehearsal"
     report = json.loads(fixture.maintenance(candidate, "upgrade-rehearse", archive, workspace, capture=True))
-    assert report["migrations_applied"] == 4 and report["archive"]["files"] == 2, report
+    assert report["migrations_applied"] == 5 and report["archive"]["files"] == 2, report
     migrated = workspace / "rehearsed.legura"
     recovery = workspace / "verified-recovery"
     fixture.maintenance(candidate, "upgrade-preflight", candidate, migrated, recovery)
@@ -116,6 +116,10 @@ def rehearse(prior_package, candidate_package, root, port):
         fixture.verify_public_interface(admin)
         fixture.verify_languages(admin)
         admin.action("/admin/language", "SetAdminLanguage", fields={"admin_language": "sr-Latn"})
+        guest = fixture.Client()
+        story, _ = guest.request("/posts/clean-linux", 200)
+        assert b'data-foundry-mode="light"' in story
+        admin.action("/admin/appearance", "SetPublicColorMode", fields={"color_mode": "dark"})
     with fixture.server(candidate, port):
         admin = login()
         page, _ = admin.request("/admin/language", 200)
@@ -123,6 +127,9 @@ def rehearse(prior_package, candidate_package, root, port):
         fixture.verify_site_language(fixture.Client())
         fixture.verify_navigation_persistence(fixture.Client())
         assert fixture.verify_public(image_url) == restored_image.read_bytes()
+        for route in ("/", "/posts", "/posts/clean-linux", "/pages/o-nama"):
+            public, _ = fixture.Client().request(route, 200)
+            assert re.search(rb'<div(?=[^>]*data-legura-public-theme="default")[^>]*data-foundry-mode="dark"', public), route
     assert hashes(original) == before, "Rehearsal changed the stopped source or backup"
 
 
@@ -139,4 +146,4 @@ if __name__ == "__main__":
     fixture.BASE = f"http://127.0.0.1:{args.port}"
     with TemporaryDirectory(prefix="legura-schema-upgrade-") as scratch:
         rehearse(args.prior.resolve(strict=True), args.candidate.resolve(strict=True), Path(scratch), args.port)
-    print("Schema upgrade passed: four migrations, preserved source, content/media, and restarted menus/languages.")
+    print("Schema upgrade passed: five migrations, preserved source, content/media, and restarted menus/languages/color mode.")

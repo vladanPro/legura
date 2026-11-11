@@ -1,9 +1,10 @@
 import { Button } from "@axonyx/ui/foundry/Button"
 import { Card } from "@axonyx/ui/foundry/Card"
+import { Select } from "@axonyx/ui/foundry/Select"
 import { AdminFrame } from "@/components/AdminFrame"
 
 page Appearance() {
-  data activeTheme: String = loadPublicTheme()
+  data appearance: PublicAppearance = loadPublicAppearance()
   data administrator: Administrator = loadAdministrator()
   return ASX {
     <AdminFrame section="appearance">
@@ -17,10 +18,10 @@ page Appearance() {
       <div class="legura-theme-choices">
         <Card title="Default">
           <p>A clean, centered reading layout in Foundry Silver.</p>
-          <If when={activeTheme == "default"}>
+          <If when={appearance.theme == "default"}>
             <p class="legura-theme-active">Active theme</p>
           </If>
-          <If when={activeTheme != "default"}>
+          <If when={appearance.theme != "default"}>
             <form method="post" action={action SelectPublicTheme}>
               <input type="hidden" name="theme" value="default" />
               <Button type="submit" variant="secondary">Activate Default</Button>
@@ -29,10 +30,10 @@ page Appearance() {
         </Card>
         <Card title="Editorial">
           <p>A wider, magazine-like reading layout in warm Foundry Bronze.</p>
-          <If when={activeTheme == "editorial"}>
+          <If when={appearance.theme == "editorial"}>
             <p class="legura-theme-active">Active theme</p>
           </If>
-          <If when={activeTheme != "editorial"}>
+          <If when={appearance.theme != "editorial"}>
             <form method="post" action={action SelectPublicTheme}>
               <input type="hidden" name="theme" value="editorial" />
               <Button type="submit" variant="secondary">Activate Editorial</Button>
@@ -40,6 +41,27 @@ page Appearance() {
           </If>
         </Card>
       </div>
+      <Card title="Public color mode">
+        <p id="public-color-mode-hint">Applies to the public site, not the admin panel. Changing the theme keeps this setting.</p>
+        <form method="post" action={action SetPublicColorMode} class="legura-form">
+          <label for="public-color-mode">Color mode</label>
+          <Select
+            id="public-color-mode"
+            name="color_mode"
+            describedBy="public-color-mode-hint public-color-mode-error"
+          >
+            <option value="light" selected={appearance.color_mode == "light"}>Light</option>
+            <option value="dark" selected={appearance.color_mode == "dark"}>Dark</option>
+          </Select>
+          <p
+            id="public-color-mode-error"
+            class="ax-field__error"
+            data-ax-field-error="color_mode"
+            aria-live="polite"
+          ></p>
+          <Button type="submit" variant="primary">Save color mode</Button>
+        </form>
+      </Card>
       <p class="legura-hint">Signed in as {administrator.email}. These two themes ship with Legura; uploading third-party themes is not available yet.</p>
     </AdminFrame>
   }

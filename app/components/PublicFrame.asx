@@ -2,7 +2,7 @@ import { Container } from "@axonyx/ui/foundry/Container"
 import { PublicMenu } from "@/components/PublicMenu"
 import { SiteLanguageSwitcher } from "@/components/SiteLanguageSwitcher"
 
-component PublicFrame(theme = "default", headerAssigned = 0, hasHeader = false, hasFooter = false, headerItems = [], footerItems = [], locale = "en", switcher = false, currentPath = "/", suffix = "") {
+component PublicFrame(theme = "default", colorMode = "light", headerAssigned = 0, hasHeader = false, hasFooter = false, headerItems = [], footerItems = [], locale = "en", switcher = false, currentPath = "/", suffix = "") {
   return ASX {
     <If when={theme == "editorial"}>
       <div
@@ -11,7 +11,7 @@ component PublicFrame(theme = "default", headerAssigned = 0, hasHeader = false, 
         data-legura-public-theme="editorial"
         data-foundry="bronze"
         data-foundry-style="alloy"
-        data-foundry-mode="light"
+        data-foundry-mode={colorMode}
       >
         <a class="legura-skip-link" href="#main-content">{t("public.skip", locale)}</a>
         <Container max="xl">
@@ -56,7 +56,7 @@ component PublicFrame(theme = "default", headerAssigned = 0, hasHeader = false, 
         data-legura-public-theme="default"
         data-foundry="silver"
         data-foundry-style="classic"
-        data-foundry-mode="light"
+        data-foundry-mode={colorMode}
       >
         <a class="legura-skip-link" href="#main-content">{t("public.skip", locale)}</a>
         <Container max="lg">
