@@ -286,8 +286,9 @@ images and media-aware backups are separate gates, not shipped by this foundatio
 - Media library with storage limits, safe upload handling, and deletion policy.
 - Pages V0: standalone plain-text drafts, private saved preview and public
   URLs under `/pages/`. Root aliases depend on Axonyx route precedence so
-  dynamic pages do not shadow static pages or assets. Navigation, SEO fields
-  and richer editorial workflow remain open.
+  dynamic pages do not shadow static pages or assets. Navigation V0 supports
+  manually curated header/footer menus. SEO fields and a richer editorial
+  workflow remain open.
 - Themes with stable content/rendering contracts and installation boundaries.
 - Roles and permissions based on demonstrated needs.
 - Extension API, then optional block editor and marketplace research.

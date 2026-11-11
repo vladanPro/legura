@@ -1,4 +1,4 @@
-"""Exercise the catalog-based language screen on a fresh local source build."""
+"""Exercise languages and public navigation on a fresh local source build."""
 
 import argparse
 from contextlib import contextmanager
@@ -59,6 +59,7 @@ def exercise_preferences(binary, root, port):
             "password": fixture.PASSWORD, "setupToken": setup_token,
         })
         fixture.verify_pages(admin)
+        fixture.verify_navigation(admin)
         admin.action("/admin/posts/new", "CreatePost", fields={
             "title": "Clean Linux proof", "slug": "clean-linux",
             "body": "Language pilot proof", "status": "published",
@@ -92,7 +93,8 @@ def main():
         )
         assert hint in settings, "Catalog message or fallback was not rendered"
         fixture.verify_site_language(fixture.Client())
-    print("Language pilot passed: catalog rendering and persisted preferences.")
+        fixture.verify_navigation_persistence(fixture.Client())
+    print("Legura pilot passed: language catalogs, navigation, and restart persistence.")
 
 
 if __name__ == "__main__":

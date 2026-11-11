@@ -3,9 +3,17 @@ import { PublicFrame } from "@/components/PublicFrame"
 
 page PublicPosts() {
   data publicTheme: String = loadPublicTheme()
+  data navigation: PublicNavigation = loadPublicNavigation()
   data posts: Post[] = loadPublishedPosts()
   return ASX {
-    <PublicFrame theme={publicTheme}>
+    <PublicFrame
+      theme={publicTheme}
+      headerAssigned={navigation.header_assigned}
+      hasHeader={navigation.has_header}
+      hasFooter={navigation.has_footer}
+      headerItems={navigation.header}
+      footerItems={navigation.footer}
+    >
       <section class="legura-posts">
         <h1>Published posts</h1>
         <If when={!posts}>

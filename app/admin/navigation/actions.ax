@@ -1,0 +1,56 @@
+action CreateMenu(name: String) {
+  data administrator = loadAdministrator()
+  data normalized = db.query("SELECT trim(?) AS name", input.name)
+  data name = normalized[0]["name"]
+  require name != "" && name.length <= 80 else invalid({ name: "Enter a menu name of at most 80 characters." })
+  data existing = db.legura_menus.where({ name: name }).first()
+  require existing == null else invalid({ name: "A menu with that name already exists." })
+  data id = Uuid.new()
+  db.legura_menus.insert({ id: id, name: name })
+  return redirect("/admin/navigation")
+}
+
+action AssignMenu(location: String, menu_id: String) {
+  data administrator = loadAdministrator()
+  require input.location == "header" || input.location == "footer" else invalid({ location: "Choose Header or Footer." })
+  data menu = db.legura_menus.where({ id: input.menu_id }).first()
+  require menu else invalid({ menu_id: "Choose an existing menu." })
+  db.legura_menu_locations.where({ location: input.location }).update({ menu_id: input.menu_id })
+  return redirect("/admin/navigation?menu=" + input.menu_id)
+}
+
+action ClearMenu(location: String) {
+  data administrator = loadAdministrator()
+  require input.location == "header" || input.location == "footer" else invalid({ location: "Choose Header or Footer." })
+  db.legura_menu_locations.where({ location: input.location }).update({ menu_id: null })
+  return redirect("/admin/navigation")
+}
+
+action AddMenuPage(menu_id: String, page_id: String, position: Int) {
+  data administrator = loadAdministrator()
+  data menu = db.legura_menus.where({ id: input.menu_id }).first()
+  require menu else notFound()
+  require input.position >= 1 && input.position <= 10000 else invalid({ position: "Enter a position from 1 to 10000." })
+  data page = db.legura_pages.where({ id: input.page_id, status: "published" }).first()
+  require page else invalid({ page_id: "Choose a published page." })
+  data existing = db.legura_menu_items.where({ menu_id: input.menu_id, page_id: input.page_id }).first()
+  require existing == null else invalid({ page_id: "This page is already in the menu." })
+  db.legura_menu_items.insert({ menu_id: input.menu_id, page_id: input.page_id, position: input.position, visible: 1 })
+  return redirect("/admin/navigation?menu=" + input.menu_id)
+}
+
+action UpdateMenuItem(menu_id: String, page_id: String, position: Int, visible: Int) {
+  data administrator = loadAdministrator()
+  require input.position >= 1 && input.position <= 10000 else invalid({ position: "Enter a position from 1 to 10000." })
+  require input.visible == 0 || input.visible == 1 else invalid({ visible: "Choose visible or hidden." })
+  data item = db.legura_menu_items.where({ menu_id: input.menu_id, page_id: input.page_id }).first()
+  require item else notFound()
+  db.legura_menu_items.where({ menu_id: input.menu_id, page_id: input.page_id }).update({ position: input.position, visible: input.visible })
+  return redirect("/admin/navigation?menu=" + input.menu_id)
+}
+
+action RemoveMenuItem(menu_id: String, page_id: String) {
+  data administrator = loadAdministrator()
+  db.legura_menu_items.where({ menu_id: input.menu_id, page_id: input.page_id }).delete()
+  return redirect("/admin/navigation")
+}
