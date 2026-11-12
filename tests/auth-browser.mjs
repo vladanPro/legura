@@ -214,6 +214,12 @@ try {
 
   await page.getByLabel("Site name", { exact: true }).fill("Browser fixture");
   await page.getByLabel("Administrator email", { exact: true }).fill(email);
+  const wrongSetupToken = "wrong-setup-token-fixture";
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByLabel("Setup token", { exact: true }).fill(wrongSetupToken);
+  await submitValidation("Create installation", "setupToken", "Setup token is incorrect.");
+  assert.ok(!(await page.content()).includes(wrongSetupToken), "Rejected token was echoed in the form");
+  assert.equal(await page.getByLabel("Site name", { exact: true }).inputValue(), "Browser fixture");
   await page.getByLabel("Password", { exact: true }).fill("short");
   await page.getByLabel("Setup token", { exact: true }).fill(setupToken);
   await submitValidation("Create installation", "password", "Use at least 10 characters.");
