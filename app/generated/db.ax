@@ -232,16 +232,19 @@ export type LeguraPostsUpdateInput {
 export type LeguraPublicThemeRow {
   id: Int
   theme: String
+  color_mode: String
 }
 
 export type LeguraPublicThemeCreateInput {
   id: Optional<Int>
   theme: String
+  color_mode: Optional<String>
 }
 
 export type LeguraPublicThemeUpdateInput {
   id: Optional<Int>
   theme: Optional<String>
+  color_mode: Optional<String>
 }
 
 export type LeguraUsersRow {

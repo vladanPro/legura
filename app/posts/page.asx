@@ -2,7 +2,7 @@ import { Card } from "@axonyx/ui/foundry/Card"
 import { PublicFrame } from "@/components/PublicFrame"
 
 page PublicPosts() {
-  data publicTheme: String = loadPublicTheme()
+  data appearance: PublicAppearance = loadPublicAppearance()
   data navigation: PublicNavigation = loadPublicNavigation()
   data posts: Post[] = loadPublishedPosts()
   data language: PublicLocale = loadPublicLocale(query.lang ?? "")
@@ -10,7 +10,8 @@ page PublicPosts() {
   const translate = I18n.withLocale(language.locale)
   return ASX {
     <PublicFrame
-      theme={publicTheme}
+      theme={appearance.theme}
+      colorMode={appearance.color_mode}
       headerAssigned={navigation.header_assigned}
       hasHeader={navigation.has_header}
       hasFooter={navigation.has_footer}

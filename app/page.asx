@@ -3,13 +3,14 @@ import { Copy } from "@axonyx/ui/foundry/Copy"
 import { PublicFrame } from "@/components/PublicFrame"
 
 page Home() {
-  data publicTheme: String = loadPublicTheme()
+  data appearance: PublicAppearance = loadPublicAppearance()
   data navigation: PublicNavigation = loadPublicNavigation()
   data language: PublicLocale = loadPublicLocale(query.lang ?? "")
   const translate = I18n.withLocale(language.locale)
   return ASX {
     <PublicFrame
-      theme={publicTheme}
+      theme={appearance.theme}
+      colorMode={appearance.color_mode}
       headerAssigned={navigation.header_assigned}
       hasHeader={navigation.has_header}
       hasFooter={navigation.has_footer}
