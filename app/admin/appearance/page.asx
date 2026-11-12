@@ -17,7 +17,7 @@ page Appearance() {
       </header>
       <div class="legura-theme-choices">
         <Card title="Default">
-          <p>A clean, centered reading layout in Foundry Silver.</p>
+          <p>A clean, centered reading layout. Uses Silver by default.</p>
           <If when={appearance.theme == "default"}>
             <p class="legura-theme-active">Active theme</p>
           </If>
@@ -29,7 +29,7 @@ page Appearance() {
           </If>
         </Card>
         <Card title="Editorial">
-          <p>A wider, magazine-like reading layout in warm Foundry Bronze.</p>
+          <p>A wider, magazine-like reading layout. Uses Bronze by default.</p>
           <If when={appearance.theme == "editorial"}>
             <p class="legura-theme-active">Active theme</p>
           </If>
@@ -60,6 +60,29 @@ page Appearance() {
             aria-live="polite"
           ></p>
           <Button type="submit" variant="primary">Save color mode</Button>
+        </form>
+      </Card>
+      <Card title="Public palette">
+        <p id="public-palette-hint">Choose colors for the public site without changing its layout or Light/Dark mode.</p>
+        <form method="post" action={action SetPublicPalette} class="legura-form">
+          <label for="public-palette">Color palette</label>
+          <Select
+            id="public-palette"
+            name="palette"
+            describedBy="public-palette-hint public-palette-error"
+          >
+            <option value="theme" selected={appearance.palette == "theme"}>Theme default</option>
+            <option value="silver" selected={appearance.palette == "silver"}>Silver</option>
+            <option value="bronze" selected={appearance.palette == "bronze"}>Bronze</option>
+            <option value="gold" selected={appearance.palette == "gold"}>Gold</option>
+          </Select>
+          <p
+            id="public-palette-error"
+            class="ax-field__error"
+            data-ax-field-error="palette"
+            aria-live="polite"
+          ></p>
+          <Button type="submit" variant="primary">Save palette</Button>
         </form>
       </Card>
       <p class="legura-hint">Signed in as {administrator.email}. These two themes ship with Legura; uploading third-party themes is not available yet.</p>

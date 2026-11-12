@@ -11,6 +11,7 @@ page Home() {
     <PublicFrame
       theme={appearance.theme}
       colorMode={appearance.color_mode}
+      palette={appearance.resolved_palette}
       headerAssigned={navigation.header_assigned}
       hasHeader={navigation.has_header}
       hasFooter={navigation.has_footer}

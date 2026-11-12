@@ -11,3 +11,10 @@ action SetPublicColorMode(color_mode: String) {
   db.legura_public_theme.where({ id: 1 }).update({ color_mode: input.color_mode })
   return redirect("/admin/appearance")
 }
+
+action SetPublicPalette(palette: String) {
+  data administrator = loadAdministrator()
+  require input.palette == "theme" || input.palette == "silver" || input.palette == "bronze" || input.palette == "gold" else invalid({ palette: "Choose Theme default, Silver, Bronze, or Gold." })
+  db.legura_public_theme.where({ id: 1 }).update({ palette: input.palette })
+  return redirect("/admin/appearance")
+}

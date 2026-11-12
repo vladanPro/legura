@@ -2,14 +2,14 @@ import { Container } from "@axonyx/ui/foundry/Container"
 import { PublicMenu } from "@/components/PublicMenu"
 import { SiteLanguageSwitcher } from "@/components/SiteLanguageSwitcher"
 
-component PublicFrame(theme = "default", colorMode = "light", headerAssigned = 0, hasHeader = false, hasFooter = false, headerItems = [], footerItems = [], locale = "en", switcher = false, currentPath = "/", suffix = "") {
+component PublicFrame(theme = "default", colorMode = "light", palette = "silver", headerAssigned = 0, hasHeader = false, hasFooter = false, headerItems = [], footerItems = [], locale = "en", switcher = false, currentPath = "/", suffix = "") {
   return ASX {
     <If when={theme == "editorial"}>
       <div
         class="legura-public"
         lang={locale}
         data-legura-public-theme="editorial"
-        data-foundry="bronze"
+        data-foundry={palette}
         data-foundry-style="alloy"
         data-foundry-mode={colorMode}
       >
@@ -54,7 +54,7 @@ component PublicFrame(theme = "default", colorMode = "light", headerAssigned = 0
         class="legura-public"
         lang={locale}
         data-legura-public-theme="default"
-        data-foundry="silver"
+        data-foundry={palette}
         data-foundry-style="classic"
         data-foundry-mode={colorMode}
       >
