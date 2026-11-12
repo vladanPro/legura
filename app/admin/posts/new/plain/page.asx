@@ -2,7 +2,6 @@ import { NewPostForm } from "@/components/NewPostForm"
 
 page NewPlainPost() {
   data title: String = loadNewPlainPostTitle()
-  data mediaAvailable: Bool = loadAdminMediaAvailability()
   return ASX {
     <Head>
       <Link
@@ -15,7 +14,6 @@ page NewPlainPost() {
       title={title}
       format="plain-text"
       submitAction={action CreatePost}
-      mediaAvailable={mediaAvailable}
     />
   }
 }

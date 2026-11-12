@@ -2,7 +2,6 @@ import { NewPostForm } from "@/components/NewPostForm"
 
 page NewPost() {
   data title: String = loadNewPostTitle()
-  data mediaAvailable: Bool = loadAdminMediaAvailability()
   return ASX {
     <Head>
       <Link
@@ -15,7 +14,6 @@ page NewPost() {
       title={title}
       format="legura-richtext"
       submitAction={action CreatePost}
-      mediaAvailable={mediaAvailable}
     />
   }
 }

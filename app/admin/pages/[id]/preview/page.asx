@@ -3,9 +3,8 @@ import { PostStory } from "@/components/PostStory"
 
 page PreviewSitePage() {
   data entry: SitePage = loadSitePage(params.id)
-  data mediaAvailable: Bool = loadAdminMediaAvailability()
   return ASX {
-    <AdminFrame section="pages" mediaAvailable={mediaAvailable}>
+    <AdminFrame section="pages">
       <section class="legura-preview-notice" aria-label="Private saved preview">
         <p>
           <strong>Private preview</strong>

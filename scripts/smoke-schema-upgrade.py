@@ -111,6 +111,10 @@ def rehearse(prior_package, candidate_package, root, port):
         admin = login()
         admin.request("/setup", 403)
         assert fixture.verify_public(image_url) == restored_image.read_bytes()
+        library, _ = admin.request("/admin/media", 200)
+        assert f'data-media-id="{image_id}"'.encode() in library
+        assert b'type="file"' in library
+        fixture.Client().request("/admin/media", 403)
         fixture.verify_pages(admin)
         fixture.verify_navigation(admin)
         fixture.verify_public_interface(admin)
