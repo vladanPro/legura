@@ -2,7 +2,7 @@ import { PostStory } from "@/components/PostStory"
 import { PublicFrame } from "@/components/PublicFrame"
 
 page PublicPost() {
-  data publicTheme: String = loadPublicTheme()
+  data appearance: PublicAppearance = loadPublicAppearance()
   data navigation: PublicNavigation = loadPublicNavigation()
   data contentLanguage: String = loadSiteContentLanguage()
   data post: PublishedStory = loadPublishedPost(params.slug)
@@ -10,7 +10,9 @@ page PublicPost() {
   const translate = I18n.withLocale(language.locale)
   return ASX {
     <PublicFrame
-      theme={publicTheme}
+      theme={appearance.theme}
+      colorMode={appearance.color_mode}
+      palette={appearance.resolved_palette}
       headerAssigned={navigation.header_assigned}
       hasHeader={navigation.has_header}
       hasFooter={navigation.has_footer}

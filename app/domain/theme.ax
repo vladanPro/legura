@@ -1,4 +1,12 @@
-export query loadPublicTheme() -> String {
-  data active = db.legura_public_theme.where({ id: 1 }).first()
-  return active["theme"]
+export type PublicAppearance {
+  theme: String
+  color_mode: String
+  palette: String
+  resolved_palette: String
+}
+
+export query loadPublicAppearance() -> PublicAppearance {
+  data rows = db.query("SELECT theme, color_mode, palette, CASE WHEN palette != 'theme' THEN palette WHEN theme = 'editorial' THEN 'bronze' ELSE 'silver' END AS resolved_palette FROM legura_public_theme WHERE id = 1")
+  data active = rows[0]
+  return { theme: active["theme"], color_mode: active["color_mode"], palette: active["palette"], resolved_palette: active["resolved_palette"] }
 }

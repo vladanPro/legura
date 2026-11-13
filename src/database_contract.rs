@@ -60,6 +60,16 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         include_str!("../db/migrations/20261111010000_011_public_interface_language/up.sql"),
         include_str!("../db/migrations/20261111010000_011_public_interface_language/down.sql"),
     ),
+    (
+        "20261112000000_012",
+        include_str!("../db/migrations/20261112000000_012_public_color_mode/up.sql"),
+        include_str!("../db/migrations/20261112000000_012_public_color_mode/down.sql"),
+    ),
+    (
+        "20261112010000_013",
+        include_str!("../db/migrations/20261112010000_013_public_palette/up.sql"),
+        include_str!("../db/migrations/20261112010000_013_public_palette/down.sql"),
+    ),
 ];
 
 pub fn migration_hash(up: &str, down: &str) -> String {
@@ -88,6 +98,8 @@ pub fn embedded_migrations() -> Vec<AxMigration> {
                 "20261110000000_009" => "languages",
                 "20261111000000_010" => "navigation",
                 "20261111010000_011" => "public_interface_language",
+                "20261112000000_012" => "public_color_mode",
+                "20261112010000_013" => "public_palette",
                 _ => unreachable!("embedded migration name is missing"),
             }
             .into(),
@@ -142,6 +154,22 @@ pub fn validate_structure(connection: &Connection) -> Result<usize> {
             id == 1 && matches!(theme.as_str(), "default" | "editorial"),
             "invalid public theme"
         );
+    }
+    if count >= 12 {
+        let valid: bool = connection.query_row(
+            "SELECT color_mode IN ('light', 'dark') FROM legura_public_theme WHERE id = 1",
+            [],
+            |row| row.get(0),
+        )?;
+        ensure!(valid, "invalid public color mode");
+    }
+    if count >= 13 {
+        let valid: bool = connection.query_row(
+            "SELECT palette IN ('theme', 'silver', 'bronze', 'gold') FROM legura_public_theme WHERE id = 1",
+            [],
+            |row| row.get(0),
+        )?;
+        ensure!(valid, "invalid public palette");
     }
     if count >= 9 {
         let valid: bool = connection.query_row(
