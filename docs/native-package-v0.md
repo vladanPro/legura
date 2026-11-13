@@ -18,6 +18,13 @@ Database, .env, credentials, source, migrations and developer backups are NOT
 included. The inventory detects accidental changes, not malicious replacements;
 there is no package signing or automatic update mechanism in V0.
 
+For forgotten administrator passwords, stop the server and verify a backup
+first. Run `legura-maintenance reset-password data/legura.db --offline` (use
+`legura-maintenance.exe` on Windows) with the new password piped through
+standard input from a trusted password manager or hidden prompt, not as a
+command-line argument. The reset preserves content and revokes the owner's
+existing sessions. Start the server and sign in again.
+
 ## Verify A Fresh Package
 
 Before creating `data/` or `.env`, run the maintenance binary from the extracted
