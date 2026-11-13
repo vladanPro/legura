@@ -12,7 +12,7 @@ from tempfile import TemporaryDirectory
 
 
 spec = importlib.util.spec_from_file_location(
-    "legura_http_smoke", Path(__file__).with_name("smoke-clean-linux.py")
+    "legura_http_smoke", Path(__file__).with_name("smoke-native-archive.py")
 )
 fixture = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fixture)

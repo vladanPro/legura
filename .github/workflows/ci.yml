@@ -191,8 +191,49 @@ jobs:
           docker run --rm --network none --read-only --cap-drop ALL \
             --security-opt no-new-privileges --user 65534:65534 --tmpfs /tmp:rw,exec,mode=1777 \
             --mount "type=bind,source=$RUNNER_TEMP/legura-clean-linux-input,target=/input,readonly" \
-            --mount "type=bind,source=$GITHUB_WORKSPACE/scripts/smoke-clean-linux.py,target=/smoke.py,readonly" \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/scripts/smoke-native-archive.py,target=/smoke.py,readonly" \
             legura-clean-linux sh -eu -c 'set -- /input/*.tar.gz; test "$#" -eq 1; exec python3 /smoke.py "$1"'
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+        with:
+          name: legura-linux-x64-candidate
+          path: ${{ runner.temp }}/legura-clean-linux-input/legura-*.tar.gz*
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+  windows-native-package:
+    name: Windows Native ZIP
+    runs-on: windows-2022
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install published private-binary CLI
+        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
+      - name: Build and verify the Windows candidate
+        shell: pwsh
+        run: |
+          $package = Join-Path $env:RUNNER_TEMP 'legura-windows-package'
+          $output = Join-Path $env:RUNNER_TEMP 'legura-windows-candidate'
+          New-Item -ItemType Directory -Path $output | Out-Null
+          ./scripts/local.ps1 -Task init
+          ./scripts/package.ps1 -OutputDirectory $package
+          ./scripts/archive-package.ps1 -PackageDirectory $package -OutputDirectory $output
+          $archives = @(Get-ChildItem -LiteralPath $output -File -Filter 'legura-*-x86_64-pc-windows-msvc.zip')
+          if ($archives.Count -ne 1) { throw 'Expected one Windows x64 ZIP' }
+          python -B ./scripts/smoke-native-archive.py $archives[0].FullName
+          if ($LASTEXITCODE -ne 0) { throw 'Windows ZIP acceptance failed' }
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+        with:
+          name: legura-windows-x64-candidate
+          path: ${{ runner.temp }}/legura-windows-candidate/legura-*.zip*
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
   compiled-auth:
     name: Registry Compiled Auth
     runs-on: ubuntu-latest
