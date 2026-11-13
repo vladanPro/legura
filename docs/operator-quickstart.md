@@ -89,3 +89,28 @@ uses disposable data for preparation, setup, live backup and no-clobber restore.
 The second proves actual server recovery and login against restored content.
 Neither gate uses your development database. If a development server is using
 the shared Cargo target binary, give the tests a separate CARGO_TARGET_DIR.
+
+## Recover An Administrator Password
+
+Stop the CMS before resetting the original installation administrator. First
+create and verify a backup using the procedures above (include media when
+configured). Use the maintenance binary for the installed schema and pass the
+SQLite database path explicitly. Send one new password of 10 to 256 characters
+via standard input from a trusted password manager or hidden prompt. Do not put
+the password in the command, shell history, or a plaintext file.
+
+```sh
+password-manager-command | ./legura-maintenance reset-password data/legura.db --offline
+```
+
+In PowerShell 7 on Windows, run from the package directory:
+
+```powershell
+Read-Host -Prompt 'New administrator password' -MaskInput |
+  .\legura-maintenance.exe reset-password data/legura.db --offline
+```
+
+The `--offline` flag confirms you stopped the application; it does not stop
+it for you. The command updates only the
+installation administrator's hash and revokes their database sessions. Restart
+the CMS and sign in with the new password. There is no public reset endpoint.
