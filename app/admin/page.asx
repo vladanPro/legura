@@ -2,19 +2,19 @@ import { Card } from "@axonyx/ui/foundry/Card"
 import { Button } from "@axonyx/ui/foundry/Button"
 import { Grid } from "@axonyx/ui/foundry/Grid"
 import { AdminFrame } from "@/components/AdminFrame"
+import { AdminPageHeader } from "@/components/AdminPageHeader"
 
 page Administration() {
   data overview: AdminOverview = loadAdminOverview()
   const administrator = overview.administrator
   return ASX {
     <AdminFrame>
-      <header class="legura-page-heading">
-        <div>
-          <h1>Administration</h1>
-          <p>Content, drafts and publishing in one workspace.</p>
-        </div>
+      <AdminPageHeader
+        title="Administration"
+        description="Content, drafts and publishing in one workspace."
+      >
         <a class="ax-button" data-variant="primary" href="/admin/posts/new">New post</a>
-      </header>
+      </AdminPageHeader>
       <section aria-label="Content overview" class="legura-content-overview">
         <Grid cols="3" colsTablet="3" colsMobile="1" gap="md">
           <Card title="All posts">

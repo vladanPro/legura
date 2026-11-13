@@ -1,4 +1,5 @@
 import { AdminFrame } from "@/components/AdminFrame"
+import { AdminPageHeader } from "@/components/AdminPageHeader"
 import { Badge } from "@axonyx/ui/foundry/Badge"
 import { Card } from "@axonyx/ui/foundry/Card"
 
@@ -6,13 +7,12 @@ page AdminPages() {
   data listing: SitePageListing = loadSitePages(query.page ?? "1")
   return ASX {
     <AdminFrame section="pages">
-      <header class="legura-page-heading">
-        <div>
-          <h1>Pages</h1>
-          <p>Create standalone pages such as About or Contact, separate from your blog.</p>
-        </div>
+      <AdminPageHeader
+        title="Pages"
+        description="Create standalone pages such as About or Contact, separate from your blog."
+      >
         <a class="ax-button" data-variant="primary" href="/admin/pages/new">New page</a>
-      </header>
+      </AdminPageHeader>
       <Card title="Site pages">
         <If when={listing.total == 0}>
           <p>No pages yet. Create your first draft to get started.</p>
