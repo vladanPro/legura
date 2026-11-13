@@ -14,7 +14,7 @@ page EditPost() {
       />
       <Script src="/content-editor/host.js" type="module" />
     </Head>
-    <AdminFrame section="posts" mediaAvailable={mediaAvailable}>
+    <AdminFrame section="posts">
       <Card title="Edit post">
         <form
           method="post"

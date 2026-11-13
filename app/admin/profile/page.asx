@@ -1,0 +1,28 @@
+import { AdminFrame } from "@/components/AdminFrame"
+import { Card } from "@axonyx/ui/foundry/Card"
+
+page Profile() {
+  data administrator: Administrator = loadAdministrator()
+  return ASX {
+    <AdminFrame section="profile">
+      <header class="legura-page-heading">
+        <div>
+          <h1>Profile</h1>
+          <p>Details for your signed-in Legura account.</p>
+        </div>
+      </header>
+      <Card title="Account details">
+        <dl class="legura-profile-details">
+          <dt>Email</dt>
+          <dd>{administrator.email}</dd>
+          <dt>Role</dt>
+          <dd>Administrator</dd>
+        </dl>
+      </Card>
+      <Card title="Preferences">
+        <p>Manage the admin panel language separately from the public website.</p>
+        <a class="ax-button" data-variant="secondary" href="/admin/language">Language preferences</a>
+      </Card>
+    </AdminFrame>
+  }
+}

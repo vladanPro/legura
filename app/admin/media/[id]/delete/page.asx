@@ -6,7 +6,7 @@ import { Button } from "@axonyx/ui/foundry/Button"
 page DeleteMediaConfirmation() {
   data image: AdminMediaItem = loadDeletableMedia(params.id)
   return ASX {
-    <AdminFrame section="media" mediaAvailable={true}>
+    <AdminFrame section="media">
       <Card title="Delete image">
         <img
           class="legura-media-preview"

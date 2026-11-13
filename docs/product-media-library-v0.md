@@ -9,9 +9,9 @@ previews. Post attachments, image deletion and public URLs remain separate.
 ## Explicit Opt-In
 
 Media is disabled when settings are absent or `AX_SECRET_MEDIA_DRIVER=disabled`.
-In that state administration navigation omits the link, and even an authenticated
-administrator receives 403 from the library and both upload actions. Hiding the
-link is not the authorization boundary.
+In that state the Media link opens an administrator-only configuration notice.
+No image records, upload form or cleanup controls are shown. Private image
+reads, the post image picker and upload actions remain disabled.
 
 Local storage requires all three private settings:
 
@@ -60,7 +60,7 @@ second route from tests. `-Media` always exercises scoped product limits;
 global 9 MiB override. Existing HTTP, browser, archive and recovery assertions
 target `/admin/media`.
 
-Acceptance covers disabled navigation/read/write denial, enabled navigation from
+Acceptance covers the disabled configuration notice, private read/write denial, navigation from
 overview/posts/new-post pages, selected library navigation, guarded uploads,
 canonical bytes/metadata, pagination, restart, orphan-on-DB-failure behavior and
 backup/recovery including disabled recovered settings. Existing browser CI covers
@@ -69,7 +69,7 @@ before merging; local HTTP results do not imply local browser certification.
 
 Local Windows registry HTTP/native acceptance passed on 2026-10-18, port 3964,
 using CLI 0.6.16/runtime 0.6.11 without source overrides. It tested the actual
-product route/config, default-off navigation/read/write denial, enabled
+product route/config, default-off storage read/write denial, enabled
 navigation, uploads and the full recovery flow above. The randomized fixture
 legura-auth-ffa7d94bac0d442c975c33a122278423 and its private Cargo target were
 removed. All 66 library tests, 21 content/media integration tests, Clippy with

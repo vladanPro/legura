@@ -4,27 +4,29 @@ import { SidebarHeader } from "@axonyx/ui/foundry/SidebarHeader"
 import { SidebarSection } from "@axonyx/ui/foundry/SidebarSection"
 import { SidebarItem } from "@axonyx/ui/foundry/SidebarItem"
 
-component AdminFrame(section = "overview", mediaAvailable = false) {
+component AdminFrame(section = "overview") {
   return ASX {
     <AppShell class="legura-admin-shell" mode="embedded" railWidth="sm">
       <Sidebar slot="sidebar" label="Administration navigation" collapsible="true" open="true">
         <SidebarHeader slot="header">
           <strong>Workspace</strong>
         </SidebarHeader>
-        <nav aria-label="Administration">
+        <nav class="legura-admin-nav" aria-label="Administration">
+          <SidebarItem href="/admin" active={section == "overview"}>Overview</SidebarItem>
           <SidebarSection title="Content">
-            <SidebarItem href="/admin" active={section == "overview"}>Overview</SidebarItem>
             <SidebarItem href="/admin/posts" active={section == "posts"}>Manage posts</SidebarItem>
             <SidebarItem href="/admin/pages" active={section == "pages"}>Pages</SidebarItem>
-            <If when={mediaAvailable}>
-              <SidebarItem href="/admin/media" active={section == "media"}>Media library</SidebarItem>
-            </If>
+            <SidebarItem href="/admin/media" active={section == "media"}>Media</SidebarItem>
           </SidebarSection>
           <SidebarSection title="Website">
-            <SidebarItem href="/posts">Public posts</SidebarItem>
-            <SidebarItem href="/admin/appearance" active={section == "appearance"}>Public theme</SidebarItem>
+            <SidebarItem href="/admin/settings" active={section == "settings"}>Settings</SidebarItem>
+            <SidebarItem href="/admin/appearance" active={section == "appearance"}>Appearance</SidebarItem>
             <SidebarItem href="/admin/navigation" active={section == "navigation"}>Navigation</SidebarItem>
             <SidebarItem href="/admin/language" active={section == "language"}>Language</SidebarItem>
+            <SidebarItem href="/">View public site</SidebarItem>
+          </SidebarSection>
+          <SidebarSection title="Account">
+            <SidebarItem href="/admin/profile" active={section == "profile"}>Profile</SidebarItem>
           </SidebarSection>
         </nav>
       </Sidebar>

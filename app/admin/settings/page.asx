@@ -1,0 +1,40 @@
+import { AdminFrame } from "@/components/AdminFrame"
+import { Card } from "@axonyx/ui/foundry/Card"
+import { Grid } from "@axonyx/ui/foundry/Grid"
+
+page Settings() {
+  data mediaAvailable: Bool = loadAdminMediaAvailability()
+  return ASX {
+    <AdminFrame section="settings">
+      <header class="legura-page-heading">
+        <div>
+          <h1>Settings</h1>
+          <p>Manage the public site and check which services are configured.</p>
+        </div>
+      </header>
+      <Grid cols="2" colsMobile="1" gap="md">
+        <Card title="Appearance">
+          <p>Choose the public layout, color mode and palette.</p>
+          <a class="ax-button" data-variant="secondary" href="/admin/appearance">Open Appearance</a>
+        </Card>
+        <Card title="Navigation">
+          <p>Choose the pages in your public header and footer menus.</p>
+          <a class="ax-button" data-variant="secondary" href="/admin/navigation">Open Navigation</a>
+        </Card>
+        <Card title="Language">
+          <p>Set the admin and public website languages independently.</p>
+          <a class="ax-button" data-variant="secondary" href="/admin/language">Open Language</a>
+        </Card>
+        <Card title="Media storage">
+          <If when={mediaAvailable}>
+            <p>Storage is configured.</p>
+          </If>
+          <If when={!mediaAvailable}>
+            <p>Storage is not configured. Ask the site operator to enable it.</p>
+          </If>
+          <a class="ax-button" data-variant="secondary" href="/admin/media">Open Media</a>
+        </Card>
+      </Grid>
+    </AdminFrame>
+  }
+}

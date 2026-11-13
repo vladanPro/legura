@@ -1,13 +1,14 @@
 # Administration Shell V0
 
-All five administration screens share `app/components/AdminFrame.asx`:
-overview, posts, create, edit and delete confirmation. It composes registry
-Axonyx UI 0.0.85 AppShell, Sidebar, SidebarHeader, SidebarSection and SidebarItem.
+Administration screens share `app/components/AdminFrame.asx`. It composes
+Foundry AppShell, Sidebar, SidebarHeader, SidebarSection and SidebarItem.
 The default content slot keeps page data/actions in their original route scope.
 
-Pages explicitly select `overview` or `posts`; edit/create/delete belong to the
-Posts section. Navigation does not depend on client-side URL inference. No new
-query, user permissions, storage schema or package release is introduced.
+Pages explicitly select their active section; post edit/create/delete still
+select Posts. Navigation does not depend on client-side URL inference.
+Profile shows the signed-in administrator's account. Settings links to the
+existing Appearance, Navigation, Language and Media routes. Media stays in the
+sidebar and explains disabled storage without changing access to files.
 
 AppShell supplies desktop columns and mobile stacking. The Sidebar starts open
 and uses package JS to collapse on mobile. Without JS it stays open and the

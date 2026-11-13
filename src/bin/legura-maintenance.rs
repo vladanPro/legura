@@ -1,5 +1,6 @@
 use anyhow::{bail, ensure, Context, Result};
 use axonyx_runtime::backend::{runtime_from_env, AxEnv, AxMigration, AxMigrationExecutor};
+use axonyx_runtime::password::{AxPassword, MAX_PASSWORD_BYTES};
 use axonyx_runtime::server::AxUnavailableFileStorage;
 use legura::database_contract::{
     embedded_migrations, validate, validate_current, validate_structure,
@@ -8,13 +9,13 @@ use legura::database_contract::{
 use legura::database_contract::{migration_hash, MIGRATIONS};
 use rusqlite::{
     backup::{Backup, StepResult},
-    Connection, OpenFlags,
+    Connection, OpenFlags, TransactionBehavior,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     env, fs,
-    io::{Read, Write},
+    io::{self, IsTerminal, Read, Write},
     path::Path,
     sync::Arc,
     time::{Duration, Instant},
@@ -63,6 +64,15 @@ fn run() -> Result<()> {
         [command, source, destination] if command == "backup" => {
             backup(Path::new(source), Path::new(destination))?;
             println!("Backup verified. Protect this directory: it contains private content and password hashes.");
+        }
+        [command, database, confirmation] if command == "reset-password" && confirmation == "--offline" => {
+            let stdin = io::stdin();
+            ensure!(!stdin.is_terminal(), "Pipe one password to standard input; do not pass it as an argument");
+            let mut password = String::new();
+            stdin.lock().take((MAX_PASSWORD_BYTES + 3) as u64).read_to_string(&mut password)?;
+            let password = password.strip_suffix('\n').map(|line| line.strip_suffix('\r').unwrap_or(line)).unwrap_or(&password);
+            reset_password(Path::new(database), password)?;
+            println!("Administrator password reset and existing sessions revoked. You can now restart Legura.");
         }
         [command, bundle] if command == "verify" => {
             verify(Path::new(bundle))?;
@@ -126,6 +136,7 @@ fn run() -> Result<()> {
         _ => bail!(concat!(
             "usage: legura-maintenance config-local <package-directory> | config-https <package-directory> <private-data-directory> | init <new-database-file>",
             " | backup <database-file> <new-backup-directory> | verify <backup-directory>",
+            " | reset-password <database-file> --offline (password via stdin; stop Legura first)",
             " | verify-package <fresh-package-directory>",
             " | restore <backup-directory> <new-database-file> | content-check <database-file>",
             " | media-check <database-file> <store-id> <private-media-directory>",
@@ -138,6 +149,48 @@ fn run() -> Result<()> {
             " | config-recovery <archive> <inactive-recovery-directory> <package-directory> <https|local-http>"
         )),
     }
+    Ok(())
+}
+
+fn reset_password(path: &Path, password: &str) -> Result<()> {
+    ensure!(
+        (10..=256).contains(&password.chars().count())
+            && password.len() <= MAX_PASSWORD_BYTES
+            && !password.contains(['\r', '\n', '\0']),
+        "Use one password of 10 to 256 characters without line breaks or NUL"
+    );
+    regular_file(path)?;
+    let mut connection = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_WRITE)?;
+    connection.busy_timeout(Duration::from_secs(5))?;
+    connection.execute_batch("PRAGMA trusted_schema = OFF; PRAGMA foreign_keys = ON;")?;
+    let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+    validate_current(&tx)?;
+    let owner: String = tx
+        .query_row(
+            "SELECT u.id FROM legura_installation i JOIN legura_users u ON u.id = i.admin_id \
+         JOIN legura_credentials c ON c.user_id = u.id AND c.email = u.email \
+         WHERE i.id = 1 AND u.role = 'admin'",
+            [],
+            |row| row.get(0),
+        )
+        .context("No installed administrator with matching credentials")?;
+    let hash = AxPassword::hash(password)?;
+    ensure!(
+        tx.execute(
+            "UPDATE legura_credentials SET password_hash = ?1 WHERE user_id = ?2",
+            [&hash, &owner]
+        )? == 1,
+        "Administrator credential was not updated"
+    );
+    let has_sessions: bool = tx.query_row(
+        "SELECT EXISTS(SELECT 1 FROM sqlite_schema WHERE name = 'ax_sessions' AND type = 'table')",
+        [],
+        |row| row.get(0),
+    )?;
+    if has_sessions {
+        tx.execute("DELETE FROM ax_sessions WHERE subject = ?", [&owner])?;
+    }
+    tx.commit()?;
     Ok(())
 }
 
@@ -537,6 +590,64 @@ mod tests {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.0);
         }
+    }
+
+    #[test]
+    fn password_reset_replaces_only_the_owner_credential_and_revokes_owner_sessions() {
+        let fixture = Fixture::new();
+        let path = fixture.path("source.db");
+        let old_hash = AxPassword::hash("Old fixture password").unwrap();
+        let db = Connection::open(&path).unwrap();
+        db.execute("ALTER TABLE _axonyx_migrations ADD COLUMN name TEXT", [])
+            .unwrap();
+        for migration in embedded_migrations() {
+            db.execute(
+                "UPDATE _axonyx_migrations SET name = ?1 WHERE version = ?2",
+                [&migration.name, &migration.version],
+            )
+            .unwrap();
+        }
+        db.execute(
+            "UPDATE legura_credentials SET password_hash = ?",
+            [&old_hash],
+        )
+        .unwrap();
+        db.execute_batch(
+            "CREATE TABLE ax_sessions (
+                id TEXT PRIMARY KEY NOT NULL, subject TEXT NOT NULL, data_json TEXT NOT NULL,
+                created_at_unix INTEGER NOT NULL, last_seen_at_unix INTEGER NOT NULL, expires_at_unix INTEGER NOT NULL
+            );
+            CREATE INDEX ax_sessions_expires_at_idx ON ax_sessions (expires_at_unix);
+            INSERT INTO ax_sessions VALUES ('old-session', 'owner', '{}', 1, 1, 2);
+            INSERT INTO ax_sessions VALUES ('other-session', 'other', '{}', 1, 1, 2);",
+        ).unwrap();
+        assert!(reset_password(&path, "too short").is_err());
+        assert_eq!(
+            db.query_row("SELECT password_hash FROM legura_credentials", [], |r| {
+                r.get::<_, String>(0)
+            })
+            .unwrap(),
+            old_hash
+        );
+        reset_password(&path, "New fixture password").unwrap();
+        let hash: String = db
+            .query_row("SELECT password_hash FROM legura_credentials", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert!(AxPassword::verify("New fixture password", &hash).unwrap());
+        assert!(!AxPassword::verify("Old fixture password", &hash).unwrap());
+        assert_eq!(
+            db.query_row("SELECT id FROM ax_sessions", [], |r| r.get::<_, String>(0))
+                .unwrap(),
+            "other-session"
+        );
+        assert_eq!(
+            db.query_row("SELECT count(*) FROM legura_posts", [], |r| r
+                .get::<_, i64>(0))
+                .unwrap(),
+            2
+        );
     }
 
     #[test]

@@ -6,9 +6,9 @@ import { FieldLabel } from "@axonyx/ui/foundry/FieldLabel"
 import { Input } from "@axonyx/ui/foundry/Input"
 
 page NewSitePage() {
-  data mediaAvailable: Bool = loadAdminMediaAvailability()
+  data administrator: Administrator = loadAdministrator()
   return ASX {
-    <AdminFrame section="pages" mediaAvailable={mediaAvailable}>
+    <AdminFrame section="pages">
       <Card title="New page">
         <form
           method="post"
