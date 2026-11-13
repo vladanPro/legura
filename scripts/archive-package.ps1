@@ -26,18 +26,24 @@ $extension = if ($IsWindows) { '.exe' } else { '' }
 $maintenance = Join-Path $package "legura-maintenance$extension"
 & $maintenance verify-package $package
 if ($LASTEXITCODE -ne 0) { throw 'Package integrity verification failed before archiving' }
-$archiveName = "legura-$($manifest.version)-$($manifest.platform).tar.gz"
+$archiveExtension = if ($IsWindows) { '.zip' } else { '.tar.gz' }
+$archiveName = "legura-$($manifest.version)-$($manifest.platform)$archiveExtension"
 $archive = Join-Path $output $archiveName
 $checksum = "$archive.sha256"
 if ((Test-Path -LiteralPath $archive) -or (Test-Path -LiteralPath $checksum)) { throw 'Archive or checksum already exists' }
-$tar = Get-Command tar -CommandType Application -ErrorAction Stop | Select-Object -First 1 -ExpandProperty Source
-$temporary = Join-Path $output ('.legura-' + [Guid]::NewGuid().ToString('N') + '.tar.gz')
+$temporary = Join-Path $output ('.legura-' + [Guid]::NewGuid().ToString('N') + $archiveExtension)
 $archiveCreated = $false
 $checksumCreated = $false
 $complete = $false
 try {
-  & $tar -czf $temporary -C $package .
-  if ($LASTEXITCODE -ne 0 -or !(Test-Path -LiteralPath $temporary -PathType Leaf)) { throw 'Archive creation failed' }
+  if ($IsWindows) {
+    [IO.Compression.ZipFile]::CreateFromDirectory($package, $temporary)
+  } else {
+    $tar = Get-Command tar -CommandType Application -ErrorAction Stop | Select-Object -First 1 -ExpandProperty Source
+    & $tar -czf $temporary -C $package .
+    if ($LASTEXITCODE -ne 0) { throw 'Archive creation failed' }
+  }
+  if (!(Test-Path -LiteralPath $temporary -PathType Leaf)) { throw 'Archive creation failed' }
   $hash = (Get-FileHash -LiteralPath $temporary -Algorithm SHA256).Hash.ToLowerInvariant()
   [IO.File]::Move($temporary, $archive, $false)
   $archiveCreated = $true

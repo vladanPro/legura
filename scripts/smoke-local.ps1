@@ -217,7 +217,8 @@ try {
       $artifactRoot = Join-Path $fixture 'artifacts'
       New-Item -ItemType Directory -Path $artifactRoot | Out-Null
       & ./scripts/archive-package.ps1 -PackageDirectory $packageRoot -OutputDirectory $artifactRoot
-      $archives = @(Get-ChildItem -LiteralPath $artifactRoot -File -Filter 'legura-*.tar.gz')
+      $archiveFilter = if ($IsWindows) { 'legura-*.zip' } else { 'legura-*.tar.gz' }
+      $archives = @(Get-ChildItem -LiteralPath $artifactRoot -File -Filter $archiveFilter)
       if ($archives.Count -ne 1) { throw 'Expected exactly one candidate archive' }
       $archive = $archives[0]
       $checksum = [IO.File]::ReadAllText("$($archive.FullName).sha256").TrimEnd()
@@ -225,8 +226,12 @@ try {
       if ($checksum -cne "$archiveHash  $($archive.Name)") { throw 'Candidate archive checksum mismatch' }
       $packageRoot = Join-Path $fixture 'extracted-package'
       New-Item -ItemType Directory -Path $packageRoot | Out-Null
-      & tar -xzf $archive.FullName -C $packageRoot
-      if ($LASTEXITCODE -ne 0) { throw 'Candidate archive extraction failed' }
+      if ($IsWindows) {
+        [IO.Compression.ZipFile]::ExtractToDirectory($archive.FullName, $packageRoot)
+      } else {
+        & tar -xzf $archive.FullName -C $packageRoot
+        if ($LASTEXITCODE -ne 0) { throw 'Candidate archive extraction failed' }
+      }
       $maintenance = Join-Path $packageRoot "legura-maintenance$extension"
       & $maintenance verify-package $packageRoot
       if ($LASTEXITCODE -ne 0) { throw 'Extracted package integrity check failed' }
