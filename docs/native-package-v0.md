@@ -52,12 +52,18 @@ platform-specific archive in an existing directory outside the package:
 pwsh -File scripts/archive-package.ps1 -PackageDirectory ../legura-native-pilot -OutputDirectory ../artifacts
 ```
 
-This creates `legura-<version>-<platform>.tar.gz` and a matching `.sha256`
+This creates `legura-<version>-<platform>.zip` on Windows or
+`legura-<version>-<platform>.tar.gz` on Linux, with a matching `.sha256`
 file, refusing to replace either. Extract into a new directory, verify the
 archive against the separately obtained checksum, then run `verify-package`
 there before adding data/ or .env. The checksum detects corruption but does
 not authenticate the publisher. These artifacts are not signed, published or
-supported as production installers yet.
+supported as production installers yet. CI retains verified Windows x64 and
+Linux x64 candidates for seven days as workflow artifacts, not public releases.
+The Windows test uses the native binaries with a system-only PATH; the Linux
+test runs in a non-root container without a build toolchain. Both start a new
+site from the extracted archive, publish a post with an image, and verify
+backup recovery and fresh login.
 
 ## Prepare Existing Installation
 

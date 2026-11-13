@@ -1,4 +1,4 @@
-"""Exercise a trusted CI-built native archive inside a clean Linux container."""
+"""Exercise a trusted native download candidate without build tools on PATH."""
 
 import base64
 from contextlib import contextmanager
@@ -14,6 +14,7 @@ import sys
 import tarfile
 from tempfile import TemporaryDirectory
 import time
+import zipfile
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import HTTPCookieProcessor, HTTPRedirectHandler, Request, build_opener
@@ -69,8 +70,12 @@ class Client:
 
 def unpack(archive, package):
     package.mkdir()
-    with tarfile.open(archive, "r:gz") as tar:
-        tar.extractall(package, filter="data")
+    if sys.platform == "win32":
+        with zipfile.ZipFile(archive) as zipped:
+            zipped.extractall(package)
+    else:
+        with tarfile.open(archive, "r:gz") as tar:
+            tar.extractall(package, filter="data")
     assert not (package / ".env").exists()
     assert not (package / "data").exists()
 
@@ -331,6 +336,7 @@ def smoke(archive, root):
     unpack(archive, original)
     unpack(archive, candidate)
     maintenance(original, "verify-package", original)
+    maintenance(candidate, "verify-package", candidate)
     data = original / "data"
     data.mkdir(mode=0o700)
     media = data / "media"
@@ -339,12 +345,13 @@ def smoke(archive, root):
     maintenance(original, "init", database)
     maintenance(original, "config-local", original)
     config = original / ".env"
-    assert config.stat().st_mode & 0o077 == 0, "Configuration is not private"
+    if os.name != "nt":
+        assert config.stat().st_mode & 0o077 == 0, "Configuration is not private"
     values = dict(line.split("=", 1) for line in config.read_text().splitlines())
     with config.open("a") as out:
         out.write(
             "AX_SECRET_MEDIA_DRIVER=local\n"
-            f"AX_SECRET_MEDIA_ROOT={media}\n"
+            f"AX_SECRET_MEDIA_ROOT={media.as_posix()}\n"
             "AX_SECRET_MEDIA_STORE_ID=local-media\n"
         )
     original_config = config.read_bytes()
@@ -352,7 +359,7 @@ def smoke(archive, root):
         client = Client()
         client.request("/setup", 200)
         client.action("/setup", "Install", fields={
-            "siteName": "Clean Linux", "email": EMAIL, "password": PASSWORD,
+            "siteName": "Native download candidate", "email": EMAIL, "password": PASSWORD,
             "setupToken": values["AX_SECRET_SETUP_TOKEN"],
         })
         client.request("/admin", 200)
@@ -401,17 +408,36 @@ def smoke(archive, root):
         settings, _ = client.request("/admin/language", 200)
         assert b"Primeni jezik panela" in settings, "Recovered admin language was not rendered"
         client.request("/setup", 403)
+    new_password = "NativeRecovery9!"
+    subprocess.run(
+        [native_executable(candidate, "legura-maintenance"), "reset-password",
+         recovery / "database.sqlite", "--offline"],
+        cwd=candidate, input=new_password + "\n", text=True, check=True, timeout=60,
+    )
+    with server(candidate):
+        client.request("/admin", 403)
+        client.action("/login", "SignIn", 422, fields={"email": EMAIL, "password": PASSWORD})
+        client.action("/login", "SignIn", fields={"email": EMAIL, "password": new_password})
+        client.request("/admin", 200)
+        assert verify_public(image_url) == image
     assert config.read_bytes() == original_config
-    print("Clean Linux package passed: setup, published post/image, backup, recovery and fresh login.")
+    print(f"{sys.platform} native archive passed: setup, published post/image, backup, recovery, and password reset.")
 
 
 if __name__ == "__main__":
-    assert sys.platform == "linux" and os.geteuid() != 0
+    if not __debug__:
+        raise RuntimeError("Run this smoke with Python assertions enabled")
+    if sys.platform == "win32":
+        os.environ["PATH"] = str(Path(os.environ["SystemRoot"]) / "System32")
+        assert sys.argv[1].endswith(".zip")
+    else:
+        assert sys.platform == "linux" and os.geteuid() != 0
+        assert sys.argv[1].endswith(".tar.gz")
     for tool in ("rustc", "cargo", "cargo-ax", "node", "git", "pwsh"):
         assert shutil.which(tool) is None, f"Unexpected tool in runtime image: {tool}"
     archive = Path(sys.argv[1]).resolve(strict=True)
     checksum = archive.with_name(archive.name + ".sha256").read_text().split()
     with archive.open("rb") as source:
         assert checksum == [file_digest(source, "sha256").hexdigest(), archive.name]
-    with TemporaryDirectory(prefix="legura-clean-linux-") as directory:
+    with TemporaryDirectory(prefix="legura native download ") as directory:
         smoke(archive, Path(directory))
