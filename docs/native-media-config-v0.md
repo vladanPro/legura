@@ -83,8 +83,8 @@ file-serving route, authorization exemption or JSON upload protocol.
 ## Product Page, Explicit Operator Activation
 
 The product retains the 64 KiB ordinary-request budget and grants 9 MiB only to
-the two known upload actions at `/admin/media`. Navigation and the page are
-available only with validated local settings and current administrator authority.
+the two known upload actions at `/admin/media`. The page is administrator-only
+and shows a setup notice instead of the library without validated local storage.
 See [Product Media Library V0](product-media-library-v0.md). Tests now exercise
 that actual route, without injecting a separate page or a global size increase.
 Operator activation, quotas, safe binary delivery, thumbnails, attachments and

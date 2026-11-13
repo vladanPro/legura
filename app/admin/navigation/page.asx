@@ -3,9 +3,8 @@ import { Card } from "@axonyx/ui/foundry/Card"
 
 page Navigation() {
   data settings: NavigationSettings = loadNavigationSettings(query.menu ?? "", query.search ?? "")
-  data mediaAvailable: Bool = loadAdminMediaAvailability()
   return ASX {
-    <AdminFrame section="navigation" mediaAvailable={mediaAvailable}>
+    <AdminFrame section="navigation">
       <header class="legura-page-heading">
         <div>
           <h1>Navigation</h1>

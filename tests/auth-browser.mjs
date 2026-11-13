@@ -243,6 +243,31 @@ try {
   const session = (await context.cookies()).filter((cookie) => cookie.httpOnly);
   assert.ok(session.length > 0, "No private session cookie after setup");
 
+  for (const [name, path, heading] of [
+    ["Profile", "/admin/profile", "Profile"],
+    ["Settings", "/admin/settings", "Settings"],
+    ["Media", "/admin/media", "Media library"],
+  ]) {
+    await adminNav.getByRole("link", { name, exact: true }).click();
+    await page.waitForURL(baseUrl + path);
+    await page.getByRole("heading", { name: heading, exact: true, level: 1 }).waitFor();
+    const selected = adminNav.locator('[data-active="true"]');
+    assert.equal(await selected.count(), 1);
+    assert.equal(await selected.getAttribute("href"), path);
+    assert.equal(await selected.getAttribute("aria-current"), "true");
+    if (name === "Profile") await page.getByText(email, { exact: true }).waitFor();
+    if (name === "Settings") await page.getByRole("link", { name: "Open Appearance" }).waitFor();
+    if (name === "Media") {
+      await page.getByRole("heading", { name: "Media storage is not configured" }).waitFor();
+      assert.equal(await page.locator('input[type="file"]').count(), 0);
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.ok(await adminNav.isVisible(), `Mobile navigation unavailable on ${path}`);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Mobile overflow on ${path}`);
+    await page.setViewportSize({ width: 1280, height: 900 });
+  }
+  await adminNav.getByRole("link", { name: "Overview", exact: true }).click();
+  await page.waitForURL(baseUrl + "/admin");
   await page.setViewportSize({ width: 390, height: 844 });
   const navigationToggle = page.getByRole('button', { name: 'Administration navigation', exact: true });
   if (mode === 'javascript') {
@@ -264,6 +289,9 @@ try {
   await submitSuccess("Sign out");
   await page.waitForURL(`${baseUrl}/login`);
   await navigate("/admin", 403);
+  await navigate("/admin/profile", 403);
+  await navigate("/admin/settings", 403);
+  await navigate("/admin/media", 403);
   await navigate("/setup", 403);
   await navigate("/login");
   await checkForm("Sign in to Legura", ["email", "password"]);

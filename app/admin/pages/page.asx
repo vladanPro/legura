@@ -4,9 +4,8 @@ import { Card } from "@axonyx/ui/foundry/Card"
 
 page AdminPages() {
   data listing: SitePageListing = loadSitePages(query.page ?? "1")
-  data mediaAvailable: Bool = loadAdminMediaAvailability()
   return ASX {
-    <AdminFrame section="pages" mediaAvailable={mediaAvailable}>
+    <AdminFrame section="pages">
       <header class="legura-page-heading">
         <div>
           <h1>Pages</h1>

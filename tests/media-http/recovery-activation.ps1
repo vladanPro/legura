@@ -104,8 +104,9 @@ function Invoke-RecoveryActivationProof {
     Remove-Item -LiteralPath 'Env:AX_SECRET_MEDIA_STORE_ID' -ErrorAction SilentlyContinue
     Start-Fixture
     $disabled = Invoke-Request -Path '/admin' -Headers @{ Cookie = $recoveryCookie }
-    if ($disabled.Body.Contains('href="/admin/media"')) { throw 'Disabled recovered Media remained in navigation' }
-    Invoke-Request -Path '/admin/media' -Headers @{ Cookie = $recoveryCookie } -Status 403 | Out-Null
+    if (!$disabled.Body.Contains('href="/admin/media"')) { throw 'Media is missing from recovered navigation' }
+    $disabledLibrary = Invoke-Request -Path '/admin/media' -Headers @{ Cookie = $recoveryCookie }
+    if (!$disabledLibrary.Body.Contains('Media storage is not configured') -or $disabledLibrary.Body.Contains('data-media-id=')) { throw 'Disabled Media exposed stored items instead of its configuration notice' }
     Assert-PrivateMediaRead $mediaId $recoveryCookie 403
     Send-Media -Bytes $validImage -Headers (Get-Proof -Cookie $recoveryCookie) -Status 403 | Out-Null
     Assert-RecoveredMedia ($mediaExpectedRows + 1)

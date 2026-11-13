@@ -84,8 +84,9 @@ Remove-Item -LiteralPath 'Env:AX_SECRET_MEDIA_STORE_ID' -ErrorAction SilentlyCon
 try {
   Start-Fixture
   $disabled = Invoke-Request -Path '/admin' -Headers @{ Cookie = $cookie }
-  if ($disabled.Body.Contains('href="/admin/media"')) { throw 'Disabled Media leaked into product navigation' }
-  Invoke-Request -Path '/admin/media' -Headers @{ Cookie = $cookie } -Status 403 | Out-Null
+  if (!$disabled.Body.Contains('href="/admin/media"')) { throw 'Media is missing from product navigation' }
+  $disabledLibrary = Invoke-Request -Path '/admin/media' -Headers @{ Cookie = $cookie }
+  if (!$disabledLibrary.Body.Contains('Media storage is not configured') -or $disabledLibrary.Body.Contains('type="file"')) { throw 'Disabled Media did not show its read-only configuration notice' }
   Assert-PrivateMediaRead ('a' * 64) $cookie 403
   $disabledProof = Get-Proof -Cookie $cookie
   Send-Media -Bytes $validImage -Headers $disabledProof -Status 403 | Out-Null

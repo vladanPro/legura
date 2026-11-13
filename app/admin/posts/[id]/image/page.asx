@@ -8,7 +8,7 @@ page PostImagePicker() {
   data post: PostImageTarget = loadPostImageTarget(params.id)
   data listing: AdminMediaPage = loadMediaLibrary(query.page ?? "1")
   return ASX {
-    <AdminFrame section="posts" mediaAvailable={listing.available}>
+    <AdminFrame section="posts">
       <header class="legura-page-heading">
         <div>
           <h1>Featured image</h1>
