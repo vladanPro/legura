@@ -2,15 +2,208 @@ import { AdminFrame } from "@/components/AdminFrame"
 import { AdminPageHeader } from "@/components/AdminPageHeader"
 import { Card } from "@axonyx/ui/foundry/Card"
 import { Grid } from "@axonyx/ui/foundry/Grid"
+import { Input } from "@axonyx/ui/foundry/Input"
+import { Select } from "@axonyx/ui/foundry/Select"
 
 page Settings() {
   data mediaAvailable: Bool = loadAdminMediaAvailability()
+  data settings: GeneralSettings = loadGeneralSettings()
   return ASX {
     <AdminFrame section="settings">
       <AdminPageHeader
         title="Settings"
         description="Manage the public site and check which services are configured."
       />
+      <Card title="Site identity">
+        <form
+          method="post"
+          action={action SaveSiteIdentity}
+          class="legura-form"
+          data-ax-retain-fields="site_title,tagline,site_icon,legura_url,site_address,admin_email"
+        >
+          <label for="site_title">Site Title</label>
+          <Input
+            id="site_title"
+            name="site_title"
+            type="text"
+            value={settings.site_title}
+            maxlength="120"
+            required="true"
+            describedBy="site_title-error"
+          />
+          <p
+            id="site_title-error"
+            class="ax-field__error"
+            data-ax-field-error="site_title"
+            aria-live="polite"
+          ></p>
+          <label for="tagline">Tagline</label>
+          <Input
+            id="tagline"
+            name="tagline"
+            type="text"
+            value={settings.tagline}
+            maxlength="160"
+            describedBy="tagline-error"
+          />
+          <p
+            id="tagline-error"
+            class="ax-field__error"
+            data-ax-field-error="tagline"
+            aria-live="polite"
+          ></p>
+          <label for="site_icon">Site Icon</label>
+          <Input
+            id="site_icon"
+            name="site_icon"
+            type="text"
+            value={settings.site_icon}
+            maxlength="256"
+            describedBy="site_icon-error site_icon-hint"
+          />
+          <p id="site_icon-hint" class="legura-hint">Public header icon. Enter a path to an existing image, such as /favicon.png, or leave blank for the Legura icon.</p>
+          <p
+            id="site_icon-error"
+            class="ax-field__error"
+            data-ax-field-error="site_icon"
+            aria-live="polite"
+          ></p>
+          <label for="legura_url">Legura URL</label>
+          <Input
+            id="legura_url"
+            name="legura_url"
+            type="url"
+            value={settings.legura_url}
+            maxlength="2048"
+            describedBy="legura_url-error legura_url-hint"
+          />
+          <p id="legura_url-hint" class="legura-hint">Address where Legura is installed. This does not change the server binding or login URL.</p>
+          <p
+            id="legura_url-error"
+            class="ax-field__error"
+            data-ax-field-error="legura_url"
+            aria-live="polite"
+          ></p>
+          <label for="site_address">Site Address</label>
+          <Input
+            id="site_address"
+            name="site_address"
+            type="url"
+            value={settings.site_address}
+            maxlength="2048"
+            describedBy="site_address-error site_address-hint"
+          />
+          <p id="site_address-hint" class="legura-hint">Public address of your website. Set your hosting and domain separately.</p>
+          <p
+            id="site_address-error"
+            class="ax-field__error"
+            data-ax-field-error="site_address"
+            aria-live="polite"
+          ></p>
+          <label for="admin_email">Administration Email Address</label>
+          <Input
+            id="admin_email"
+            name="admin_email"
+            type="email"
+            value={settings.admin_email}
+            maxlength="254"
+            required="true"
+            describedBy="admin_email-error admin_email-hint"
+          />
+          <p id="admin_email-hint" class="legura-hint">Contact address. Saving it does not change your login email or configure email delivery.</p>
+          <p
+            id="admin_email-error"
+            class="ax-field__error"
+            data-ax-field-error="admin_email"
+            aria-live="polite"
+          ></p>
+          <button type="submit" class="ax-button" data-variant="primary">Save site identity</button>
+        </form>
+      </Card>
+      <Card title="Membership">
+        <div class="legura-form">
+          <label><input type="checkbox" disabled="true" /> Anyone can register</label>
+          <label for="default-role">New User Default Role</label>
+          <Select id="default-role" disabled="true">
+            <option>Subscriber</option>
+          </Select>
+          <p class="legura-hint">Public registration and Subscriber accounts are not available yet.</p>
+        </div>
+      </Card>
+      <Card title="Language and regional formats">
+        <form
+          method="post"
+          action={action SaveSiteLocale}
+          class="legura-form"
+          data-ax-retain-fields="site_language,timezone,date_format,time_format,week_start"
+        >
+          <p class="legura-hint">Site Language sets the content language. Admin and public interface translations are managed separately. Regional formats are saved for future displays; post creation dates currently use UTC.</p>
+          <label for="site_language">Site Language</label>
+          <Select id="site_language" name="site_language" describedBy="site_language-error">
+            <option value="en" selected={settings.site_language == "en"}>English</option>
+            <option value="sr-Latn" selected={settings.site_language == "sr-Latn"}>Srpski (latinica)</option>
+          </Select>
+          <p
+            id="site_language-error"
+            class="ax-field__error"
+            data-ax-field-error="site_language"
+            aria-live="polite"
+          ></p>
+          <label for="timezone">Time Zone</label>
+          <Select id="timezone" name="timezone" describedBy="timezone-error">
+            <option value="UTC" selected={settings.timezone == "UTC"}>UTC</option>
+            <option value="Europe/Belgrade" selected={settings.timezone == "Europe/Belgrade"}>Europe/Belgrade</option>
+            <option value="Europe/London" selected={settings.timezone == "Europe/London"}>Europe/London</option>
+            <option value="America/New_York" selected={settings.timezone == "America/New_York"}>America/New_York</option>
+          </Select>
+          <p
+            id="timezone-error"
+            class="ax-field__error"
+            data-ax-field-error="timezone"
+            aria-live="polite"
+          ></p>
+          <label for="date_format">Date Format</label>
+          <Select id="date_format" name="date_format" describedBy="date_format-error">
+            <option value="yyyy-mm-dd" selected={settings.date_format == "yyyy-mm-dd"}>YYYY-MM-DD</option>
+            <option value="dd/mm/yyyy" selected={settings.date_format == "dd/mm/yyyy"}>DD/MM/YYYY</option>
+            <option value="mm/dd/yyyy" selected={settings.date_format == "mm/dd/yyyy"}>MM/DD/YYYY</option>
+          </Select>
+          <p
+            id="date_format-error"
+            class="ax-field__error"
+            data-ax-field-error="date_format"
+            aria-live="polite"
+          ></p>
+          <label for="time_format">Time Format</label>
+          <Select id="time_format" name="time_format" describedBy="time_format-error">
+            <option value="24h" selected={settings.time_format == "24h"}>24-hour (14:30)</option>
+            <option value="12h" selected={settings.time_format == "12h"}>12-hour (2:30 PM)</option>
+          </Select>
+          <p
+            id="time_format-error"
+            class="ax-field__error"
+            data-ax-field-error="time_format"
+            aria-live="polite"
+          ></p>
+          <label for="week_start">Week Starts On</label>
+          <Select id="week_start" name="week_start" describedBy="week_start-error">
+            <option value="0" selected={settings.week_start == 0}>Sunday</option>
+            <option value="1" selected={settings.week_start == 1}>Monday</option>
+            <option value="2" selected={settings.week_start == 2}>Tuesday</option>
+            <option value="3" selected={settings.week_start == 3}>Wednesday</option>
+            <option value="4" selected={settings.week_start == 4}>Thursday</option>
+            <option value="5" selected={settings.week_start == 5}>Friday</option>
+            <option value="6" selected={settings.week_start == 6}>Saturday</option>
+          </Select>
+          <p
+            id="week_start-error"
+            class="ax-field__error"
+            data-ax-field-error="week_start"
+            aria-live="polite"
+          ></p>
+          <button type="submit" class="ax-button" data-variant="primary">Save language and formats</button>
+        </form>
+      </Card>
       <Grid cols="2" colsMobile="1" gap="md">
         <Card title="Appearance">
           <p>Choose the public layout, color mode and palette.</p>

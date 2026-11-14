@@ -6,6 +6,7 @@ page Home() {
   data appearance: PublicAppearance = loadPublicAppearance()
   data navigation: PublicNavigation = loadPublicNavigation()
   data language: PublicLocale = loadPublicLocale(query.lang ?? "")
+  data identity: PublicSiteIdentity = loadPublicSiteIdentity()
   const translate = I18n.withLocale(language.locale)
   return ASX {
     <PublicFrame
@@ -20,6 +21,9 @@ page Home() {
       locale={language.locale}
       switcher={language.switcher}
       suffix={language.suffix}
+      siteTitle={identity.title}
+      tagline={identity.tagline}
+      icon={identity.icon}
     >
       <Card title={translate("public.welcome")}>
         <Copy>{translate("public.welcome.hint")}</Copy>

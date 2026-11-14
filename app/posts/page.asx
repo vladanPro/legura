@@ -6,6 +6,7 @@ page PublicPosts() {
   data navigation: PublicNavigation = loadPublicNavigation()
   data posts: Post[] = loadPublishedPosts()
   data language: PublicLocale = loadPublicLocale(query.lang ?? "")
+  data identity: PublicSiteIdentity = loadPublicSiteIdentity()
   data contentLanguage: String = loadSiteContentLanguage()
   const translate = I18n.withLocale(language.locale)
   return ASX {
@@ -21,6 +22,9 @@ page PublicPosts() {
       locale={language.locale}
       switcher={language.switcher}
       suffix={language.suffix}
+      siteTitle={identity.title}
+      tagline={identity.tagline}
+      icon={identity.icon}
       currentPath="/posts"
     >
       <section class="legura-posts">

@@ -1,0 +1,10 @@
+export type PublicSiteIdentity {
+  title: String
+  tagline: String
+  icon: String
+}
+
+export query loadPublicSiteIdentity() -> PublicSiteIdentity {
+  data rows = db.query("SELECT COALESCE(i.site_name, 'Legura') AS title, s.tagline, COALESCE(NULLIF(s.site_icon, ''), '/legura-mark.svg') AS icon FROM legura_general_settings s LEFT JOIN legura_installation i ON i.id = s.id WHERE s.id = 1")
+  return rows[0]
+}

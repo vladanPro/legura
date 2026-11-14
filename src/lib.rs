@@ -9,6 +9,7 @@ pub mod content_rendering;
 pub mod database_contract;
 pub mod editor_assets;
 pub mod editor_install;
+pub mod general_settings;
 pub mod media_audit;
 pub mod media_config;
 pub mod media_delete;

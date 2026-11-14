@@ -1,0 +1,22 @@
+export type GeneralSettings {
+  site_title: String
+  tagline: String
+  site_icon: String
+  legura_url: String
+  site_address: String
+  admin_email: String
+  site_language: String
+  timezone: String
+  date_format: String
+  time_format: String
+  week_start: Int
+}
+
+export query loadGeneralSettings() -> GeneralSettings {
+  require Auth.subject else forbidden()
+  data administrator = db.legura_users.where({ id: Auth.subject }).first()
+  require administrator else forbidden()
+  require administrator["role"] == "admin" else forbidden()
+  data rows = db.query("SELECT COALESCE(i.site_name, '') AS site_title, s.tagline, s.site_icon, s.legura_url, s.site_address, COALESCE(NULLIF(s.admin_email, ''), u.email, '') AS admin_email, l.site_language, s.timezone, s.date_format, s.time_format, s.week_start FROM legura_general_settings s JOIN legura_languages l ON l.id = s.id LEFT JOIN legura_installation i ON i.id = s.id LEFT JOIN legura_users u ON u.id = i.admin_id WHERE s.id = 1")
+  return rows[0]
+}

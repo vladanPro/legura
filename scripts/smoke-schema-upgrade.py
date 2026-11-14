@@ -173,6 +173,34 @@ def verify_post_creation(admin, database):
         assert db.execute("SELECT created_by, created_at FROM legura_posts WHERE id = ?", (post_id,)).fetchone() == (author_id, created)
 
 
+def verify_general_settings(admin):
+    route = "/admin/settings"
+    guest = fixture.Client()
+    guest.request(route, 403)
+    page, _ = admin.request(route, 200)
+    assert b"Schema upgrade proof" in page and fixture.EMAIL.encode() in page
+    assert re.search(rb'<option(?=[^>]*\bvalue="1")(?=[^>]*\bselected)[^>]*>\s*Monday', page)
+    identity = {
+        "site_title": "Editorial Test", "tagline": "Governed by Legura",
+        "site_icon": "/assets/fixture-icon.png", "legura_url": "https://admin.example.test",
+        "site_address": "https://site.example.test", "admin_email": "contact@example.test",
+    }
+    locale = {"site_language": "en", "timezone": "Europe/Belgrade", "date_format": "dd/mm/yyyy", "time_format": "12h", "week_start": 0}
+    guest.action(route, "SaveSiteIdentity", 403, fields=identity)
+    admin.action(route, "SaveSiteIdentity", 422, fields=dict(identity, site_icon="//elsewhere.test/favicon.png"))
+    admin.action(route, "SaveSiteIdentity", fields=identity)
+    admin.action(route, "SaveSiteLocale", 422, fields=dict(locale, week_start=7))
+    admin.action(route, "SaveSiteLocale", fields=locale)
+    page, _ = admin.request(route, 200)
+    for value in identity.values():
+        assert value.encode() in page, value
+    assert re.search(rb'<option(?=[^>]*\bvalue="0")(?=[^>]*\bselected)[^>]*>\s*Sunday', page)
+    homepage, _ = guest.request("/", 200)
+    assert b"Editorial Test" in homepage and b"Governed by Legura" in homepage
+    assert re.search(rb'<img[^>]*src="/assets/fixture-icon.png"[^>]*>', homepage)
+    assert b"contact@example.test" not in homepage
+
+
 def rehearse(prior_package, candidate_package, root, port):
     if prior_package == candidate_package:
         raise ValueError("Use separate prior and candidate packages")
@@ -192,7 +220,7 @@ def rehearse(prior_package, candidate_package, root, port):
 
     workspace = root / "rehearsal"
     report = json.loads(fixture.maintenance(candidate, "upgrade-rehearse", archive, workspace, capture=True))
-    assert report["migrations_applied"] == 9 and report["archive"]["files"] == 2, report
+    assert report["migrations_applied"] == 10 and report["archive"]["files"] == 2, report
     migrated = workspace / "rehearsed.legura"
     recovery = workspace / "verified-recovery"
     fixture.maintenance(candidate, "upgrade-preflight", candidate, migrated, recovery)
@@ -249,6 +277,11 @@ def rehearse(prior_package, candidate_package, root, port):
         assert b"Preserve this image" in editor
         verify_page_trash(admin, recovery / "database.sqlite")
         verify_post_creation(admin, recovery / "database.sqlite")
+        verify_general_settings(admin)
+    with fixture.server(candidate, port):
+        settings_page, _ = login().request("/admin/settings", 200)
+        assert b"Editorial Test" in settings_page
+        assert b"contact@example.test" in settings_page and b"Europe/Belgrade" in settings_page
     assert hashes(original) == before, "Rehearsal changed the stopped source or backup"
 
 
@@ -265,4 +298,4 @@ if __name__ == "__main__":
     fixture.BASE = f"http://127.0.0.1:{args.port}"
     with TemporaryDirectory(prefix="legura-schema-upgrade-") as scratch:
         rehearse(args.prior.resolve(strict=True), args.candidate.resolve(strict=True), Path(scratch), args.port)
-    print("Schema upgrade passed: nine migrations, preserved source, content/media, page Trash, and post attribution.")
+    print("Schema upgrade passed: ten migrations, including page Trash, post attribution, and general settings.")

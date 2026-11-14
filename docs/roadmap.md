@@ -131,6 +131,11 @@ the registry tooling requirement, acceptance coverage and Unicode/adapter limits
 New posts record their creator and UTC creation time. The admin list shows both;
 legacy rows stay unknown, and account email is not sent to public pages.
 
+General Settings manages public header title, tagline and icon, plus
+installation/public addresses, the administrative contact, and content language.
+Regional preferences are stored but not yet applied to date or calendar rendering.
+Public registration and Subscriber accounts are intentionally unavailable.
+
 The administration overview shows guarded database-backed total/draft/published
 counts and links to those lists, plus a first-draft prompt for empty installations.
 A separate Trash card links to both collections with independent counts; trashed
