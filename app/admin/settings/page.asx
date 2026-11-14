@@ -137,7 +137,7 @@ page Settings() {
           class="legura-form"
           data-ax-retain-fields="site_language,timezone,date_format,time_format,week_start"
         >
-          <p class="legura-hint">Site Language sets the content language. Admin and public interface translations are managed separately. Regional formats are saved for future displays; post creation dates currently use UTC.</p>
+          <p class="legura-hint">Site Language sets the content language. Admin and public interface translations are managed separately. The Posts list uses these date and time preferences. Week Starts On is saved for future calendars.</p>
           <label for="site_language">Site Language</label>
           <Select id="site_language" name="site_language" describedBy="site_language-error">
             <option value="en" selected={settings.site_language == "en"}>English</option>

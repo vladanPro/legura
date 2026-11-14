@@ -199,6 +199,9 @@ def verify_general_settings(admin):
     assert b"Editorial Test" in homepage and b"Governed by Legura" in homepage
     assert re.search(rb'<img[^>]*src="/assets/fixture-icon.png"[^>]*>', homepage)
     assert b"contact@example.test" not in homepage
+    posts, _ = admin.request("/admin/posts", 200)
+    assert b"Created (Europe/Belgrade)" in posts
+    assert re.search(rb'<time datetime="[^"]+Z">\s*\d{2}/\d{2}/\d{4} \d{1,2}:\d{2} (AM|PM)\s*</time>', posts)
 
 
 def rehearse(prior_package, candidate_package, root, port):

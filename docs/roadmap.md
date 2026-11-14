@@ -133,7 +133,8 @@ legacy rows stay unknown, and account email is not sent to public pages.
 
 General Settings manages public header title, tagline and icon, plus
 installation/public addresses, the administrative contact, and content language.
-Regional preferences are stored but not yet applied to date or calendar rendering.
+The Posts list renders creation timestamps in the chosen time zone and formats,
+while the stored timestamp remains UTC. Week start is saved for future calendars.
 Public registration and Subscriber accounts are intentionally unavailable.
 
 The administration overview shows guarded database-backed total/draft/published
