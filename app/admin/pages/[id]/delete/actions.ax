@@ -1,0 +1,8 @@
+action DeletePage(id: String, confirmSlug: String) {
+  data administrator = loadAdministrator()
+  data entry = db.legura_pages.where({ id: input.id, trashed: 1 }).first()
+  require entry else notFound()
+  require input.confirmSlug == entry["slug"] else invalid({ confirmSlug: "Enter this page's URL slug to confirm deletion." })
+  db.legura_pages.where({ id: input.id, slug: input.confirmSlug, trashed: 1 }).delete()
+  return redirect("/admin/pages?status=trash")
+}

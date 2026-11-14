@@ -1,0 +1,9 @@
+export query loadDeletablePage(id: String) -> SitePage {
+  require Auth.subject else forbidden()
+  data administrator = db.legura_users.where({ id: Auth.subject }).first()
+  require administrator else forbidden()
+  require administrator["role"] == "admin" else forbidden()
+  data entry = db.legura_pages.where({ id: input.id, trashed: 1 }).first()
+  require entry else notFound()
+  return entry
+}

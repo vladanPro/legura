@@ -114,7 +114,9 @@ move a post to Trash from its edit screen, then restore it as a draft or
 confirm permanent deletion from Trash. Public post and featured-image URLs
 are unavailable while the post is trashed or restored but unpublished.
 Trash keeps the post's slug reserved and does not expire automatically.
-Standalone Pages are unchanged.
+Standalone Pages have the same Trash lifecycle. Trashing unpublishes the page
+and hides its menu entries. Restoring keeps it private until explicitly
+republished; permanent deletion removes the page's menu entries.
 Its follow-ups include concurrent-conflict and oversized-request editor recovery.
 Normal duplicate-slug feedback and long native 422 retries are covered by the
 editor validation change. See posts-v0.md for acceptance and limitations.

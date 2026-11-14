@@ -1,6 +1,7 @@
 """Rehearse a pre-Pages native package upgrade using disposable copies only."""
 
 import argparse
+from contextlib import closing
 from hashlib import file_digest
 import importlib.util
 import json
@@ -8,6 +9,7 @@ from pathlib import Path
 import re
 import shutil
 import socket
+import sqlite3
 from tempfile import TemporaryDirectory
 
 
@@ -78,6 +80,62 @@ def login():
     return client
 
 
+def verify_page_trash(admin, database):
+    guest = fixture.Client()
+    route = "/admin/pages"
+    public = "/pages/o-nama"
+    listing, _ = admin.request(route, 200)
+    match = re.search(rb'href="(/admin/pages/[0-9a-f-]{36}/edit)"[^>]*>\s*About us\s*</a>', listing)
+    assert match
+    edit = match[1].decode()
+    fields = {"id": edit.split("/")[-2]}
+    delete = edit.removesuffix("edit") + "delete"
+    update = dict(fields, title="About us", body="Page proof", status="published")
+
+    admin.request(delete, 404)
+    admin.action(delete, "DeletePage", 404, fields=dict(fields, confirmSlug="o-nama"))
+    guest.action(route, "TrashPage", 403, fields=fields)
+    editor, _ = admin.request(edit, 200)
+    assert b"Move to Trash" in editor
+    _, headers = admin.action(route, "TrashPage", fields=fields)
+    assert headers["Location"] == route + "?status=trash"
+    guest.request(public, 404)
+    active, _ = admin.request(route, 200)
+    assert edit.encode() not in active
+    trash, _ = admin.request(route + "?status=trash", 200)
+    assert delete.encode() in trash and b"Restore as draft" in trash
+    admin.request(edit, 404)
+    admin.request(edit.removesuffix("edit") + "preview", 404)
+    admin.action(edit, "UpdatePage", 404, fields=update)
+    guest.action(route, "RestorePage", 403, fields=fields)
+
+    def assert_hidden():
+        assert fixture.public_menu(guest, b"Public navigation") == [b"/pages/read-me"]
+        assert not fixture.public_menu(guest, b"Footer navigation")
+
+    assert_hidden()
+    admin.action(route, "RestorePage", fields=fields)
+    guest.request(public, 404)
+    assert_hidden()
+    admin.request(edit, 200)
+    with closing(sqlite3.connect(database)) as db:
+        assert db.execute("SELECT status, trashed FROM legura_pages WHERE id = ?", (fields["id"],)).fetchone() == ("draft", 0)
+    admin.action(edit, "UpdatePage", fields=update)
+    fixture.verify_navigation_persistence(guest)
+
+    admin.action(route, "TrashPage", fields=fields)
+    admin.request(delete, 200)
+    admin.action(delete, "DeletePage", 422, fields=dict(fields, confirmSlug="wrong"))
+    guest.action(delete, "DeletePage", 403, fields=dict(fields, confirmSlug="o-nama"))
+    admin.action(delete, "DeletePage", fields=dict(fields, confirmSlug="o-nama"))
+    admin.request(delete, 404)
+    guest.request(public, 404)
+    assert_hidden()
+    with closing(sqlite3.connect(database)) as db:
+        remaining, = db.execute("SELECT COUNT(*) FROM legura_menu_items WHERE page_id = ?", (fields["id"],)).fetchone()
+        assert remaining == 0, "A permanently deleted page left menu references"
+
+
 def rehearse(prior_package, candidate_package, root, port):
     if prior_package == candidate_package:
         raise ValueError("Use separate prior and candidate packages")
@@ -97,7 +155,7 @@ def rehearse(prior_package, candidate_package, root, port):
 
     workspace = root / "rehearsal"
     report = json.loads(fixture.maintenance(candidate, "upgrade-rehearse", archive, workspace, capture=True))
-    assert report["migrations_applied"] == 7 and report["archive"]["files"] == 2, report
+    assert report["migrations_applied"] == 8 and report["archive"]["files"] == 2, report
     migrated = workspace / "rehearsed.legura"
     recovery = workspace / "verified-recovery"
     fixture.maintenance(candidate, "upgrade-preflight", candidate, migrated, recovery)
@@ -150,6 +208,7 @@ def rehearse(prior_package, candidate_package, root, port):
         editor, _ = admin.request(f"/admin/posts/{post_id}/edit", 200)
         assert f'/api/media/{image_id}'.encode() in editor
         assert b"Preserve this image" in editor
+        verify_page_trash(admin, recovery / "database.sqlite")
     assert hashes(original) == before, "Rehearsal changed the stopped source or backup"
 
 
@@ -166,4 +225,4 @@ if __name__ == "__main__":
     fixture.BASE = f"http://127.0.0.1:{args.port}"
     with TemporaryDirectory(prefix="legura-schema-upgrade-") as scratch:
         rehearse(args.prior.resolve(strict=True), args.candidate.resolve(strict=True), Path(scratch), args.port)
-    print("Schema upgrade passed: seven migrations, preserved source, content/media, and restarted menus/languages/appearance.")
+    print("Schema upgrade passed: eight migrations, preserved source, content/media, restarted menus/languages/appearance, and page Trash.")

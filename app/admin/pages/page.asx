@@ -4,7 +4,7 @@ import { Badge } from "@axonyx/ui/foundry/Badge"
 import { Card } from "@axonyx/ui/foundry/Card"
 
 page AdminPages() {
-  data listing: SitePageListing = loadSitePages(query.page ?? "1")
+  data listing: SitePageListing = loadSitePages(query.page ?? "1", query.status ?? "")
   return ASX {
     <AdminFrame section="pages">
       <AdminPageHeader
@@ -13,25 +13,48 @@ page AdminPages() {
       >
         <a class="ax-button" data-variant="primary" href="/admin/pages/new">New page</a>
       </AdminPageHeader>
-      <Card title="Site pages">
-        <If when={listing.total == 0}>
+      <nav class="legura-links" aria-label="Page collections">
+        <a href="/admin/pages" aria-current={!listing.trash}>Pages</a>
+        <a href="/admin/pages?status=trash" aria-current={listing.trash}>Trash</a>
+      </nav>
+      <Card>
+        <If when={listing.trash}>
+          <h2>Page Trash</h2>
+        </If>
+        <If when={!listing.trash}>
+          <h2>Site pages</h2>
+        </If>
+        <If when={listing.total == 0 && !listing.trash}>
           <p>No pages yet. Create your first draft to get started.</p>
+        </If>
+        <If when={listing.total == 0 && listing.trash}>
+          <p>Trash is empty. Pages moved here are kept until you restore or permanently delete them.</p>
         </If>
         <Each items={listing.items} as="entry">
           <div class="legura-links">
-            <a href={"/admin/pages/" + entry.id + "/edit"}>{entry.title}</a>
+            <If when={!listing.trash}>
+              <a href={"/admin/pages/" + entry.id + "/edit"}>{entry.title}</a>
+              <Badge>{entry.status}</Badge>
+            </If>
+            <If when={listing.trash}>
+              <strong>{entry.title}</strong>
+              <form method="post" action={action RestorePage}>
+                <input type="hidden" name="id" value={entry.id} />
+                <button type="submit" class="ax-button" data-variant="secondary">Restore as draft</button>
+              </form>
+              <a href={"/admin/pages/" + entry.id + "/delete"}>Delete permanently</a>
+            </If>
             <span>{"/pages/" + entry.slug}</span>
-            <Badge>{entry.status}</Badge>
           </div>
         </Each>
         <If when={listing.total > 10}>
           <nav class="legura-links" aria-label="Page list pagination">
             <If when={listing.page > 1}>
-              <a href={"/admin/pages?page=" + (listing.page - 1)}>Previous page</a>
+              <a href={"/admin/pages?status=" + listing.status + "&page=" + (listing.page - 1)}>Previous page</a>
             </If>
             <span>{"Page " + listing.page}</span>
             <If when={listing.page * 10 < listing.total}>
-              <a href={"/admin/pages?page=" + (listing.page + 1)}>Next page</a>
+              <a href={"/admin/pages?status=" + listing.status + "&page=" + (listing.page + 1)}>Next page</a>
             </If>
           </nav>
         </If>

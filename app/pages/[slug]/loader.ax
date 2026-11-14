@@ -4,7 +4,7 @@ export type PublishedSitePage {
 }
 
 export query loadPublishedSitePage(slug: String) -> PublishedSitePage {
-  data entry = db.legura_pages.where({ slug: input.slug, status: "published" }).first()
+  data entry = db.legura_pages.where({ slug: input.slug, status: "published", trashed: 0 }).first()
   require entry else notFound()
   return { title: entry["title"], body: entry["body"] }
 }
