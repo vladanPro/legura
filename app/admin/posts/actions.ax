@@ -1,0 +1,15 @@
+action TrashPost(id: String) {
+  data administrator = loadAdministrator()
+  data post = db.legura_posts.where({ id: input.id, trashed: 0 }).first()
+  require post else notFound()
+  db.legura_posts.where({ id: input.id, trashed: 0 }).update({ status: "draft", trashed: 1 })
+  return redirect("/admin/posts?status=trash")
+}
+
+action RestorePost(id: String) {
+  data administrator = loadAdministrator()
+  data post = db.legura_posts.where({ id: input.id, trashed: 1 }).first()
+  require post else notFound()
+  db.legura_posts.where({ id: input.id, trashed: 1 }).update({ status: "draft", trashed: 0 })
+  return redirect("/admin/posts?status=trash")
+}

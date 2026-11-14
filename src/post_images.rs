@@ -126,7 +126,7 @@ pub fn set_for_administrator(
     }
     let exists = transaction
         .query_row(
-            "SELECT EXISTS(SELECT 1 FROM legura_posts WHERE id = ?)",
+            "SELECT EXISTS(SELECT 1 FROM legura_posts WHERE id = ? AND trashed = 0)",
             [post_id],
             |row| row.get::<_, bool>(0),
         )

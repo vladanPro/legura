@@ -50,9 +50,12 @@ page EditPost() {
             rel="noopener"
             aria-describedby="preview-hint"
           >Preview saved post</a>
-          <a href={"/admin/posts/" + post.id + "/delete"}>Delete post</a>
         </nav>
         <p id="preview-hint" class="legura-hint">Preview opens in a new tab. Save changes first to include them.</p>
+        <form method="post" action={action TrashPost} class="legura-form-actions">
+          <input type="hidden" name="id" value={post.id} />
+          <button type="submit" class="ax-button" data-variant="secondary">Move to Trash</button>
+        </form>
       </Card>
       <If when={mediaAvailable}>
         <Card title="Featured image">

@@ -109,7 +109,12 @@ service supervisor, automatic upgrade or production release.
 Posts V0 deliberately excludes deletion; that is a separate product task.
 Post Deletion V1 adds a permanent-delete confirmation route and POST-only,
 slug-confirmed mutation. Its registry acceptance gate passed and PR #5 merged;
-see posts-delete-v1.md. No trash or undo is included.
+see posts-delete-v1.md. Post Trash supersedes direct permanent deletion:
+move a post to Trash from its edit screen, then restore it as a draft or
+confirm permanent deletion from Trash. Public post and featured-image URLs
+are unavailable while the post is trashed or restored but unpublished.
+Trash keeps the post's slug reserved and does not expire automatically.
+Standalone Pages are unchanged.
 Its follow-ups include concurrent-conflict and oversized-request editor recovery.
 Normal duplicate-slug feedback and long native 422 retries are covered by the
 editor validation change. See posts-v0.md for acceptance and limitations.
