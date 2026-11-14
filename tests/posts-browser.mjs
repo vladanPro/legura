@@ -134,8 +134,11 @@ async function checkAdminFrame() {
 async function checkPostsTable(title) {
   const table = page.getByRole('table', { name: 'Your posts', exact: true });
   assert.equal(await table.count(), 1);
-  assert.deepEqual(await table.getByRole('columnheader').allTextContents(), ['Title and URL slug', 'Status', 'Actions']);
-  assert.equal(await table.getByRole('rowheader').filter({ hasText: title }).count(), 1);
+  assert.deepEqual(await table.getByRole('columnheader').allTextContents(), ['Title and URL slug', 'Status', 'Author', 'Created (UTC)', 'Actions']);
+  const row = table.getByRole('row').filter({ has: page.getByRole('rowheader').filter({ hasText: title }) });
+  assert.equal(await row.count(), 1);
+  assert.equal(await row.getByRole('cell', { name: 'editor@example.com', exact: true }).count(), 1);
+  assert.match(await row.locator('time').getAttribute('datetime'), /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
   const edit = table.getByRole('link', { name: `Edit post: ${title}`, exact: true });
   assert.ok(await edit.evaluate(node => node.getBoundingClientRect().height >= 44));
   const region = page.getByRole('region', { name: 'Scrollable posts table', exact: true });

@@ -128,6 +128,8 @@ write operations private.
 Administration listing adds status filters, bounded ten-row SQLite pagination
 and literal title search through native GET forms. See posts-listing-v0.md for
 the registry tooling requirement, acceptance coverage and Unicode/adapter limits.
+New posts record their creator and UTC creation time. The admin list shows both;
+legacy rows stay unknown, and account email is not sent to public pages.
 
 The administration overview shows guarded database-backed total/draft/published
 counts and links to those lists, plus a first-draft prompt for empty installations.

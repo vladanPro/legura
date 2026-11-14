@@ -211,6 +211,8 @@ export type LeguraPostsRow {
   content_format: String
   content_document: Optional<String>
   trashed: Int
+  created_by: Optional<String>
+  created_at: Optional<String>
 }
 
 export type LeguraPostsCreateInput {
@@ -222,6 +224,8 @@ export type LeguraPostsCreateInput {
   content_format: Optional<String>
   content_document: Optional<String>
   trashed: Optional<Int>
+  created_by: Optional<String>
+  created_at: Optional<String>
 }
 
 export type LeguraPostsUpdateInput {
@@ -233,6 +237,8 @@ export type LeguraPostsUpdateInput {
   content_format: Optional<String>
   content_document: Optional<String>
   trashed: Optional<Int>
+  created_by: Optional<String>
+  created_at: Optional<String>
 }
 
 export type LeguraPublicThemeRow {

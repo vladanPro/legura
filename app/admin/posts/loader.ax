@@ -5,8 +5,17 @@ export type Post {
   body: String
   status: String
 }
+export type AdminPostListItem {
+  id: String
+  title: String
+  slug: String
+  status: String
+  author: String?
+  created_at: String?
+  created_date: String?
+}
 export type AdminPostPage {
-  posts: Post[]
+  posts: AdminPostListItem[]
   page: Number
   total: Number
   status: String
@@ -20,7 +29,7 @@ export query loadAdminPosts(status: String = "all", page: String = "1", search: 
   data filters = Native.call("legura.posts.filters", { status: input.status, page: input.page, search: input.search })
   data counts = db.query("SELECT COUNT(*) AS total FROM legura_posts WHERE trashed = (? = 'trash') AND (? IN ('all', 'trash') OR status = ?) AND instr(lower(title), lower(?)) > 0", filters.status, filters.status, filters.status, filters.search)
   data pagination = Native.call("legura.pagination", { total: counts[0]["total"], requested_page: filters.requested_page, page_size: 10 })
-  data posts = db.query("SELECT id, title, slug, body, status FROM legura_posts WHERE trashed = (? = 'trash') AND (? IN ('all', 'trash') OR status = ?) AND instr(lower(title), lower(?)) > 0 ORDER BY title ASC, id ASC LIMIT ? OFFSET ?", filters.status, filters.status, filters.status, filters.search, pagination.page_size, pagination.offset)
+  data posts = db.query("SELECT p.id, p.title, p.slug, p.status, u.email AS author, p.created_at, date(p.created_at) AS created_date FROM legura_posts p LEFT JOIN legura_users u ON u.id = p.created_by WHERE p.trashed = (? = 'trash') AND (? IN ('all', 'trash') OR p.status = ?) AND instr(lower(p.title), lower(?)) > 0 ORDER BY p.title ASC, p.id ASC LIMIT ? OFFSET ?", filters.status, filters.status, filters.status, filters.search, pagination.page_size, pagination.offset)
   return { posts: posts, page: pagination.page, total: counts[0]["total"], status: filters.status, search: filters.search }
 }
 
