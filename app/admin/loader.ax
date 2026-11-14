@@ -8,6 +8,8 @@ export type AdminOverview {
   total: Number
   drafts: Number
   published: Number
+  trashedPosts: Number
+  trashedPages: Number
 }
 export query loadAdministrator() -> Administrator {
   require Auth.subject else forbidden()
@@ -29,7 +31,7 @@ export query loadAdminOverview() -> AdminOverview {
   data administrator = db.legura_users.where({ id: Auth.subject }).first()
   require administrator else forbidden()
   require administrator["role"] == "admin" else forbidden()
-  data rows = db.query("SELECT COUNT(*) AS total, COALESCE(SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END), 0) AS drafts, COALESCE(SUM(CASE WHEN status = 'published' THEN 1 ELSE 0 END), 0) AS published FROM legura_posts WHERE trashed = 0")
+  data rows = db.query("SELECT COUNT(CASE WHEN trashed = 0 THEN 1 END) AS total, COUNT(CASE WHEN trashed = 0 AND status = 'draft' THEN 1 END) AS drafts, COUNT(CASE WHEN trashed = 0 AND status = 'published' THEN 1 END) AS published, COUNT(CASE WHEN trashed = 1 THEN 1 END) AS trashed_posts, (SELECT COUNT(*) FROM legura_pages WHERE trashed = 1) AS trashed_pages FROM legura_posts")
   data counts = rows[0]
-  return { administrator: administrator, total: counts["total"], drafts: counts["drafts"], published: counts["published"] }
+  return { administrator: administrator, total: counts["total"], drafts: counts["drafts"], published: counts["published"], trashedPosts: counts["trashed_posts"], trashedPages: counts["trashed_pages"] }
 }

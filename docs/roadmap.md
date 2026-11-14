@@ -133,6 +133,8 @@ legacy rows stay unknown, and account email is not sent to public pages.
 
 The administration overview shows guarded database-backed total/draft/published
 counts and links to those lists, plus a first-draft prompt for empty installations.
+A separate Trash card links to both collections with independent counts; trashed
+posts are excluded from the ordinary post counts.
 See admin-overview-v0.md for the behavior and acceptance gate.
 
 Private saved preview reuses the guarded editor loader and the public story

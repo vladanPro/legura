@@ -44,6 +44,17 @@ page Administration() {
           >Create first draft</a>
         </Card>
       </If>
+      <Card title="Trash">
+        <p>Restore deleted content as drafts or review it before permanent deletion.</p>
+        <ul>
+          <li>
+            <a class="legura-overview-link" href="/admin/posts?status=trash">{"Posts in Trash: " + overview.trashedPosts}</a>
+          </li>
+          <li>
+            <a class="legura-overview-link" href="/admin/pages?status=trash">{"Pages in Trash: " + overview.trashedPages}</a>
+          </li>
+        </ul>
+      </Card>
       <Card title="Your account">
         <p class="legura-identity">
           <span>Signed in as</span>

@@ -81,6 +81,14 @@ def login():
     return client
 
 
+def verify_trash_counts(admin, posts, pages):
+    overview, _ = admin.request("/admin", 200)
+    for kind, count in (("Posts", posts), ("Pages", pages)):
+        link = f'href="/admin/{kind.lower()}?status=trash"'
+        label = f"{kind} in Trash: {count}"
+        assert re.search(rb'<a[^>]*' + re.escape(link.encode()) + rb'[^>]*>\s*' + label.encode() + rb'\s*</a>', overview), label
+
+
 def verify_page_trash(admin, database):
     guest = fixture.Client()
     route = "/admin/pages"
@@ -100,6 +108,7 @@ def verify_page_trash(admin, database):
     assert b"Move to Trash" in editor
     _, headers = admin.action(route, "TrashPage", fields=fields)
     assert headers["Location"] == route + "?status=trash"
+    verify_trash_counts(admin, posts=0, pages=1)
     guest.request(public, 404)
     active, _ = admin.request(route, 200)
     assert edit.encode() not in active
@@ -116,6 +125,7 @@ def verify_page_trash(admin, database):
 
     assert_hidden()
     admin.action(route, "RestorePage", fields=fields)
+    verify_trash_counts(admin, posts=0, pages=0)
     guest.request(public, 404)
     assert_hidden()
     admin.request(edit, 200)
@@ -129,6 +139,7 @@ def verify_page_trash(admin, database):
     admin.action(delete, "DeletePage", 422, fields=dict(fields, confirmSlug="wrong"))
     guest.action(delete, "DeletePage", 403, fields=dict(fields, confirmSlug="o-nama"))
     admin.action(delete, "DeletePage", fields=dict(fields, confirmSlug="o-nama"))
+    verify_trash_counts(admin, posts=0, pages=0)
     admin.request(delete, 404)
     guest.request(public, 404)
     assert_hidden()
@@ -224,7 +235,9 @@ def rehearse(prior_package, candidate_package, root, port):
         post = re.search(rb'/admin/posts/([0-9a-f-]{36})/edit', posts)
         assert post
         post_id = post[1].decode()
+        verify_trash_counts(admin, posts=0, pages=0)
         admin.action("/admin/posts", "TrashPost", fields={"id": post_id})
+        verify_trash_counts(admin, posts=1, pages=0)
         guest = fixture.Client()
         guest.request("/posts/clean-linux", 404)
         guest.request(image_url, 404)
