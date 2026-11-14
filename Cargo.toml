@@ -21,3 +21,4 @@ cap-std = "4.0.3"
 cap-fs-ext = "4.0.3"
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "webp"] }
 tar = { version = "0.4.46", default-features = false }
+url = "2.5.8"
