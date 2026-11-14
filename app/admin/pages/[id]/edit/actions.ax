@@ -4,6 +4,6 @@ action UpdatePage(id: String, title: String, body: String, status: String) {
   require input.status == "draft" || input.status == "published" else invalid({ status: "Choose draft or published." })
   data prepared = Native.call("legura.content.prepare", { content_format: "plain-text", body: input.body, content_document: "" })
   require prepared.columns != null else invalid(prepared.errors)
-  db.legura_pages.where({ id: entry.id }).update({ title: input.title, body: prepared.columns.body, status: input.status })
+  db.legura_pages.where({ id: entry.id, trashed: 0 }).update({ title: input.title, body: prepared.columns.body, status: input.status })
   return redirect("/admin/pages/" + entry.id + "/edit")
 }

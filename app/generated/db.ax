@@ -163,6 +163,7 @@ export type LeguraPagesRow {
   slug: String
   body: String
   status: String
+  trashed: Int
 }
 
 export type LeguraPagesCreateInput {
@@ -171,6 +172,7 @@ export type LeguraPagesCreateInput {
   slug: String
   body: String
   status: Optional<String>
+  trashed: Optional<Int>
 }
 
 export type LeguraPagesUpdateInput {
@@ -179,6 +181,7 @@ export type LeguraPagesUpdateInput {
   slug: Optional<String>
   body: Optional<String>
   status: Optional<String>
+  trashed: Optional<Int>
 }
 
 export type LeguraPostImagesRow {

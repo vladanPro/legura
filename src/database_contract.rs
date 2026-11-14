@@ -75,6 +75,11 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         include_str!("../db/migrations/20261114000000_014_post_trash/up.sql"),
         include_str!("../db/migrations/20261114000000_014_post_trash/down.sql"),
     ),
+    (
+        "20261114010000_015",
+        include_str!("../db/migrations/20261114010000_015_page_trash/up.sql"),
+        include_str!("../db/migrations/20261114010000_015_page_trash/down.sql"),
+    ),
 ];
 
 pub fn migration_hash(up: &str, down: &str) -> String {
@@ -106,6 +111,7 @@ pub fn embedded_migrations() -> Vec<AxMigration> {
                 "20261112000000_012" => "public_color_mode",
                 "20261112010000_013" => "public_palette",
                 "20261114000000_014" => "post_trash",
+                "20261114010000_015" => "page_trash",
                 _ => unreachable!("embedded migration name is missing"),
             }
             .into(),
@@ -181,6 +187,12 @@ pub fn validate_structure(connection: &Connection) -> Result<usize> {
         ensure!(
             !connection.prepare("SELECT 1 FROM legura_posts WHERE trashed NOT IN (0, 1) OR (trashed = 1 AND status != 'draft')")?.exists([])?,
             "invalid post trash state"
+        );
+    }
+    if count >= 15 {
+        ensure!(
+            !connection.prepare("SELECT 1 FROM legura_pages WHERE trashed NOT IN (0, 1) OR (trashed = 1 AND status != 'draft')")?.exists([])?,
+            "invalid page trash state"
         );
     }
     if count >= 9 {
