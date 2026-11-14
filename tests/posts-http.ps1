@@ -86,8 +86,8 @@ $deletePath = "/__axonyx/action?path=%2Fadmin%2Fposts%2F$id%2Fdelete&name=Delete
 $deleteBody = "id=$id&confirmSlug=public-story"
 Invoke-Request -Path $updatePath -Method POST -Body $update -Headers $sessionProof -Status 303 | Out-Null
 Invoke-Request -Path $deleteRoute -Status 403 | Out-Null
-$confirmation = Invoke-Request -Path $deleteRoute -Headers @{ Cookie = $cookie }
-if (!$confirmation.Body.Contains("This permanently deletes the post.")) { throw "Deletion warning is missing" }
+Invoke-Request -Path $deleteRoute -Headers @{ Cookie = $cookie } -Status 404 | Out-Null
+Invoke-Request -Path $deletePath -Method POST -Body $deleteBody -Headers $sessionProof -Status 404 | Out-Null
 Invoke-Request -Path "/posts/public-story" | Out-Null
 Invoke-Request -Path $deletePath -Headers $sessionProof -Status 405 | Out-Null
 if ($BackupRestore) {
@@ -97,6 +97,31 @@ if ($BackupRestore) {
   & $maintenance verify $bundle
   if ($LASTEXITCODE -ne 0) { throw "Backup verification failed" }
 }
+$trashPath = '/__axonyx/action?path=%2Fadmin%2Fposts&name=TrashPost'
+$restorePath = '/__axonyx/action?path=%2Fadmin%2Fposts&name=RestorePost'
+Invoke-Request -Path $trashPath -Method POST -Body "id=$id" -Headers $anonymousProof -Status 403 | Out-Null
+Invoke-Request -Path $trashPath -Method POST -Body "id=$id" -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null
+Invoke-Request -Path $trashPath -Method POST -Body "id=$id" -Headers $sessionProof -Status 303 | Out-Null
+Invoke-Request -Path "/posts/public-story" -Status 404 | Out-Null
+Invoke-Request -Path "/admin/posts/$id/edit" -Headers @{Cookie = $cookie} -Status 404 | Out-Null
+Invoke-Request -Path $updatePath -Method POST -Body $update -Headers $sessionProof -Status 404 | Out-Null
+$active = Invoke-Request -Path '/admin/posts' -Headers @{Cookie = $cookie}
+$trash = Invoke-Request -Path '/admin/posts?status=trash' -Headers @{Cookie = $cookie}
+if ($active.Body.Contains('Published story') -or !$trash.Body.Contains('Published story')) { throw 'Trash did not isolate the post from the active listing' }
+Stop-Fixture
+Start-Fixture
+$trash = Invoke-Request -Path '/admin/posts?status=trash' -Headers @{Cookie = $cookie}
+if (!$trash.Body.Contains('Published story')) { throw 'Trash did not survive restart' }
+Invoke-Request -Path $restorePath -Method POST -Body "id=$id" -Headers $anonymousProof -Status 403 | Out-Null
+Invoke-Request -Path $restorePath -Method POST -Body "id=$id" -Headers $sessionProof -Status 303 | Out-Null
+Invoke-Request -Path "/posts/public-story" -Status 404 | Out-Null
+$restored = Invoke-Request -Path "/admin/posts/$id/edit" -Headers @{Cookie = $cookie}
+if (!$restored.Body.Contains('Published story') -or !$restored.Body.Contains('Next line')) { throw 'Restoring the draft lost its content' }
+Invoke-Request -Path $updatePath -Method POST -Body $update -Headers $sessionProof -Status 303 | Out-Null
+Invoke-Request -Path "/posts/public-story" | Out-Null
+Invoke-Request -Path $trashPath -Method POST -Body "id=$id" -Headers $sessionProof -Status 303 | Out-Null
+$confirmation = Invoke-Request -Path $deleteRoute -Headers @{ Cookie = $cookie }
+if (!$confirmation.Body.Contains("This permanently deletes the post.")) { throw "Deletion warning is missing" }
 Invoke-Request -Path $deletePath -Method POST -Body $deleteBody -Headers $anonymousProof -Status 403 | Out-Null
 Invoke-Request -Path $deletePath -Method POST -Body $deleteBody -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null
 $wrong = Invoke-Request -Path $deletePath -Method POST -Body $deleteBody.Replace("confirmSlug=public-story", "confirmSlug=wrong") -Headers $sessionProof -Status 422
@@ -105,10 +130,10 @@ Invoke-Request -Path $deletePath -Method POST -Body $deleteBody.Replace("id=$id"
 Invoke-Request -Path "/admin/posts/missing/delete" -Headers @{ Cookie = $cookie } -Status 404 | Out-Null
 $otherId = & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);print(d.execute("select id from legura_posts where slug=?",("second-draft",)).fetchone()[0]);d.close()' $db
 if ($LASTEXITCODE -ne 0 -or !$otherId) { throw "Second post inspection failed" }
-Invoke-Request -Path $deletePath -Method POST -Body $deleteBody.Replace("id=$id", "id=$otherId") -Headers $sessionProof -Status 422 | Out-Null
-Invoke-Request -Path "/posts/public-story" | Out-Null
+Invoke-Request -Path $deletePath -Method POST -Body $deleteBody.Replace("id=$id", "id=$otherId") -Headers $sessionProof -Status 404 | Out-Null
+Invoke-Request -Path "/posts/public-story" -Status 404 | Out-Null
 $deleted = Invoke-Request -Path $deletePath -Method POST -Body $deleteBody -Headers $sessionProof -Status 303
-if ($deleted.Headers.Location -ne "/admin/posts") { throw "Delete redirect lost its target" }
+if ($deleted.Headers.Location -ne "/admin/posts?status=trash") { throw "Delete redirect lost its target" }
 Invoke-Request -Path "/posts/public-story" -Status 404 | Out-Null
 Invoke-Request -Path "/admin/posts/$id/edit" -Headers @{ Cookie = $cookie } -Status 404 | Out-Null
 $afterDelete = Invoke-Request -Path "/posts"
@@ -157,5 +182,6 @@ Invoke-Request -Path $createPath -Method POST -Body $form.Replace("private-draft
 $revocablePostId = & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);print(d.execute("select id from legura_posts where slug=?",("public-story",)).fetchone()[0]);d.close()' $db
 if ($LASTEXITCODE -ne 0 -or !$revocablePostId) { throw "Reused slug did not persist a new post" }
 $draftDeletePath = "/__axonyx/action?path=%2Fadmin%2Fposts%2F$otherId%2Fdelete&name=DeletePost"
+Invoke-Request -Path $trashPath -Method POST -Body "id=$otherId" -Headers $sessionProof -Status 303 | Out-Null
 Invoke-Request -Path $draftDeletePath -Method POST -Body "id=$otherId&confirmSlug=second-draft" -Headers $sessionProof -Status 303 | Out-Null
 Write-Host "Legura posts HTTP passed: auth/CSRF, create/edit/publish, escaped text, confirmed deletion, repeat-delete rejection and restart persistence."

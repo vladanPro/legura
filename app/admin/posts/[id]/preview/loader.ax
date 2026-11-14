@@ -10,7 +10,7 @@ export query loadSavedPostPreview(id: String) -> SavedPostPreview {
   data administrator = db.legura_users.where({ id: Auth.subject }).first()
   require administrator else forbidden()
   require administrator["role"] == "admin" else forbidden()
-  data post = db.legura_posts.where({ id: input.id }).first()
+  data post = db.legura_posts.where({ id: input.id, trashed: 0 }).first()
   require post else notFound()
   data rendered = Native.call("legura.content.render", { content_format: post["content_format"], body: post["body"], content_document: post["content_document"] })
   return { id: post["id"], title: post["title"], body: post["body"], status: post["status"], html: rendered.html }

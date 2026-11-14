@@ -22,6 +22,10 @@ page ManagePosts() {
         <AdminPageHeader title="Posts" description="Draft privately, publish when ready.">
           <a class="ax-button" data-variant="primary" href="/admin/posts/new">New post</a>
         </AdminPageHeader>
+        <nav aria-label="Post collections" class="legura-links">
+          <a href="/admin/posts" aria-current={listing.status != "trash"}>Posts</a>
+          <a href="/admin/posts?status=trash" aria-current={listing.status == "trash"}>Trash</a>
+        </nav>
         <form method="get" action="/admin/posts" class="legura-post-filters legura-form">
           <div class="legura-post-filter-field">
             <label for="post-search">Search titles</label>
@@ -33,6 +37,7 @@ page ManagePosts() {
               <option value="all" selected={listing.status == "all"}>All posts</option>
               <option value="draft" selected={listing.status == "draft"}>Draft</option>
               <option value="published" selected={listing.status == "published"}>Published</option>
+              <option value="trash" selected={listing.status == "trash"}>Trash</option>
             </Select>
           </div>
           <Button type="submit" variant="secondary">Apply filters</Button>
@@ -46,7 +51,12 @@ page ManagePosts() {
             <p>Create your first draft. It stays private until published.</p>
           </Card>
         </If>
-        <If when={!posts && (listing.status != "all" || listing.search != "")}>
+        <If when={!posts && listing.status == "trash" && listing.search == ""}>
+          <Card title="Trash is empty">
+            <p>Posts moved to Trash are kept until you restore or permanently delete them.</p>
+          </Card>
+        </If>
+        <If when={!posts && (listing.search != "" || listing.status == "draft" || listing.status == "published")}>
           <Card title="No matching posts">
             <p>No titles match these filters. Change the search or reset the filters.</p>
             <a href="/admin/posts">Show all posts</a>
@@ -72,18 +82,37 @@ page ManagePosts() {
               <Each items={posts} as="post">
                 <TableRow>
                   <TableHeaderCell scope="row">
-                    <a class="legura-post-title" href={"/admin/posts/" + post.id + "/edit"}>{post.title}</a>
+                    <If when={listing.status == "trash"}>
+                      <strong>{post.title}</strong>
+                    </If>
+                    <If when={listing.status != "trash"}>
+                      <a class="legura-post-title" href={"/admin/posts/" + post.id + "/edit"}>{post.title}</a>
+                    </If>
                     <p class="legura-hint">{post.slug}</p>
                   </TableHeaderCell>
                   <TableCell>
-                    <Badge>{post.status}</Badge>
+                    <If when={listing.status == "trash"}>
+                      <Badge>Trash</Badge>
+                    </If>
+                    <If when={listing.status != "trash"}>
+                      <Badge>{post.status}</Badge>
+                    </If>
                   </TableCell>
                   <TableCell>
-                    <a
-                      class="legura-post-edit"
-                      href={"/admin/posts/" + post.id + "/edit"}
-                      aria-label={"Edit post: " + post.title}
-                    >Edit post</a>
+                    <If when={listing.status != "trash"}><a
+                        class="legura-post-edit"
+                        href={"/admin/posts/" + post.id + "/edit"}
+                        aria-label={"Edit post: " + post.title}
+                      >Edit post</a></If>
+                    <If when={listing.status == "trash"}>
+                      <div class="legura-form-actions">
+                        <form method="post" action={action RestorePost}>
+                          <input type="hidden" name="id" value={post.id} />
+                          <Button type="submit" variant="secondary">Restore as draft</Button>
+                        </form>
+                        <a href={"/admin/posts/" + post.id + "/delete"}>Delete permanently</a>
+                      </div>
+                    </If>
                   </TableCell>
                 </TableRow>
               </Each>

@@ -3,7 +3,7 @@ export query loadDeletablePost(id: String) -> Post {
   data administrator = db.legura_users.where({ id: Auth.subject }).first()
   require administrator else forbidden()
   require administrator["role"] == "admin" else forbidden()
-  data post = db.legura_posts.where({ id: input.id }).first()
+  data post = db.legura_posts.where({ id: input.id, trashed: 1 }).first()
   require post else notFound()
   return post
 }

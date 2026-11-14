@@ -97,7 +97,7 @@ def rehearse(prior_package, candidate_package, root, port):
 
     workspace = root / "rehearsal"
     report = json.loads(fixture.maintenance(candidate, "upgrade-rehearse", archive, workspace, capture=True))
-    assert report["migrations_applied"] == 6 and report["archive"]["files"] == 2, report
+    assert report["migrations_applied"] == 7 and report["archive"]["files"] == 2, report
     migrated = workspace / "rehearsed.legura"
     recovery = workspace / "verified-recovery"
     fixture.maintenance(candidate, "upgrade-preflight", candidate, migrated, recovery)
@@ -136,6 +136,20 @@ def rehearse(prior_package, candidate_package, root, port):
         for route in ("/", "/posts", "/posts/clean-linux", "/pages/o-nama"):
             public, _ = fixture.Client().request(route, 200)
             assert re.search(rb'<div(?=[^>]*data-legura-public-theme="default")(?=[^>]*data-foundry="gold")[^>]*data-foundry-mode="dark"', public), route
+        posts, _ = admin.request("/admin/posts", 200)
+        post = re.search(rb'/admin/posts/([0-9a-f-]{36})/edit', posts)
+        assert post
+        post_id = post[1].decode()
+        admin.action("/admin/posts", "TrashPost", fields={"id": post_id})
+        guest = fixture.Client()
+        guest.request("/posts/clean-linux", 404)
+        guest.request(image_url, 404)
+        admin.action("/admin/posts", "RestorePost", fields={"id": post_id})
+        guest.request("/posts/clean-linux", 404)
+        guest.request(image_url, 404)
+        editor, _ = admin.request(f"/admin/posts/{post_id}/edit", 200)
+        assert f'/api/media/{image_id}'.encode() in editor
+        assert b"Preserve this image" in editor
     assert hashes(original) == before, "Rehearsal changed the stopped source or backup"
 
 
@@ -152,4 +166,4 @@ if __name__ == "__main__":
     fixture.BASE = f"http://127.0.0.1:{args.port}"
     with TemporaryDirectory(prefix="legura-schema-upgrade-") as scratch:
         rehearse(args.prior.resolve(strict=True), args.candidate.resolve(strict=True), Path(scratch), args.port)
-    print("Schema upgrade passed: six migrations, preserved source, content/media, and restarted menus/languages/appearance.")
+    print("Schema upgrade passed: seven migrations, preserved source, content/media, and restarted menus/languages/appearance.")
