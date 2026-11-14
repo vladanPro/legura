@@ -920,6 +920,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "tar",
+ "url",
 ]
 
 [[package]]
