@@ -1,4 +1,5 @@
 import { AdminFrame } from "@/components/AdminFrame"
+import { AdminPageHeader } from "@/components/AdminPageHeader"
 import { MediaPlaceholder } from "@/components/MediaPlaceholder"
 import { Card } from "@axonyx/ui/foundry/Card"
 import { Grid } from "@axonyx/ui/foundry/Grid"
@@ -11,15 +12,15 @@ page MediaLibrary() {
   return ASX {
     <AdminFrame section="media">
       <section aria-labelledby="media-heading" data-media-available={listing.available}>
-        <header class="legura-page-heading">
-          <div>
-            <h1 id="media-heading">Media library</h1>
-            <p>Private, validated images for your content.</p>
-          </div>
+        <AdminPageHeader
+          title="Media library"
+          description="Private, validated images for your content."
+          headingId="media-heading"
+        >
           <If when={listing.available}>
             <p class="legura-hint" data-media-total={listing.total}>{listing.total + " stored images"}</p>
           </If>
-        </header>
+        </AdminPageHeader>
         <If when={!listing.available}>
           <Card title="Media storage is not configured">
             <p>Ask the site operator to enable media storage before uploading images. No stored images are shown while storage is disabled.</p>

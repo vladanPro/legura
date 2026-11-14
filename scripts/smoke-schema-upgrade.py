@@ -1,6 +1,8 @@
 """Rehearse a pre-Pages native package upgrade using disposable copies only."""
 
 import argparse
+from contextlib import closing
+from datetime import datetime, timezone
 from hashlib import file_digest
 import importlib.util
 import json
@@ -8,6 +10,7 @@ from pathlib import Path
 import re
 import shutil
 import socket
+import sqlite3
 from tempfile import TemporaryDirectory
 
 
@@ -78,6 +81,129 @@ def login():
     return client
 
 
+def verify_trash_counts(admin, posts, pages):
+    overview, _ = admin.request("/admin", 200)
+    for kind, count in (("Posts", posts), ("Pages", pages)):
+        link = f'href="/admin/{kind.lower()}?status=trash"'
+        label = f"{kind} in Trash: {count}"
+        assert re.search(rb'<a[^>]*' + re.escape(link.encode()) + rb'[^>]*>\s*' + label.encode() + rb'\s*</a>', overview), label
+
+
+def verify_page_trash(admin, database):
+    guest = fixture.Client()
+    route = "/admin/pages"
+    public = "/pages/o-nama"
+    listing, _ = admin.request(route, 200)
+    match = re.search(rb'href="(/admin/pages/[0-9a-f-]{36}/edit)"[^>]*>\s*About us\s*</a>', listing)
+    assert match
+    edit = match[1].decode()
+    fields = {"id": edit.split("/")[-2]}
+    delete = edit.removesuffix("edit") + "delete"
+    update = dict(fields, title="About us", body="Page proof", status="published")
+
+    admin.request(delete, 404)
+    admin.action(delete, "DeletePage", 404, fields=dict(fields, confirmSlug="o-nama"))
+    guest.action(route, "TrashPage", 403, fields=fields)
+    editor, _ = admin.request(edit, 200)
+    assert b"Move to Trash" in editor
+    _, headers = admin.action(route, "TrashPage", fields=fields)
+    assert headers["Location"] == route + "?status=trash"
+    verify_trash_counts(admin, posts=0, pages=1)
+    guest.request(public, 404)
+    active, _ = admin.request(route, 200)
+    assert edit.encode() not in active
+    trash, _ = admin.request(route + "?status=trash", 200)
+    assert delete.encode() in trash and b"Restore as draft" in trash
+    admin.request(edit, 404)
+    admin.request(edit.removesuffix("edit") + "preview", 404)
+    admin.action(edit, "UpdatePage", 404, fields=update)
+    guest.action(route, "RestorePage", 403, fields=fields)
+
+    def assert_hidden():
+        assert fixture.public_menu(guest, b"Public navigation") == [b"/pages/read-me"]
+        assert not fixture.public_menu(guest, b"Footer navigation")
+
+    assert_hidden()
+    admin.action(route, "RestorePage", fields=fields)
+    verify_trash_counts(admin, posts=0, pages=0)
+    guest.request(public, 404)
+    assert_hidden()
+    admin.request(edit, 200)
+    with closing(sqlite3.connect(database)) as db:
+        assert db.execute("SELECT status, trashed FROM legura_pages WHERE id = ?", (fields["id"],)).fetchone() == ("draft", 0)
+    admin.action(edit, "UpdatePage", fields=update)
+    fixture.verify_navigation_persistence(guest)
+
+    admin.action(route, "TrashPage", fields=fields)
+    admin.request(delete, 200)
+    admin.action(delete, "DeletePage", 422, fields=dict(fields, confirmSlug="wrong"))
+    guest.action(delete, "DeletePage", 403, fields=dict(fields, confirmSlug="o-nama"))
+    admin.action(delete, "DeletePage", fields=dict(fields, confirmSlug="o-nama"))
+    verify_trash_counts(admin, posts=0, pages=0)
+    admin.request(delete, 404)
+    guest.request(public, 404)
+    assert_hidden()
+    with closing(sqlite3.connect(database)) as db:
+        remaining, = db.execute("SELECT COUNT(*) FROM legura_menu_items WHERE page_id = ?", (fields["id"],)).fetchone()
+        assert remaining == 0, "A permanently deleted page left menu references"
+
+
+def verify_post_creation(admin, database):
+    before = datetime.now(timezone.utc).replace(microsecond=0)
+    fields = {"title": "Writer proof", "slug": "writer-proof", "body": "New post", "status": "published"}
+    admin.action("/admin/posts/new", "CreatePost", fields=dict(fields, created_by="untrusted", created_at="2000-01-01"))
+    with closing(sqlite3.connect(database)) as db:
+        assert db.execute("SELECT created_by, created_at FROM legura_posts WHERE slug = 'clean-linux'").fetchone() == (None, None)
+        post_id, author_id, author, created = db.execute(
+            """SELECT p.id, p.created_by, u.email, p.created_at FROM legura_posts p
+            JOIN legura_users u ON u.id = p.created_by WHERE p.slug = 'writer-proof'"""
+        ).fetchone()
+    assert author == fixture.EMAIL
+    assert before <= datetime.fromisoformat(created) <= datetime.now(timezone.utc)
+    listing, _ = admin.request("/admin/posts", 200)
+    assert b"Unknown" in listing and author.encode() in listing
+    assert f'datetime="{created}"'.encode() in listing
+    assert created[:10].encode() in listing
+    story, _ = fixture.Client().request("/posts/writer-proof", 200)
+    assert author.encode() not in story
+    admin.action(f"/admin/posts/{post_id}/edit", "UpdatePost", fields=dict(fields, id=post_id, title="Updated proof"))
+    admin.action("/admin/posts", "TrashPost", fields={"id": post_id})
+    admin.action("/admin/posts", "RestorePost", fields={"id": post_id})
+    with closing(sqlite3.connect(database)) as db:
+        assert db.execute("SELECT created_by, created_at FROM legura_posts WHERE id = ?", (post_id,)).fetchone() == (author_id, created)
+
+
+def verify_general_settings(admin):
+    route = "/admin/settings"
+    guest = fixture.Client()
+    guest.request(route, 403)
+    page, _ = admin.request(route, 200)
+    assert b"Schema upgrade proof" in page and fixture.EMAIL.encode() in page
+    assert re.search(rb'<option(?=[^>]*\bvalue="1")(?=[^>]*\bselected)[^>]*>\s*Monday', page)
+    identity = {
+        "site_title": "Editorial Test", "tagline": "Governed by Legura",
+        "site_icon": "/assets/fixture-icon.png", "legura_url": "https://admin.example.test",
+        "site_address": "https://site.example.test", "admin_email": "contact@example.test",
+    }
+    locale = {"site_language": "en", "timezone": "Europe/Belgrade", "date_format": "dd/mm/yyyy", "time_format": "12h", "week_start": 0}
+    guest.action(route, "SaveSiteIdentity", 403, fields=identity)
+    admin.action(route, "SaveSiteIdentity", 422, fields=dict(identity, site_icon="//elsewhere.test/favicon.png"))
+    admin.action(route, "SaveSiteIdentity", fields=identity)
+    admin.action(route, "SaveSiteLocale", 422, fields=dict(locale, week_start=7))
+    admin.action(route, "SaveSiteLocale", fields=locale)
+    page, _ = admin.request(route, 200)
+    for value in identity.values():
+        assert value.encode() in page, value
+    assert re.search(rb'<option(?=[^>]*\bvalue="0")(?=[^>]*\bselected)[^>]*>\s*Sunday', page)
+    homepage, _ = guest.request("/", 200)
+    assert b"Editorial Test" in homepage and b"Governed by Legura" in homepage
+    assert re.search(rb'<img[^>]*src="/assets/fixture-icon.png"[^>]*>', homepage)
+    assert b"contact@example.test" not in homepage
+    posts, _ = admin.request("/admin/posts", 200)
+    assert b"Created (Europe/Belgrade)" in posts
+    assert re.search(rb'<time datetime="[^"]+Z">\s*\d{2}/\d{2}/\d{4} \d{1,2}:\d{2} (AM|PM)\s*</time>', posts)
+
+
 def rehearse(prior_package, candidate_package, root, port):
     if prior_package == candidate_package:
         raise ValueError("Use separate prior and candidate packages")
@@ -97,7 +223,7 @@ def rehearse(prior_package, candidate_package, root, port):
 
     workspace = root / "rehearsal"
     report = json.loads(fixture.maintenance(candidate, "upgrade-rehearse", archive, workspace, capture=True))
-    assert report["migrations_applied"] == 6 and report["archive"]["files"] == 2, report
+    assert report["migrations_applied"] == 10 and report["archive"]["files"] == 2, report
     migrated = workspace / "rehearsed.legura"
     recovery = workspace / "verified-recovery"
     fixture.maintenance(candidate, "upgrade-preflight", candidate, migrated, recovery)
@@ -136,6 +262,29 @@ def rehearse(prior_package, candidate_package, root, port):
         for route in ("/", "/posts", "/posts/clean-linux", "/pages/o-nama"):
             public, _ = fixture.Client().request(route, 200)
             assert re.search(rb'<div(?=[^>]*data-legura-public-theme="default")(?=[^>]*data-foundry="gold")[^>]*data-foundry-mode="dark"', public), route
+        posts, _ = admin.request("/admin/posts", 200)
+        post = re.search(rb'/admin/posts/([0-9a-f-]{36})/edit', posts)
+        assert post
+        post_id = post[1].decode()
+        verify_trash_counts(admin, posts=0, pages=0)
+        admin.action("/admin/posts", "TrashPost", fields={"id": post_id})
+        verify_trash_counts(admin, posts=1, pages=0)
+        guest = fixture.Client()
+        guest.request("/posts/clean-linux", 404)
+        guest.request(image_url, 404)
+        admin.action("/admin/posts", "RestorePost", fields={"id": post_id})
+        guest.request("/posts/clean-linux", 404)
+        guest.request(image_url, 404)
+        editor, _ = admin.request(f"/admin/posts/{post_id}/edit", 200)
+        assert f'/api/media/{image_id}'.encode() in editor
+        assert b"Preserve this image" in editor
+        verify_page_trash(admin, recovery / "database.sqlite")
+        verify_post_creation(admin, recovery / "database.sqlite")
+        verify_general_settings(admin)
+    with fixture.server(candidate, port):
+        settings_page, _ = login().request("/admin/settings", 200)
+        assert b"Editorial Test" in settings_page
+        assert b"contact@example.test" in settings_page and b"Europe/Belgrade" in settings_page
     assert hashes(original) == before, "Rehearsal changed the stopped source or backup"
 
 
@@ -152,4 +301,4 @@ if __name__ == "__main__":
     fixture.BASE = f"http://127.0.0.1:{args.port}"
     with TemporaryDirectory(prefix="legura-schema-upgrade-") as scratch:
         rehearse(args.prior.resolve(strict=True), args.candidate.resolve(strict=True), Path(scratch), args.port)
-    print("Schema upgrade passed: six migrations, preserved source, content/media, and restarted menus/languages/appearance.")
+    print("Schema upgrade passed: ten migrations, including page Trash, post attribution, and general settings.")

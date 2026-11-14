@@ -43,6 +43,11 @@ page EditSitePage() {
             <a href={"/pages/" + entry.slug}>View public page</a>
           </If>
         </nav>
+        <form method="post" action={action TrashPage} class="legura-form">
+          <input type="hidden" name="id" value={entry.id} />
+          <p>Moving this page to Trash hides it from the site and its menus.</p>
+          <button type="submit" class="ax-button" data-variant="secondary">Move to Trash</button>
+        </form>
       </Card>
     </AdminFrame>
   }

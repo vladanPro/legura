@@ -2,19 +2,19 @@ import { Button } from "@axonyx/ui/foundry/Button"
 import { Card } from "@axonyx/ui/foundry/Card"
 import { Select } from "@axonyx/ui/foundry/Select"
 import { AdminFrame } from "@/components/AdminFrame"
+import { AdminPageHeader } from "@/components/AdminPageHeader"
 
 page Appearance() {
   data appearance: PublicAppearance = loadPublicAppearance()
   data administrator: Administrator = loadAdministrator()
   return ASX {
     <AdminFrame section="appearance">
-      <header class="legura-page-heading">
-        <div>
-          <h1>Public theme</h1>
-          <p>Choose the look and layout visitors see. Your administration stays unchanged.</p>
-        </div>
+      <AdminPageHeader
+        title="Public theme"
+        description="Choose the look and layout visitors see. Your administration stays unchanged."
+      >
         <a class="ax-button" data-variant="secondary" href="/posts">View public site</a>
-      </header>
+      </AdminPageHeader>
       <div class="legura-theme-choices">
         <Card title="Default">
           <p>A clean, centered reading layout. Uses Silver by default.</p>

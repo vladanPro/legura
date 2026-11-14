@@ -20,7 +20,7 @@ pub struct PostFilters {
 
 pub fn normalize_post_filters(input: PostFilterInput) -> PostFilters {
     let status = match input.status.as_str() {
-        "draft" | "published" => input.status,
+        "draft" | "published" | "trash" => input.status,
         _ => "all".to_owned(),
     };
     // Match the existing SQLite trim/substr and GLOB text-prefix semantics.
@@ -160,7 +160,7 @@ mod tests {
             ] {
                 for page in pages {
                     let expected: (String, String, i64) = db.query_row(
-                        "SELECT CASE WHEN ?1 IN ('draft', 'published') THEN ?1 ELSE 'all' END, substr(trim(?2), 1, 200), CASE WHEN ?3 <> '' AND ?3 NOT GLOB '*[^0-9]*' THEN MAX(CAST(?3 AS INTEGER), 1) ELSE 1 END",
+                        "SELECT CASE WHEN ?1 IN ('draft', 'published', 'trash') THEN ?1 ELSE 'all' END, substr(trim(?2), 1, 200), CASE WHEN ?3 <> '' AND ?3 NOT GLOB '*[^0-9]*' THEN MAX(CAST(?3 AS INTEGER), 1) ELSE 1 END",
                         rusqlite::params![status, search, page], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
                     ).unwrap();
                     let actual = normalize_post_filters(PostFilterInput {

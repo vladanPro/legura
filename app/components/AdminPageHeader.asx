@@ -1,0 +1,16 @@
+component AdminPageHeader(title = "", description = "", headingId = "") {
+  return ASX {
+    <header class="legura-page-heading">
+      <div>
+        <If when={headingId}>
+          <h1 id={headingId}>{title}</h1>
+        </If>
+        <If when={!headingId}>
+          <h1>{title}</h1>
+        </If>
+        <p>{description}</p>
+      </div>
+      <Slot />
+    </header>
+  }
+}

@@ -1,0 +1,13 @@
+action TrashPage(id: String) {
+  data entry = loadSitePage(input.id)
+  db.legura_pages.where({ id: entry.id, trashed: 0 }).update({ status: "draft", trashed: 1 })
+  return redirect("/admin/pages?status=trash")
+}
+
+action RestorePage(id: String) {
+  data administrator = loadAdministrator()
+  data entry = db.legura_pages.where({ id: input.id, trashed: 1 }).first()
+  require entry else notFound()
+  db.legura_pages.where({ id: input.id, trashed: 1 }).update({ status: "draft", trashed: 0 })
+  return redirect("/admin/pages?status=trash")
+}

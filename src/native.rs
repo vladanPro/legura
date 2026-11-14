@@ -13,6 +13,8 @@ pub fn register(registry: &mut AxNativeRegistry) -> Result<(), AxNativeError> {
         &std::env::current_dir().map_err(|_| AxNativeError::Rejected)?,
     )?;
     legura::pagination::register(registry)?;
+    legura::general_settings::register(registry)?;
+    legura::post_dates::register(registry)?;
     legura::media_config::register_media_deletion(
         registry,
         &axonyx_runtime::backend::AxEnv::from_env(),

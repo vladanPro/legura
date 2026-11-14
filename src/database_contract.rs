@@ -70,6 +70,26 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         include_str!("../db/migrations/20261112010000_013_public_palette/up.sql"),
         include_str!("../db/migrations/20261112010000_013_public_palette/down.sql"),
     ),
+    (
+        "20261114000000_014",
+        include_str!("../db/migrations/20261114000000_014_post_trash/up.sql"),
+        include_str!("../db/migrations/20261114000000_014_post_trash/down.sql"),
+    ),
+    (
+        "20261114010000_015",
+        include_str!("../db/migrations/20261114010000_015_page_trash/up.sql"),
+        include_str!("../db/migrations/20261114010000_015_page_trash/down.sql"),
+    ),
+    (
+        "20261114020000_016",
+        include_str!("../db/migrations/20261114020000_016_post_creation_metadata/up.sql"),
+        include_str!("../db/migrations/20261114020000_016_post_creation_metadata/down.sql"),
+    ),
+    (
+        "20261114030000_017",
+        include_str!("../db/migrations/20261114030000_017_general_settings/up.sql"),
+        include_str!("../db/migrations/20261114030000_017_general_settings/down.sql"),
+    ),
 ];
 
 pub fn migration_hash(up: &str, down: &str) -> String {
@@ -100,6 +120,10 @@ pub fn embedded_migrations() -> Vec<AxMigration> {
                 "20261111010000_011" => "public_interface_language",
                 "20261112000000_012" => "public_color_mode",
                 "20261112010000_013" => "public_palette",
+                "20261114000000_014" => "post_trash",
+                "20261114010000_015" => "page_trash",
+                "20261114020000_016" => "post_creation_metadata",
+                "20261114030000_017" => "general_settings",
                 _ => unreachable!("embedded migration name is missing"),
             }
             .into(),
@@ -170,6 +194,26 @@ pub fn validate_structure(connection: &Connection) -> Result<usize> {
             |row| row.get(0),
         )?;
         ensure!(valid, "invalid public palette");
+    }
+    if count >= 14 {
+        ensure!(
+            !connection.prepare("SELECT 1 FROM legura_posts WHERE trashed NOT IN (0, 1) OR (trashed = 1 AND status != 'draft')")?.exists([])?,
+            "invalid post trash state"
+        );
+    }
+    if count >= 15 {
+        ensure!(
+            !connection.prepare("SELECT 1 FROM legura_pages WHERE trashed NOT IN (0, 1) OR (trashed = 1 AND status != 'draft')")?.exists([])?,
+            "invalid page trash state"
+        );
+    }
+    if count >= 17 {
+        ensure!(
+            connection
+                .prepare("SELECT 1 FROM legura_general_settings WHERE id = 1")?
+                .exists([])?,
+            "missing general settings"
+        );
     }
     if count >= 9 {
         let valid: bool = connection.query_row(

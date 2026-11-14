@@ -16,6 +16,45 @@ export type LeguraCredentialsUpdateInput {
   password_hash: Optional<String>
 }
 
+export type LeguraGeneralSettingsRow {
+  id: Int
+  tagline: String
+  site_icon: String
+  legura_url: String
+  site_address: String
+  admin_email: String
+  timezone: String
+  date_format: String
+  time_format: String
+  week_start: Int
+}
+
+export type LeguraGeneralSettingsCreateInput {
+  id: Optional<Int>
+  tagline: Optional<String>
+  site_icon: Optional<String>
+  legura_url: Optional<String>
+  site_address: Optional<String>
+  admin_email: Optional<String>
+  timezone: Optional<String>
+  date_format: Optional<String>
+  time_format: Optional<String>
+  week_start: Optional<Int>
+}
+
+export type LeguraGeneralSettingsUpdateInput {
+  id: Optional<Int>
+  tagline: Optional<String>
+  site_icon: Optional<String>
+  legura_url: Optional<String>
+  site_address: Optional<String>
+  admin_email: Optional<String>
+  timezone: Optional<String>
+  date_format: Optional<String>
+  time_format: Optional<String>
+  week_start: Optional<Int>
+}
+
 export type LeguraInstallationRow {
   id: Int
   site_name: String
@@ -163,6 +202,7 @@ export type LeguraPagesRow {
   slug: String
   body: String
   status: String
+  trashed: Int
 }
 
 export type LeguraPagesCreateInput {
@@ -171,6 +211,7 @@ export type LeguraPagesCreateInput {
   slug: String
   body: String
   status: Optional<String>
+  trashed: Optional<Int>
 }
 
 export type LeguraPagesUpdateInput {
@@ -179,6 +220,7 @@ export type LeguraPagesUpdateInput {
   slug: Optional<String>
   body: Optional<String>
   status: Optional<String>
+  trashed: Optional<Int>
 }
 
 export type LeguraPostImagesRow {
@@ -207,6 +249,9 @@ export type LeguraPostsRow {
   status: String
   content_format: String
   content_document: Optional<String>
+  trashed: Int
+  created_by: Optional<String>
+  created_at: Optional<String>
 }
 
 export type LeguraPostsCreateInput {
@@ -217,6 +262,9 @@ export type LeguraPostsCreateInput {
   status: Optional<String>
   content_format: Optional<String>
   content_document: Optional<String>
+  trashed: Optional<Int>
+  created_by: Optional<String>
+  created_at: Optional<String>
 }
 
 export type LeguraPostsUpdateInput {
@@ -227,6 +275,9 @@ export type LeguraPostsUpdateInput {
   status: Optional<String>
   content_format: Optional<String>
   content_document: Optional<String>
+  trashed: Optional<Int>
+  created_by: Optional<String>
+  created_at: Optional<String>
 }
 
 export type LeguraPublicThemeRow {

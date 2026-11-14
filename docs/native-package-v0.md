@@ -303,10 +303,13 @@ the old archive in place is not a safe rollback.
 
 Native Package Archive CI also rehearses the upgrade from the pinned pre-Pages
 package (`f4b065a`) to the current Pages, language, Navigation, and public
-interface and appearance schema. It requires exactly six migrations on an
+interface, appearance, Trash, post creation metadata, and general settings schema.
+It requires exactly ten migrations on an
 isolated recovery, byte-identical source data and image, fresh administrator
 login, and persistent page, menu, language and appearance changes after
-restarting the recovered candidate. Run the same check
+restarting the recovered candidate. It also verifies that trashed pages disappear
+from public menus, only reappear after republication, and lose all menu references
+after permanent deletion. Run the same check
 with two trusted, unconfigured native package directories:
 
 ```sh

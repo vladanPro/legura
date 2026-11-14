@@ -7,6 +7,47 @@ use sha2::{Digest, Sha256};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[test]
+fn trash_keeps_the_image_but_revokes_public_access_and_image_edits() {
+    let (mut db, objects, store, id) = fixture();
+    set_for_administrator(
+        &mut db,
+        &objects,
+        &store,
+        Some("owner"),
+        "two",
+        Some(ImageSelection {
+            media_id: &id,
+            alt: "Keep this image",
+        }),
+    )
+    .unwrap();
+    assert!(db
+        .execute("UPDATE legura_posts SET trashed=1 WHERE id='two'", [])
+        .is_err());
+    db.execute(
+        "UPDATE legura_posts SET status='draft', trashed=1 WHERE id='two'",
+        [],
+    )
+    .unwrap();
+    assert!(matches!(
+        read_for_published_post(&mut db, &objects, &store, "second", &id),
+        Err(PublishedImageError::NotFound)
+    ));
+    assert!(matches!(
+        set_for_administrator(&mut db, &objects, &store, Some("owner"), "two", None),
+        Err(PostImageError::PostNotFound)
+    ));
+    let image: String = db
+        .query_row(
+            "SELECT media_id FROM legura_post_images WHERE post_id='two'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(image, id);
+}
+
+#[test]
 fn presentation_uses_current_paths_and_falls_back_without_exposing_draft_images() {
     use legura::published_image::presentation;
     let (mut db, objects, store, id) = fixture();

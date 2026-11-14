@@ -1,0 +1,24 @@
+action SaveSiteIdentity(site_title: String, admin_email: String, tagline: String = "", site_icon: String = "", legura_url: String = "", site_address: String = "") {
+  data administrator = loadAdministrator()
+  data checked = Native.call("legura.settings.validate", { site_title: input.site_title, tagline: input.tagline, site_icon: input.site_icon, legura_url: input.legura_url, site_address: input.site_address, admin_email: input.admin_email })
+  require checked.valid else invalid(checked.errors)
+  transaction {
+    db.legura_installation.where({ id: 1 }).update({ site_name: checked.values.site_title })
+    db.legura_general_settings.where({ id: 1 }).update({ tagline: checked.values.tagline, site_icon: checked.values.site_icon, legura_url: checked.values.legura_url, site_address: checked.values.site_address, admin_email: checked.values.admin_email })
+  }
+  return redirect("/admin/settings")
+}
+
+action SaveSiteLocale(site_language: String, timezone: String, date_format: String, time_format: String, week_start: Int) {
+  data administrator = loadAdministrator()
+  require input.site_language == "en" || input.site_language == "sr-Latn" else invalid({ site_language: "Choose a supported language." })
+  require input.timezone == "UTC" || input.timezone == "Europe/Belgrade" || input.timezone == "Europe/London" || input.timezone == "America/New_York" else invalid({ timezone: "Choose a supported time zone." })
+  require input.date_format == "yyyy-mm-dd" || input.date_format == "dd/mm/yyyy" || input.date_format == "mm/dd/yyyy" else invalid({ date_format: "Choose a supported date format." })
+  require input.time_format == "24h" || input.time_format == "12h" else invalid({ time_format: "Choose a supported time format." })
+  require input.week_start >= 0 && input.week_start <= 6 else invalid({ week_start: "Choose a day of the week." })
+  transaction {
+    db.legura_languages.where({ id: 1 }).update({ site_language: input.site_language })
+    db.legura_general_settings.where({ id: 1 }).update({ timezone: input.timezone, date_format: input.date_format, time_format: input.time_format, week_start: input.week_start })
+  }
+  return redirect("/admin/settings")
+}

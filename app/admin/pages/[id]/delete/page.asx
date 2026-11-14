@@ -1,0 +1,42 @@
+import { AdminFrame } from "@/components/AdminFrame"
+import { Button } from "@axonyx/ui/foundry/Button"
+import { Card } from "@axonyx/ui/foundry/Card"
+import { Field } from "@axonyx/ui/foundry/Field"
+import { FieldLabel } from "@axonyx/ui/foundry/FieldLabel"
+import { Input } from "@axonyx/ui/foundry/Input"
+
+page DeletePageConfirmation() {
+  data entry: SitePage = loadDeletablePage(params.id)
+  return ASX {
+    <AdminFrame section="pages">
+      <Card title="Delete page">
+        <h2>{entry.title}</h2>
+        <p id="page-delete-warning">This permanently deletes the page and removes it from all menus. It cannot be undone.</p>
+        <form method="post" action={action DeletePage} class="legura-form">
+          <input type="hidden" name="id" value={entry.id} />
+          <Field htmlFor="confirmSlug">
+            <FieldLabel htmlFor="confirmSlug">Type the URL slug to confirm</FieldLabel>
+            <Input
+              id="confirmSlug"
+              name="confirmSlug"
+              required="true"
+              maxlength="120"
+              describedBy="page-delete-warning page-slug-hint confirmSlug-error"
+            />
+            <p id="page-slug-hint" class="legura-hint">{"Enter exactly: " + entry.slug}</p>
+            <p
+              id="confirmSlug-error"
+              class="ax-field__error"
+              data-ax-field-error="confirmSlug"
+              aria-live="polite"
+            ></p>
+          </Field>
+          <div class="legura-form-actions">
+            <Button type="submit" variant="primary">Delete page permanently</Button>
+            <a href="/admin/pages?status=trash">Cancel deletion</a>
+          </div>
+        </form>
+      </Card>
+    </AdminFrame>
+  }
+}

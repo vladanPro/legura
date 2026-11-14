@@ -9,18 +9,20 @@ export type SitePageListing {
   items: SitePageSummary[]
   page: Number
   total: Number
+  trash: Bool
+  status: String
 }
 
-export query loadSitePages(page: String = "1") -> SitePageListing {
+export query loadSitePages(page: String = "1", status: String = "") -> SitePageListing {
   require Auth.subject else forbidden()
   data administrator = db.legura_users.where({ id: Auth.subject }).first()
   require administrator else forbidden()
   require administrator["role"] == "admin" else forbidden()
-  data filters = Native.call("legura.posts.filters", { status: "all", page: input.page, search: "" })
-  data counts = db.query("SELECT COUNT(*) AS total FROM legura_pages")
+  data filters = Native.call("legura.posts.filters", { status: input.status, page: input.page, search: "" })
+  data counts = db.query("SELECT COUNT(*) AS total FROM legura_pages WHERE trashed = (? = 'trash')", input.status)
   data pagination = Native.call("legura.pagination", { total: counts[0]["total"], requested_page: filters.requested_page, page_size: 10 })
-  data items = db.query("SELECT id, title, slug, status FROM legura_pages ORDER BY title, id LIMIT ? OFFSET ?", pagination.page_size, pagination.offset)
-  return { items: items, page: pagination.page, total: counts[0]["total"] }
+  data items = db.query("SELECT id, title, slug, status FROM legura_pages WHERE trashed = (? = 'trash') ORDER BY title, id LIMIT ? OFFSET ?", input.status, pagination.page_size, pagination.offset)
+  return { items: items, page: pagination.page, total: counts[0]["total"], trash: input.status == "trash", status: filters.status }
 }
 
 export type SitePage {
@@ -36,7 +38,7 @@ export query loadSitePage(id: String) -> SitePage {
   data administrator = db.legura_users.where({ id: Auth.subject }).first()
   require administrator else forbidden()
   require administrator["role"] == "admin" else forbidden()
-  data entry = db.legura_pages.where({ id: input.id }).first()
+  data entry = db.legura_pages.where({ id: input.id, trashed: 0 }).first()
   require entry else notFound()
   return entry
 }

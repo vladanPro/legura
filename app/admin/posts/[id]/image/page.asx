@@ -1,4 +1,5 @@
 import { AdminFrame } from "@/components/AdminFrame"
+import { AdminPageHeader } from "@/components/AdminPageHeader"
 import { Card } from "@axonyx/ui/foundry/Card"
 import { Grid } from "@axonyx/ui/foundry/Grid"
 import { Button } from "@axonyx/ui/foundry/Button"
@@ -9,13 +10,9 @@ page PostImagePicker() {
   data listing: AdminMediaPage = loadMediaLibrary(query.page ?? "1")
   return ASX {
     <AdminFrame section="posts">
-      <header class="legura-page-heading">
-        <div>
-          <h1>Featured image</h1>
-          <p>{post.title}</p>
-        </div>
+      <AdminPageHeader title="Featured image" description={post.title}>
         <a href={"/admin/posts/" + post.id + "/edit"}>Back to post</a>
-      </header>
+      </AdminPageHeader>
       <p class="legura-preview-notice">Image settings are saved separately from content. Previews remain private; public post images are not enabled yet.</p>
       <If when={post.image_id != ""}>
         <Card title="Current image">

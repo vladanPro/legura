@@ -109,7 +109,14 @@ service supervisor, automatic upgrade or production release.
 Posts V0 deliberately excludes deletion; that is a separate product task.
 Post Deletion V1 adds a permanent-delete confirmation route and POST-only,
 slug-confirmed mutation. Its registry acceptance gate passed and PR #5 merged;
-see posts-delete-v1.md. No trash or undo is included.
+see posts-delete-v1.md. Post Trash supersedes direct permanent deletion:
+move a post to Trash from its edit screen, then restore it as a draft or
+confirm permanent deletion from Trash. Public post and featured-image URLs
+are unavailable while the post is trashed or restored but unpublished.
+Trash keeps the post's slug reserved and does not expire automatically.
+Standalone Pages have the same Trash lifecycle. Trashing unpublishes the page
+and hides its menu entries. Restoring keeps it private until explicitly
+republished; permanent deletion removes the page's menu entries.
 Its follow-ups include concurrent-conflict and oversized-request editor recovery.
 Normal duplicate-slug feedback and long native 422 retries are covered by the
 editor validation change. See posts-v0.md for acceptance and limitations.
@@ -121,9 +128,19 @@ write operations private.
 Administration listing adds status filters, bounded ten-row SQLite pagination
 and literal title search through native GET forms. See posts-listing-v0.md for
 the registry tooling requirement, acceptance coverage and Unicode/adapter limits.
+New posts record their creator and UTC creation time. The admin list shows both;
+legacy rows stay unknown, and account email is not sent to public pages.
+
+General Settings manages public header title, tagline and icon, plus
+installation/public addresses, the administrative contact, and content language.
+The Posts list renders creation timestamps in the chosen time zone and formats,
+while the stored timestamp remains UTC. Week start is saved for future calendars.
+Public registration and Subscriber accounts are intentionally unavailable.
 
 The administration overview shows guarded database-backed total/draft/published
 counts and links to those lists, plus a first-draft prompt for empty installations.
+A separate Trash card links to both collections with independent counts; trashed
+posts are excluded from the ordinary post counts.
 See admin-overview-v0.md for the behavior and acceptance gate.
 
 Private saved preview reuses the guarded editor loader and the public story

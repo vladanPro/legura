@@ -7,6 +7,7 @@ page PublicPost() {
   data contentLanguage: String = loadSiteContentLanguage()
   data post: PublishedStory = loadPublishedPost(params.slug)
   data language: PublicLocale = loadPublicLocale(query.lang ?? "")
+  data identity: PublicSiteIdentity = loadPublicSiteIdentity()
   const translate = I18n.withLocale(language.locale)
   return ASX {
     <PublicFrame
@@ -21,6 +22,9 @@ page PublicPost() {
       locale={language.locale}
       switcher={language.switcher}
       suffix={language.suffix}
+      siteTitle={identity.title}
+      tagline={identity.tagline}
+      icon={identity.icon}
       currentPath={"/posts/" + params.slug}
     >
       <PostStory

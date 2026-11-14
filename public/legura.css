@@ -76,10 +76,11 @@
 .legura-post-pagination a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 .legura-post-pagination .ax-button { min-height: 2.75rem; }
 .legura-posts-table { margin-top: 1.5rem; max-width: 100%; }
-.legura-posts-table .ax-table { min-width: 32rem; }
+.legura-posts-table .ax-table { min-width: 44rem; }
 .legura-posts-table tbody th { font-size: 1rem; font-weight: 400; letter-spacing: normal; text-transform: none; background: transparent; }
 .legura-posts-table tbody tr:last-child th { border-bottom: 0; }
-.legura-posts-table th:first-child { width: 60%; }
+.legura-posts-table th:first-child { width: 38%; }
+.legura-posts-table time { white-space: nowrap; }
 .legura-posts-table p { margin: 0.4rem 0 0; }
 .legura-post-title { overflow-wrap: anywhere; }
 .legura-post-edit { display: inline-flex; align-items: center; min-height: 2.75rem; white-space: nowrap; }

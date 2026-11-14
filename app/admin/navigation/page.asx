@@ -1,17 +1,17 @@
 import { AdminFrame } from "@/components/AdminFrame"
+import { AdminPageHeader } from "@/components/AdminPageHeader"
 import { Card } from "@axonyx/ui/foundry/Card"
 
 page Navigation() {
   data settings: NavigationSettings = loadNavigationSettings(query.menu ?? "", query.search ?? "")
   return ASX {
     <AdminFrame section="navigation">
-      <header class="legura-page-heading">
-        <div>
-          <h1>Navigation</h1>
-          <p>Choose which published pages appear in each menu. Publishing a page never adds it automatically.</p>
-        </div>
+      <AdminPageHeader
+        title="Navigation"
+        description="Choose which published pages appear in each menu. Publishing a page never adds it automatically."
+      >
         <a href="/">View public site</a>
-      </header>
+      </AdminPageHeader>
       <Card title="Create a menu">
         <form
           method="post"

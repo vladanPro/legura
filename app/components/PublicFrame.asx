@@ -2,7 +2,7 @@ import { Container } from "@axonyx/ui/foundry/Container"
 import { PublicMenu } from "@/components/PublicMenu"
 import { SiteLanguageSwitcher } from "@/components/SiteLanguageSwitcher"
 
-component PublicFrame(theme = "default", colorMode = "light", palette = "silver", headerAssigned = 0, hasHeader = false, hasFooter = false, headerItems = [], footerItems = [], locale = "en", switcher = false, currentPath = "/", suffix = "") {
+component PublicFrame(theme = "default", colorMode = "light", palette = "silver", headerAssigned = 0, hasHeader = false, hasFooter = false, headerItems = [], footerItems = [], locale = "en", switcher = false, currentPath = "/", suffix = "", siteTitle = "Legura", tagline = "", icon = "/legura-mark.svg") {
   return ASX {
     <If when={theme == "editorial"}>
       <div
@@ -16,7 +16,10 @@ component PublicFrame(theme = "default", colorMode = "light", palette = "silver"
         <a class="legura-skip-link" href="#main-content">{t("public.skip", locale)}</a>
         <Container max="xl">
           <header class="legura-header legura-public-header">
-            <a class="legura-brand" href={"/" + suffix}><img src="/legura-mark.svg" alt="" width="36" height="36" />Legura</a>
+            <a class="legura-brand" href={"/" + suffix}><img src={icon} alt="" width="36" height="36" />{siteTitle}</a>
+            <If when={tagline != ""}>
+              <span>{tagline}</span>
+            </If>
             <If when={headerAssigned == 0}>
               <nav class="legura-editorial-nav" aria-label={t("public.nav.main", locale)}>
                 <a href={"/" + suffix}>{t("public.home", locale)}</a>
@@ -61,8 +64,11 @@ component PublicFrame(theme = "default", colorMode = "light", palette = "silver"
         <a class="legura-skip-link" href="#main-content">{t("public.skip", locale)}</a>
         <Container max="lg">
           <header class="legura-header legura-public-header">
-            <a class="legura-brand" href={"/" + suffix}><img src="/legura-mark.svg" alt="" width="36" height="36" />Legura</a>
-            <If when={headerAssigned == 0}>
+            <a class="legura-brand" href={"/" + suffix}><img src={icon} alt="" width="36" height="36" />{siteTitle}</a>
+            <If when={tagline != ""}>
+              <span>{tagline}</span>
+            </If>
+            <If when={headerAssigned == 0 && tagline == ""}>
               <span>{t("public.tagline", locale)}</span>
             </If>
             <If when={hasHeader}>
