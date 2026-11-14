@@ -2,6 +2,7 @@
 
 import argparse
 from contextlib import closing
+from datetime import datetime, timezone
 from hashlib import file_digest
 import importlib.util
 import json
@@ -147,6 +148,31 @@ def verify_page_trash(admin, database):
         assert remaining == 0, "A permanently deleted page left menu references"
 
 
+def verify_post_creation(admin, database):
+    before = datetime.now(timezone.utc).replace(microsecond=0)
+    fields = {"title": "Writer proof", "slug": "writer-proof", "body": "New post", "status": "published"}
+    admin.action("/admin/posts/new", "CreatePost", fields=dict(fields, created_by="untrusted", created_at="2000-01-01"))
+    with closing(sqlite3.connect(database)) as db:
+        assert db.execute("SELECT created_by, created_at FROM legura_posts WHERE slug = 'clean-linux'").fetchone() == (None, None)
+        post_id, author_id, author, created = db.execute(
+            """SELECT p.id, p.created_by, u.email, p.created_at FROM legura_posts p
+            JOIN legura_users u ON u.id = p.created_by WHERE p.slug = 'writer-proof'"""
+        ).fetchone()
+    assert author == fixture.EMAIL
+    assert before <= datetime.fromisoformat(created) <= datetime.now(timezone.utc)
+    listing, _ = admin.request("/admin/posts", 200)
+    assert b"Unknown" in listing and author.encode() in listing
+    assert f'datetime="{created}"'.encode() in listing
+    assert created[:10].encode() in listing
+    story, _ = fixture.Client().request("/posts/writer-proof", 200)
+    assert author.encode() not in story
+    admin.action(f"/admin/posts/{post_id}/edit", "UpdatePost", fields=dict(fields, id=post_id, title="Updated proof"))
+    admin.action("/admin/posts", "TrashPost", fields={"id": post_id})
+    admin.action("/admin/posts", "RestorePost", fields={"id": post_id})
+    with closing(sqlite3.connect(database)) as db:
+        assert db.execute("SELECT created_by, created_at FROM legura_posts WHERE id = ?", (post_id,)).fetchone() == (author_id, created)
+
+
 def rehearse(prior_package, candidate_package, root, port):
     if prior_package == candidate_package:
         raise ValueError("Use separate prior and candidate packages")
@@ -166,7 +192,7 @@ def rehearse(prior_package, candidate_package, root, port):
 
     workspace = root / "rehearsal"
     report = json.loads(fixture.maintenance(candidate, "upgrade-rehearse", archive, workspace, capture=True))
-    assert report["migrations_applied"] == 8 and report["archive"]["files"] == 2, report
+    assert report["migrations_applied"] == 9 and report["archive"]["files"] == 2, report
     migrated = workspace / "rehearsed.legura"
     recovery = workspace / "verified-recovery"
     fixture.maintenance(candidate, "upgrade-preflight", candidate, migrated, recovery)
@@ -222,6 +248,7 @@ def rehearse(prior_package, candidate_package, root, port):
         assert f'/api/media/{image_id}'.encode() in editor
         assert b"Preserve this image" in editor
         verify_page_trash(admin, recovery / "database.sqlite")
+        verify_post_creation(admin, recovery / "database.sqlite")
     assert hashes(original) == before, "Rehearsal changed the stopped source or backup"
 
 
@@ -238,4 +265,4 @@ if __name__ == "__main__":
     fixture.BASE = f"http://127.0.0.1:{args.port}"
     with TemporaryDirectory(prefix="legura-schema-upgrade-") as scratch:
         rehearse(args.prior.resolve(strict=True), args.candidate.resolve(strict=True), Path(scratch), args.port)
-    print("Schema upgrade passed: eight migrations, preserved source, content/media, restarted menus/languages/appearance, and page Trash.")
+    print("Schema upgrade passed: nine migrations, preserved source, content/media, page Trash, and post attribution.")

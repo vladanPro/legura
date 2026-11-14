@@ -75,6 +75,8 @@ page ManagePosts() {
               <TableRow>
                 <TableHeaderCell>Title and URL slug</TableHeaderCell>
                 <TableHeaderCell>Status</TableHeaderCell>
+                <TableHeaderCell>Author</TableHeaderCell>
+                <TableHeaderCell>Created (UTC)</TableHeaderCell>
                 <TableHeaderCell>Actions</TableHeaderCell>
               </TableRow>
             </TableHead>
@@ -97,6 +99,13 @@ page ManagePosts() {
                     <If when={listing.status != "trash"}>
                       <Badge>{post.status}</Badge>
                     </If>
+                  </TableCell>
+                  <TableCell>{post.author ?? "Unknown"}</TableCell>
+                  <TableCell>
+                    <If when={(post.created_at ?? "") != ""}>
+                      <time datetime={post.created_at ?? ""}>{post.created_date}</time>
+                    </If>
+                    <If when={(post.created_at ?? "") == ""}>Unknown</If>
                   </TableCell>
                   <TableCell>
                     <If when={listing.status != "trash"}><a
