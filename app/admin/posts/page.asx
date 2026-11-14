@@ -4,6 +4,7 @@ import { Button } from "@axonyx/ui/foundry/Button"
 import { Select } from "@axonyx/ui/foundry/Select"
 import { Input } from "@axonyx/ui/foundry/Input"
 import { AdminFrame } from "@/components/AdminFrame"
+import { AdminPageHeader } from "@/components/AdminPageHeader"
 import { Table } from "@axonyx/ui/foundry/Table"
 import { TableCaption } from "@axonyx/ui/foundry/TableCaption"
 import { TableHead } from "@axonyx/ui/foundry/TableHead"
@@ -18,13 +19,9 @@ page ManagePosts() {
   return ASX {
     <AdminFrame section="posts">
       <section class="legura-posts">
-        <header class="legura-page-heading">
-          <div>
-            <h1>Posts</h1>
-            <p>Draft privately, publish when ready.</p>
-          </div>
+        <AdminPageHeader title="Posts" description="Draft privately, publish when ready.">
           <a class="ax-button" data-variant="primary" href="/admin/posts/new">New post</a>
-        </header>
+        </AdminPageHeader>
         <form method="get" action="/admin/posts" class="legura-post-filters legura-form">
           <div class="legura-post-filter-field">
             <label for="post-search">Search titles</label>

@@ -1,4 +1,5 @@
 import { AdminFrame } from "@/components/AdminFrame"
+import { AdminPageHeader } from "@/components/AdminPageHeader"
 import { Card } from "@axonyx/ui/foundry/Card"
 import { Select } from "@axonyx/ui/foundry/Select"
 
@@ -8,12 +9,10 @@ page LanguageSettings() {
   return ASX {
     <AdminFrame section="language">
       <section lang={preferences.admin_language}>
-        <header class="legura-page-heading">
-          <div>
-            <h1>{translate("language.title")}</h1>
-            <p>{translate("language.description")}</p>
-          </div>
-        </header>
+        <AdminPageHeader
+          title={translate("language.title")}
+          description={translate("language.description")}
+        />
         <Card>
           <form method="post" action={action SetAdminLanguage} class="legura-form">
             <label for="admin-language">{translate("language.admin.label")}</label>

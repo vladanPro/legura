@@ -1,4 +1,5 @@
 import { AdminFrame } from "@/components/AdminFrame"
+import { AdminPageHeader } from "@/components/AdminPageHeader"
 import { Card } from "@axonyx/ui/foundry/Card"
 import { Grid } from "@axonyx/ui/foundry/Grid"
 
@@ -6,12 +7,10 @@ page Settings() {
   data mediaAvailable: Bool = loadAdminMediaAvailability()
   return ASX {
     <AdminFrame section="settings">
-      <header class="legura-page-heading">
-        <div>
-          <h1>Settings</h1>
-          <p>Manage the public site and check which services are configured.</p>
-        </div>
-      </header>
+      <AdminPageHeader
+        title="Settings"
+        description="Manage the public site and check which services are configured."
+      />
       <Grid cols="2" colsMobile="1" gap="md">
         <Card title="Appearance">
           <p>Choose the public layout, color mode and palette.</p>
