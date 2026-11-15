@@ -341,12 +341,17 @@ try {
     $create = "/__axonyx/action?path=%2Fadmin%2Fposts%2Fnew&name=CreatePost"
     $post = "title=Aegis+table+draft&slug=aegis-table-draft&body=Fixture+body&status=draft"
     Invoke-Request -Path $create -Method POST -Body $post -Headers $sessionProof -Status 303 | Out-Null
-    $previousCookie = $env:LEGURA_AEGIS_FIXTURE_COOKIE
+    $previousEmail = $env:LEGURA_AEGIS_FIXTURE_EMAIL
+    $previousPassword = $env:LEGURA_AEGIS_FIXTURE_PASSWORD
     try {
-      $env:LEGURA_AEGIS_FIXTURE_COOKIE = $cookie
+      $env:LEGURA_AEGIS_FIXTURE_EMAIL = $identity.email
+      $env:LEGURA_AEGIS_FIXTURE_PASSWORD = $password
       & cargo run --locked --manifest-path (Join-Path $root "tests/posts-table-aegis/Cargo.toml") -- $baseUrl
-      if ($LASTEXITCODE -ne 0) { throw "Aegis Posts table acceptance failed" }
-    } finally { $env:LEGURA_AEGIS_FIXTURE_COOKIE = $previousCookie }
+      if ($LASTEXITCODE -ne 0) { throw "Aegis browser acceptance failed" }
+    } finally {
+      $env:LEGURA_AEGIS_FIXTURE_EMAIL = $previousEmail
+      $env:LEGURA_AEGIS_FIXTURE_PASSWORD = $previousPassword
+    }
     return
   }
   if ($Content) { . (Join-Path $root "tests/content-http/proof.ps1") }
