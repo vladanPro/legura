@@ -26,10 +26,9 @@ Use disposable SQLite fixtures, never an operator installation:
 ./scripts/smoke-auth.ps1 -Posts -Mode native -Port 3961
 ```
 
-These tests cover CRUD, administrator guards, title/status filters, page limits,
-query normalization and responsive table scrolling. They create their own
-temporary configuration and database. Browser QA uses the existing test-only
-Playwright dependency; no new production dependency is added.
+These Playwright tests cover CRUD, administrator guards, title/status filters,
+page limits, query normalization and table screenshots. They create their own
+temporary configuration and database. No production dependency is added.
 
 To run only the mobile keyboard-scroll proof without Node, start a local
 ChromeDriver or EdgeDriver that matches the installed browser:
@@ -43,7 +42,8 @@ $env:AEGIS_WEBDRIVER_URL = "http://127.0.0.1:9515"
 The smoke runner compiles the actual CMS and seeds a draft in a fresh SQLite
 database. Aegis asserts that the page fits at 320 px, the table overflows inside
 its own focusable region, and ArrowRight scrolls it with page scripts on and off.
-It does not replace the full Playwright suite or its screenshots yet.
+The CI Aegis step owns these assertions. Playwright still runs the remaining
+Posts scenarios and captures desktop and mobile screenshots.
 
 This is a package adoption and regression-proof step, not a new grid engine,
 interactive server sorting, operator upgrade or CMS production release.
