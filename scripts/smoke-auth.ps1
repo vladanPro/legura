@@ -7,6 +7,7 @@ param(
   [int] $Port = 3941,
   [ValidateSet("http", "javascript", "native")][string] $Mode = "http",
   [switch] $Posts,
+  [switch] $PostsTableAegis,
   [switch] $Theme,
   [switch] $BackupRestore,
   [switch] $RefreshSchema,
@@ -20,6 +21,10 @@ param(
   [switch] $MediaBrowser
 )
 $ErrorActionPreference = "Stop"
+if ($PostsTableAegis -and ($Mode -ne "http" -or $Posts -or $Theme -or $BackupRestore -or $RefreshSchema -or $Media -or $Content -or $ContentEditor -or $PostEditor -or $ActiveEditor -or $NativeRetry)) {
+  throw "PostsTableAegis requires a standalone fixture in HTTP mode"
+}
+if ($PostsTableAegis -and !$env:AEGIS_WEBDRIVER_URL) { throw "Start a local WebDriver and set AEGIS_WEBDRIVER_URL" }
 if ($MediaBrowser -and !$Media) { throw "MediaBrowser requires the isolated Media fixture" }
 if ($ScopedMedia -and !$Media) { throw "ScopedMedia requires the isolated Media fixture" }
 if ($Media) { $ScopedMedia = $true }
@@ -332,6 +337,18 @@ try {
   Start-Fixture
   Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } | Out-Null
   $sessionProof = Get-Proof -Cookie $cookie
+  if ($PostsTableAegis) {
+    $create = "/__axonyx/action?path=%2Fadmin%2Fposts%2Fnew&name=CreatePost"
+    $post = "title=Aegis+table+draft&slug=aegis-table-draft&body=Fixture+body&status=draft"
+    Invoke-Request -Path $create -Method POST -Body $post -Headers $sessionProof -Status 303 | Out-Null
+    $previousCookie = $env:LEGURA_AEGIS_FIXTURE_COOKIE
+    try {
+      $env:LEGURA_AEGIS_FIXTURE_COOKIE = $cookie
+      & cargo run --locked --manifest-path (Join-Path $root "tests/posts-table-aegis/Cargo.toml") -- $baseUrl
+      if ($LASTEXITCODE -ne 0) { throw "Aegis Posts table acceptance failed" }
+    } finally { $env:LEGURA_AEGIS_FIXTURE_COOKIE = $previousCookie }
+    return
+  }
   if ($Content) { . (Join-Path $root "tests/content-http/proof.ps1") }
   if ($Media) { . (Join-Path $root "tests/media-http/proof.ps1") }
   if ($Posts) { . (Join-Path $root "tests/posts-http.ps1") }

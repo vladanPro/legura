@@ -1,0 +1,10 @@
+[package]
+name = "legura-posts-table-aegis"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+aegis = { package = "axonyx-aegis", git = "https://github.com/vladanPro/axonyx-aegis", rev = "278d64dbff753446298855aee707a17ef5b16e18" }

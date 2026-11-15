@@ -31,5 +31,19 @@ query normalization and responsive table scrolling. They create their own
 temporary configuration and database. Browser QA uses the existing test-only
 Playwright dependency; no new production dependency is added.
 
+To run only the mobile keyboard-scroll proof without Node, start a local
+ChromeDriver or EdgeDriver that matches the installed browser:
+
+```powershell
+$env:AEGIS_WEBDRIVER_URL = "http://127.0.0.1:9515"
+# For EdgeDriver only: $env:AEGIS_TEST_BROWSER = "edge"
+./scripts/smoke-auth.ps1 -PostsTableAegis -Port 3961
+```
+
+The smoke runner compiles the actual CMS and seeds a draft in a fresh SQLite
+database. Aegis asserts that the page fits at 320 px, the table overflows inside
+its own focusable region, and ArrowRight scrolls it with page scripts on and off.
+It does not replace the full Playwright suite or its screenshots yet.
+
 This is a package adoption and regression-proof step, not a new grid engine,
 interactive server sorting, operator upgrade or CMS production release.
