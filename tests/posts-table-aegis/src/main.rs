@@ -88,13 +88,24 @@ form.addEventListener("submit", () => { window.leguraTestSubmitCount++; }, true)
         "Tab from email must focus password"
     );
     page.press(Key::Tab)?;
+    let submit = page.evaluate(
+        r#"
+const active = document.activeElement;
+const style = getComputedStyle(active);
+return {
+  focused: active.matches('form[action*="name=SignIn"] button[type=submit]'),
+  outlineVisible: style.outlineStyle !== "none" && parseFloat(style.outlineWidth) >= 2
+};
+"#,
+        &[],
+    )?;
     assert_eq!(
-        page.evaluate(
-            "return document.activeElement.matches('form[action*=\"name=SignIn\"] button[type=submit]')",
-            &[],
-        )?,
-        true,
+        submit["focused"], true,
         "Tab from password must focus Sign in"
+    );
+    assert_eq!(
+        submit["outlineVisible"], true,
+        "Sign in focus must be visible"
     );
     page.press(Key::Enter)?;
     let empty = page.evaluate(INSPECT_BLOCKED_SUBMISSION, &[])?;
