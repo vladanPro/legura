@@ -30,7 +30,7 @@ These Playwright tests cover CRUD, administrator guards, title/status filters,
 page limits, query normalization and table screenshots. They create their own
 temporary configuration and database. No production dependency is added.
 
-To run only the mobile keyboard-scroll proof without Node, start a local
+To run the sign-in, mobile keyboard-scroll and sign-out smoke without Node, start a local
 ChromeDriver or EdgeDriver that matches the installed browser:
 
 ```powershell
@@ -40,10 +40,11 @@ $env:AEGIS_WEBDRIVER_URL = "http://127.0.0.1:9515"
 ```
 
 The smoke runner compiles the actual CMS and seeds a draft in a fresh SQLite
-database. Aegis asserts that the page fits at 320 px, the table overflows inside
-its own focusable region, and ArrowRight scrolls it with page scripts on and off.
-The CI Aegis step owns these assertions. Playwright still runs the remaining
-Posts scenarios and captures desktop and mobile screenshots.
+database. In both scripting modes, Aegis signs in through the form, verifies
+that the table fits the page at 320 px and scrolls within its focusable region,
+then signs out and verifies that the session can no longer access the dashboard.
+Playwright still covers broader auth behavior, the remaining Posts scenarios
+and desktop and mobile screenshots.
 
 This is a package adoption and regression-proof step, not a new grid engine,
 interactive server sorting, operator upgrade or CMS production release.

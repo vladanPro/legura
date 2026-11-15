@@ -13,6 +13,17 @@ return table && {
 };
 "#;
 
+fn wait_for_url(page: &BrowserPage, expected: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while Instant::now() < deadline {
+        if page.current_url()? == expected {
+            return Ok(());
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    Err(format!("browser did not reach {expected}").into())
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let endpoint = std::env::var("AEGIS_WEBDRIVER_URL")?;
     let base_url = std::env::args().nth(1).ok_or("expected fixture URL")?;
@@ -22,15 +33,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if port.parse::<u16>().ok().filter(|port| *port > 0).is_none() {
         return Err("expected a numeric fixture port".into());
     }
-    let cookie = std::env::var("LEGURA_AEGIS_FIXTURE_COOKIE")?;
-    let (name, value) = cookie
-        .split_once('=')
-        .ok_or("missing fixture session cookie")?;
+    let email = std::env::var("LEGURA_AEGIS_FIXTURE_EMAIL")?;
+    let password = std::env::var("LEGURA_AEGIS_FIXTURE_PASSWORD")?;
     let browser = match std::env::var("AEGIS_TEST_BROWSER").as_deref() {
         Ok("edge") => Browser::Edge,
         Ok("chrome") | Err(std::env::VarError::NotPresent) => Browser::Chrome,
         _ => return Err("AEGIS_TEST_BROWSER must be chrome or edge".into()),
     };
+    let login_url = format!("{base_url}/login");
+    let admin_url = format!("{base_url}/admin");
     for javascript in [true, false] {
         let mut page = BrowserPage::connect(
             &endpoint,
@@ -40,8 +51,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ..BrowserOptions::default()
             },
         )?;
-        page.try_goto(&format!("{base_url}/login"))?;
-        page.add_session_cookie(name, value)?;
+        page.try_goto(&login_url)?;
+        page.type_text("#email", &email)?;
+        page.type_text("#password", &password)?;
+        page.press(Key::Enter)?;
+        wait_for_url(&page, &admin_url)?;
+        page.expect_text("Signed in as").expect_text(&email);
         page.set_viewport(320, 844)?;
         page.goto(&format!("{base_url}/admin/posts"))
             .expect_text("Aegis table draft");
@@ -77,8 +92,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
             std::thread::sleep(Duration::from_millis(50));
         }
-        page.close()?;
         println!("Aegis: Legura Posts table scrolls at 320 px (page scripts: {javascript})");
+        page.try_goto(&admin_url)?;
+        page.try_click("form[action*='name=SignOut'] button[type='submit']")?;
+        wait_for_url(&page, &login_url)?;
+        page.expect_text("Sign in to Legura");
+        page.try_goto(&admin_url)?;
+        let status = page.evaluate(
+            "return performance.getEntriesByType('navigation')[0]?.responseStatus",
+            &[],
+        )?;
+        assert_eq!(
+            status, 403,
+            "the signed-out browser must no longer reach admin"
+        );
+        page.close()?;
+        println!("Aegis: Legura sign-in and sign-out passed (page scripts: {javascript})");
     }
     Ok(())
 }

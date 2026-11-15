@@ -11,7 +11,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 [[package]]
 name = "axonyx-aegis"
 version = "0.1.8"
-source = "git+https://github.com/vladanPro/axonyx-aegis?rev=278d64dbff753446298855aee707a17ef5b16e18#278d64dbff753446298855aee707a17ef5b16e18"
+source = "git+https://github.com/vladanPro/axonyx-aegis?rev=38652fbb09a8d05bb055c8cbdbc7783dfdc741ed#38652fbb09a8d05bb055c8cbdbc7783dfdc741ed"
 dependencies = [
  "reqwest",
  "serde",
