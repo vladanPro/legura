@@ -2,9 +2,11 @@ import { AdminFrame } from "@/components/AdminFrame"
 import { AdminPageHeader } from "@/components/AdminPageHeader"
 import { Badge } from "@axonyx/ui/foundry/Badge"
 import { Card } from "@axonyx/ui/foundry/Card"
+import { Button } from "@axonyx/ui/foundry/Button"
+import { Input } from "@axonyx/ui/foundry/Input"
 
 page AdminPages() {
-  data listing: SitePageListing = loadSitePages(query.page ?? "1", query.status ?? "")
+  data listing: SitePageListing = loadSitePages(query.page ?? "1", query.status ?? "", query.q ?? "")
   return ASX {
     <AdminFrame section="pages">
       <AdminPageHeader
@@ -17,6 +19,22 @@ page AdminPages() {
         <a href="/admin/pages" aria-current={!listing.trash}>Pages</a>
         <a href="/admin/pages?status=trash" aria-current={listing.trash}>Trash</a>
       </nav>
+      <form
+        method="get"
+        action="/admin/pages"
+        class="legura-form legura-post-filters"
+        role="search"
+      >
+        <input type="hidden" name="status" value={listing.status} />
+        <div class="legura-post-filter-field">
+          <label for="page-search">Search page titles</label>
+          <Input type="search" id="page-search" name="q" value={listing.search} maxlength="200" />
+        </div>
+        <Button type="submit" variant="secondary">Search</Button>
+        <If when={listing.search != ""}>
+          <a class="legura-filter-reset" href={"/admin/pages?status=" + listing.status}>Clear search</a>
+        </If>
+      </form>
       <Card>
         <If when={listing.trash}>
           <h2>Page Trash</h2>
@@ -24,11 +42,14 @@ page AdminPages() {
         <If when={!listing.trash}>
           <h2>Site pages</h2>
         </If>
-        <If when={listing.total == 0 && !listing.trash}>
+        <If when={listing.total == 0 && listing.search == "" && !listing.trash}>
           <p>No pages yet. Create your first draft to get started.</p>
         </If>
-        <If when={listing.total == 0 && listing.trash}>
+        <If when={listing.total == 0 && listing.search == "" && listing.trash}>
           <p>Trash is empty. Pages moved here are kept until you restore or permanently delete them.</p>
+        </If>
+        <If when={listing.total == 0 && listing.search != ""}>
+          <p>No matching pages. Try another title or clear the search.</p>
         </If>
         <Each items={listing.items} as="entry">
           <div class="legura-links">
@@ -50,11 +71,21 @@ page AdminPages() {
         <If when={listing.total > 10}>
           <nav class="legura-links" aria-label="Page list pagination">
             <If when={listing.page > 1}>
-              <a href={"/admin/pages?status=" + listing.status + "&page=" + (listing.page - 1)}>Previous page</a>
+              <form method="get" action="/admin/pages">
+                <input type="hidden" name="status" value={listing.status} />
+                <input type="hidden" name="q" value={listing.search} />
+                <input type="hidden" name="page" value={listing.page - 1} />
+                <Button type="submit" variant="secondary">Previous page</Button>
+              </form>
             </If>
             <span>{"Page " + listing.page}</span>
             <If when={listing.page * 10 < listing.total}>
-              <a href={"/admin/pages?status=" + listing.status + "&page=" + (listing.page + 1)}>Next page</a>
+              <form method="get" action="/admin/pages">
+                <input type="hidden" name="status" value={listing.status} />
+                <input type="hidden" name="q" value={listing.search} />
+                <input type="hidden" name="page" value={listing.page + 1} />
+                <Button type="submit" variant="secondary">Next page</Button>
+              </form>
             </If>
           </nav>
         </If>
