@@ -29,6 +29,16 @@ return {
 };
 "#;
 
+const INSPECT_BLOCKED_SUBMISSION: &str = r#"
+const email = document.getElementById("email");
+return email && {
+  focused: email === document.activeElement,
+  valueMissing: email.validity.valueMissing,
+  typeMismatch: email.validity.typeMismatch,
+  submissions: window.leguraTestSubmitCount
+};
+"#;
+
 fn wait_for_url(page: &BrowserPage, expected: &str) -> Result<(), Box<dyn std::error::Error>> {
     let deadline = Instant::now() + Duration::from_secs(5);
     while Instant::now() < deadline {
@@ -61,6 +71,58 @@ fn check_login_rejection(
     Err("wrong password did not show the login field error".into())
 }
 
+fn check_native_login_validation(page: &BrowserPage) -> Result<(), Box<dyn std::error::Error>> {
+    page.evaluate(
+        r#"
+const form = document.getElementById("email").form;
+window.leguraTestSubmitCount = 0;
+form.addEventListener("submit", () => { window.leguraTestSubmitCount++; }, true);
+"#,
+        &[],
+    )?;
+    page.try_click("#email")?;
+    page.press(Key::Tab)?;
+    assert_eq!(
+        page.evaluate("return document.activeElement.id", &[])?,
+        "password",
+        "Tab from email must focus password"
+    );
+    page.press(Key::Tab)?;
+    assert_eq!(
+        page.evaluate(
+            "return document.activeElement.matches('form[action*=\"name=SignIn\"] button[type=submit]')",
+            &[],
+        )?,
+        true,
+        "Tab from password must focus Sign in"
+    );
+    page.press(Key::Enter)?;
+    let empty = page.evaluate(INSPECT_BLOCKED_SUBMISSION, &[])?;
+    assert_eq!(empty["focused"], true, "required email must receive focus");
+    assert_eq!(empty["valueMissing"], true, "email must be required");
+    assert_eq!(empty["submissions"], 0, "empty login dispatched a submit");
+
+    page.type_text("#email", "not-an-email")?;
+    page.type_text("#password", "fixture-password-placeholder")?;
+    page.press(Key::Enter)?;
+    let malformed = page.evaluate(INSPECT_BLOCKED_SUBMISSION, &[])?;
+    assert_eq!(
+        malformed["focused"], true,
+        "invalid email must receive focus"
+    );
+    assert_eq!(
+        malformed["typeMismatch"], true,
+        "email format must be checked"
+    );
+    assert_eq!(
+        malformed["submissions"], 0,
+        "malformed login dispatched a submit"
+    );
+    page.clear_text("#email")?;
+    page.clear_text("#password")?;
+    Ok(())
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let endpoint = std::env::var("AEGIS_WEBDRIVER_URL")?;
     let base_url = std::env::args().nth(1).ok_or("expected fixture URL")?;
@@ -89,6 +151,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
         )?;
         page.try_goto(&login_url)?;
+        check_native_login_validation(&page)?;
         page.type_text("#email", &email)?;
         page.type_text("#password", "wrong-fixture-password")?;
         page.press(Key::Enter)?;
