@@ -237,7 +237,7 @@ jobs:
           compression-level: 0
   compiled-auth:
     name: Registry Compiled Auth
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -258,21 +258,20 @@ jobs:
         run: |
           cargo fmt --manifest-path tests/native-content/Cargo.toml -- --check
           cargo run --locked --manifest-path tests/native-content/Cargo.toml
-      - name: Verify isolated compiled setup and identity
-        shell: pwsh
-        run: ./scripts/smoke-auth.ps1 -Port 3941 -Posts -Theme -BackupRestore
       - name: Verify Posts keyboard scrolling with Aegis
         shell: pwsh
         env:
           AEGIS_WEBDRIVER_URL: http://127.0.0.1:9515
-          AEGIS_TEST_BROWSER: edge
-          MSEDGEDRIVER_TELEMETRY_OPTOUT: '1'
+          AEGIS_TEST_BROWSER: chrome
         run: |
-          $driver = Start-Process -FilePath (Join-Path $env:EDGEWEBDRIVER 'msedgedriver') -ArgumentList '--port=9515' -PassThru
+          $driverPath = Join-Path $env:CHROMEWEBDRIVER 'chromedriver'
+          & $driverPath --version
+          & google-chrome --version
+          $driver = Start-Process -FilePath $driverPath -ArgumentList '--port=9515' -PassThru
           try {
             $ready = $false
             for ($attempt = 0; $attempt -lt 30; $attempt++) {
-              if ($driver.HasExited) { throw 'EdgeDriver exited before readiness' }
+              if ($driver.HasExited) { throw 'ChromeDriver exited before readiness' }
               try {
                 if ((Invoke-RestMethod "$env:AEGIS_WEBDRIVER_URL/status" -TimeoutSec 1).value.ready) {
                   $ready = $true
@@ -280,11 +279,26 @@ jobs:
                 }
               } catch { Start-Sleep -Milliseconds 200 }
             }
-            if (!$ready) { throw 'EdgeDriver did not become ready' }
+            if (!$ready) { throw 'ChromeDriver did not become ready' }
+            $sessions = "$env:AEGIS_WEBDRIVER_URL/session"
+            $capabilities = @{ capabilities = @{ alwaysMatch = @{
+              browserName = 'chrome'
+              'goog:chromeOptions' = @{ args = @('--headless=new') }
+            } } } | ConvertTo-Json -Depth 6 -Compress
+            try {
+              $probe = Invoke-RestMethod $sessions -Method Post -ContentType 'application/json' -Body $capabilities -TimeoutSec 25
+            } catch {
+              throw "Chrome headless session preflight failed: $($_.ErrorDetails.Message ?? $_.Exception.Message)"
+            }
+            if (!$probe.value.sessionId) { throw 'ChromeDriver preflight did not return a session ID' }
+            Invoke-RestMethod "$sessions/$($probe.value.sessionId)" -Method Delete -TimeoutSec 10 | Out-Null
             ./scripts/smoke-auth.ps1 -PostsTableAegis -Port 3941
           } finally {
             if (!$driver.HasExited) { Stop-Process -Id $driver.Id }
           }
+      - name: Verify isolated compiled setup and identity
+        shell: pwsh
+        run: ./scripts/smoke-auth.ps1 -Port 3941 -Posts -Theme -BackupRestore
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
