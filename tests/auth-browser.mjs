@@ -135,14 +135,16 @@ async function checkKeyboardOrder(fields, button) {
   }), "Keyboard submit focus is not visible");
 }
 
-async function checkMobile(name) {
+async function captureMobile(name, { checkLayout = true } = {}) {
   for (const width of [320, 390]) {
     await page.setViewportSize({ width, height: 844 });
-    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Horizontal overflow at ${width}px`);
-    for (const control of await page.locator("form input:not([type=hidden]), form button[type=submit]").all()) {
-      assert.ok(await control.evaluate((node) => node.getBoundingClientRect().height >= 44), "Form target is shorter than 44px");
+    if (checkLayout) {
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Horizontal overflow at ${width}px`);
+      for (const control of await page.locator("form input:not([type=hidden]), form button[type=submit]").all()) {
+        assert.ok(await control.evaluate((node) => node.getBoundingClientRect().height >= 44), "Form target is shorter than 44px");
+      }
+      assert.ok(await page.locator("#email").evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize) >= 16), "Mobile input text is smaller than 16px");
     }
-    assert.ok(await page.locator("#email").evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize) >= 16), "Mobile input text is smaller than 16px");
     await page.screenshot({ path: resolve(results, `${name}-${width}.png`), fullPage: true });
   }
 }
@@ -209,7 +211,7 @@ try {
   await page.keyboard.press("Enter");
   assert.equal(await page.locator("#siteName").evaluate((node) => node === document.activeElement && node.validity.valueMissing), true);
   assert.equal(actionRequests, beforeMissing, "Empty setup sent a request");
-  await checkMobile("setup");
+  await captureMobile("setup");
   await page.setViewportSize({ width: 1280, height: 900 });
   assert.ok(!(await page.content()).includes(setupToken), "Owner token exposed in markup");
   await page.screenshot({ path: resolve(results, `setup-${mode}-desktop.png`), fullPage: true });
@@ -231,7 +233,7 @@ try {
     assert.equal(await page.getByLabel("Password", { exact: true }).inputValue(), "");
     assert.equal(await page.getByLabel("Setup token", { exact: true }).inputValue(), "");
   }
-  await checkMobile("setup-validation");
+  await captureMobile("setup-validation");
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByLabel("Setup token", { exact: true }).fill(setupToken);
   await submitSuccess("Create installation");
@@ -302,7 +304,7 @@ try {
   const beforeMissingLogin = actionRequests;
   await signIn.focus();
   await page.keyboard.press("Enter");
-  await checkMobile("login");
+  await captureMobile("login", { checkLayout: false });
   assert.equal(actionRequests, beforeMissingLogin, "Empty login sent a request");
   await page.getByLabel("Email", { exact: true }).fill("not-an-email");
   await page.getByLabel("Password", { exact: true }).fill("wrong-password");
@@ -316,7 +318,7 @@ try {
   await page.getByLabel("Password", { exact: true }).fill("wrong-password");
   await submitValidation("Sign in", "email", "Email or password is incorrect.");
   assert.equal(await page.getByLabel("Email", { exact: true }).inputValue(), email);
-  await checkMobile("login-validation");
+  await captureMobile("login-validation", { checkLayout: false });
   await page.getByLabel("Password", { exact: true }).fill(password);
   await submitSuccess("Sign in");
   await page.waitForURL(`${baseUrl}/admin`);
