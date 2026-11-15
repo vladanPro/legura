@@ -198,17 +198,25 @@ def verify_content_permissions(database):
             db.execute("INSERT INTO legura_users (id, email, role) VALUES (?, ?, ?)", (role, email, role))
             db.execute("INSERT INTO legura_credentials (user_id, email, password_hash) VALUES (?, ?, ?)", (role, email, password_hash))
 
-    def sign_in(role):
+    def sign_in(role, landing):
         client = fixture.Client()
-        client.action("/login", "SignIn", fields={"email": f"{role}@example.test", "password": fixture.PASSWORD})
+        _, headers = client.action("/login", "SignIn", fields={"email": f"{role}@example.test", "password": fixture.PASSWORD})
+        assert headers["Location"] == landing
+        client.request(landing, 200)
         return client
 
-    editor = sign_in("editor")
-    subscriber = sign_in("subscriber")
+    editor = sign_in("editor", "/admin/posts")
+    subscriber = sign_in("subscriber", "/")
     for route in ("/admin/settings", "/admin/users", "/admin/media"):
         editor.request(route, 403)
     for route in ("/admin/posts", "/admin/posts/new", "/admin/pages", "/admin/pages/new"):
-        editor.request(route, 200)
+        page, _ = editor.request(route, 200)
+        nav = re.search(rb'<nav[^>]*aria-label="Administration"[^>]*>(.*?)</nav>', page, re.S)
+        assert nav, route
+        assert b'href="/admin/posts"' in nav[1] and b'href="/admin/pages"' in nav[1]
+        for admin_link in (b"/admin", b"/admin/media", b"/admin/settings", b"/admin/users", b"/admin/profile"):
+            assert b'href="' + admin_link + b'"' not in nav[1], (route, admin_link)
+        assert b"Sign out" in nav[1] and b"name=SignOut" in nav[1]
         subscriber.request(route, 403)
     fields = {"title": "Editor permission proof", "slug": "editor-proof", "body": "Test content", "status": "draft"}
     subscriber.action("/admin/posts/new", "CreatePost", 403, fields=fields)
@@ -227,6 +235,8 @@ def verify_content_permissions(database):
     assert b"Restore as draft" in trash and b"Delete permanently" not in trash
     editor.action(route + "/delete", "DeletePost", 403, fields={"id": post_id, "confirmSlug": "editor-proof"})
     editor.action("/admin/posts", "RestorePost", fields={"id": post_id})
+    editor.action("/admin", "SignOut")
+    editor.request("/admin/posts", 403)
 
 
 def verify_post_creation(admin, database):

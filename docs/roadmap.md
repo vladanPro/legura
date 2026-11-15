@@ -146,8 +146,9 @@ Editor (content only), and Subscriber (no back-office capabilities). It denies
 unknown roles and capabilities. Posts and Pages now check content capability
 for listing, creation, editing, preview, Trash and restore. Permanent deletion,
 media administration, user management, and site settings stay admin-only.
-The schema still allows admin accounts only; role-aware login and navigation
-must land before enabling additional accounts.
+Login routes Admin to the dashboard, Editor to Posts, and Subscriber to the
+public site. Editors see only content links and sign-out in their admin menu.
+The schema still allows admin accounts only; additional accounts are not enabled.
 
 The administration overview shows guarded database-backed total/draft/published
 counts and links to those lists, plus a first-draft prompt for empty installations.
