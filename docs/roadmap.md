@@ -128,6 +128,8 @@ write operations private.
 Administration listing adds status filters, bounded ten-row SQLite pagination
 and literal title search through native GET forms. See posts-listing-v0.md for
 the registry tooling requirement, acceptance coverage and Unicode/adapter limits.
+Pages and Page Trash also support literal title search and preserve the search
+and collection when paging through results.
 New posts record their creator and UTC creation time. The admin list shows both;
 legacy rows stay unknown, and account email is not sent to public pages.
 

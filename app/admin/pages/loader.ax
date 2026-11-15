@@ -11,18 +11,19 @@ export type SitePageListing {
   total: Number
   trash: Bool
   status: String
+  search: String
 }
 
-export query loadSitePages(page: String = "1", status: String = "") -> SitePageListing {
+export query loadSitePages(page: String = "1", status: String = "", search: String = "") -> SitePageListing {
   require Auth.subject else forbidden()
   data administrator = db.legura_users.where({ id: Auth.subject }).first()
   require administrator else forbidden()
   require administrator["role"] == "admin" else forbidden()
-  data filters = Native.call("legura.posts.filters", { status: input.status, page: input.page, search: "" })
-  data counts = db.query("SELECT COUNT(*) AS total FROM legura_pages WHERE trashed = (? = 'trash')", input.status)
+  data filters = Native.call("legura.posts.filters", { status: input.status, page: input.page, search: input.search })
+  data counts = db.query("SELECT COUNT(*) AS total FROM legura_pages WHERE trashed = (? = 'trash') AND instr(lower(title), lower(?)) > 0", filters.status, filters.search)
   data pagination = Native.call("legura.pagination", { total: counts[0]["total"], requested_page: filters.requested_page, page_size: 10 })
-  data items = db.query("SELECT id, title, slug, status FROM legura_pages WHERE trashed = (? = 'trash') ORDER BY title, id LIMIT ? OFFSET ?", input.status, pagination.page_size, pagination.offset)
-  return { items: items, page: pagination.page, total: counts[0]["total"], trash: input.status == "trash", status: filters.status }
+  data items = db.query("SELECT id, title, slug, status FROM legura_pages WHERE trashed = (? = 'trash') AND instr(lower(title), lower(?)) > 0 ORDER BY title, id LIMIT ? OFFSET ?", filters.status, filters.search, pagination.page_size, pagination.offset)
+  return { items: items, page: pagination.page, total: counts[0]["total"], trash: filters.status == "trash", status: filters.status, search: filters.search }
 }
 
 export type SitePage {

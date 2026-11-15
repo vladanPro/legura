@@ -114,6 +114,10 @@ def verify_page_trash(admin, database):
     assert edit.encode() not in active
     trash, _ = admin.request(route + "?status=trash", 200)
     assert delete.encode() in trash and b"Restore as draft" in trash
+    matched, _ = admin.request(route + "?status=trash&q=about", 200)
+    assert delete.encode() in matched
+    missing, _ = admin.request(route + "?status=trash&q=read", 200)
+    assert b"No matching pages" in missing and delete.encode() not in missing
     admin.request(edit, 404)
     admin.request(edit.removesuffix("edit") + "preview", 404)
     admin.action(edit, "UpdatePage", 404, fields=update)
@@ -146,6 +150,26 @@ def verify_page_trash(admin, database):
     with closing(sqlite3.connect(database)) as db:
         remaining, = db.execute("SELECT COUNT(*) FROM legura_menu_items WHERE page_id = ?", (fields["id"],)).fetchone()
         assert remaining == 0, "A permanently deleted page left menu references"
+
+
+def verify_page_search(admin):
+    route = "/admin/pages"
+    match, _ = admin.request(route + "?q=%20aBoUt%20", 200)
+    assert b"About us" in match and b"Read me" not in match
+    missing, _ = admin.request(route + "?q=%25", 200)
+    assert b"No matching pages" in missing
+    for number in range(1, 12):
+        admin.action(route + "/new", "CreatePage", fields={
+            "title": f"Search fixture {number:02}",
+            "slug": f"search-fixture-{number:02}",
+            "body": "Search result",
+        })
+    first, _ = admin.request(route + "?q=search+fixture", 200)
+    assert b"Search fixture 01" in first and b"Search fixture 11" not in first
+    assert b"Next page" in first and b'value="search fixture"' in first
+    second, _ = admin.request(route + "?q=search+fixture&page=2", 200)
+    assert b"Search fixture 11" in second and b"Search fixture 01" not in second
+    assert b"Previous page" in second and b"Next page" not in second
 
 
 def verify_post_creation(admin, database):
@@ -278,6 +302,7 @@ def rehearse(prior_package, candidate_package, root, port):
         editor, _ = admin.request(f"/admin/posts/{post_id}/edit", 200)
         assert f'/api/media/{image_id}'.encode() in editor
         assert b"Preserve this image" in editor
+        verify_page_search(admin)
         verify_page_trash(admin, recovery / "database.sqlite")
         verify_post_creation(admin, recovery / "database.sqlite")
         verify_general_settings(admin)
