@@ -189,9 +189,7 @@ def verify_page_search(admin):
 
 
 def verify_content_permissions(database):
-    # Exercise authenticated guards before widening the product's role constraint.
     with closing(sqlite3.connect(database)) as db, db:
-        db.execute("PRAGMA ignore_check_constraints = ON")
         password_hash, = db.execute("SELECT password_hash FROM legura_credentials WHERE email = ?", (fixture.EMAIL,)).fetchone()
         for role in ("editor", "subscriber"):
             email = f"{role}@example.test"
@@ -314,7 +312,7 @@ def rehearse(prior_package, candidate_package, root, port):
 
     workspace = root / "rehearsal"
     report = json.loads(fixture.maintenance(candidate, "upgrade-rehearse", archive, workspace, capture=True))
-    assert report["migrations_applied"] == 10 and report["archive"]["files"] == 2, report
+    assert report["migrations_applied"] == 11 and report["archive"]["files"] == 2, report
     migrated = workspace / "rehearsed.legura"
     recovery = workspace / "verified-recovery"
     fixture.maintenance(candidate, "upgrade-preflight", candidate, migrated, recovery)
@@ -395,4 +393,4 @@ if __name__ == "__main__":
     fixture.BASE = f"http://127.0.0.1:{args.port}"
     with TemporaryDirectory(prefix="legura-schema-upgrade-") as scratch:
         rehearse(args.prior.resolve(strict=True), args.candidate.resolve(strict=True), Path(scratch), args.port)
-    print("Schema upgrade passed: ten migrations, including page Trash, post attribution, and general settings.")
+    print("Schema upgrade passed: eleven migrations, including account roles.")
