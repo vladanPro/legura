@@ -7,4 +7,4 @@ publish = false
 [workspace]
 
 [dependencies]
-aegis = { package = "axonyx-aegis", git = "https://github.com/vladanPro/axonyx-aegis", rev = "38652fbb09a8d05bb055c8cbdbc7783dfdc741ed" }
+aegis = { package = "axonyx-aegis", git = "https://github.com/vladanPro/axonyx-aegis", rev = "8a6229b46280f2df693c7d75d292c8ac4bb9513c" }

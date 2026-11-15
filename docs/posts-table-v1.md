@@ -40,9 +40,10 @@ $env:AEGIS_WEBDRIVER_URL = "http://127.0.0.1:9515"
 ```
 
 The smoke runner compiles the actual CMS and seeds a draft in a fresh SQLite
-database. In both scripting modes, Aegis signs in through the form, verifies
-that the table fits the page at 320 px and scrolls within its focusable region,
-then signs out and verifies that the session can no longer access the dashboard.
+database. With page scripts on or off, Aegis checks that a wrong password shows
+an accessible error linked to the email field, then signs in without retyping
+the email. It checks that the table fits the page at 320 px and scrolls within
+its focusable region, then signs out and checks that the dashboard is blocked.
 Playwright still covers broader auth behavior, the remaining Posts scenarios
 and desktop and mobile screenshots.
 

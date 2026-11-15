@@ -13,6 +13,22 @@ return table && {
 };
 "#;
 
+const INSPECT_LOGIN_ERROR: &str = r#"
+const email = document.getElementById("email");
+const error = document.querySelector('[data-ax-field-error="email"]');
+if (!email || !error || !error.getClientRects().length ||
+    getComputedStyle(error).visibility !== "visible" || !error.textContent.trim()) {
+  return null;
+}
+return {
+  message: error.textContent.trim(),
+  live: error.getAttribute("aria-live"),
+  invalid: email.getAttribute("aria-invalid"),
+  linked: !!error.id && (email.getAttribute("aria-describedby") || "").split(/\s+/).includes(error.id),
+  emailRetained: email.value === arguments[0]
+};
+"#;
+
 fn wait_for_url(page: &BrowserPage, expected: &str) -> Result<(), Box<dyn std::error::Error>> {
     let deadline = Instant::now() + Duration::from_secs(5);
     while Instant::now() < deadline {
@@ -22,6 +38,27 @@ fn wait_for_url(page: &BrowserPage, expected: &str) -> Result<(), Box<dyn std::e
         std::thread::sleep(Duration::from_millis(50));
     }
     Err(format!("browser did not reach {expected}").into())
+}
+
+fn check_login_rejection(
+    page: &BrowserPage,
+    email: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    let args = [email.into()];
+    while Instant::now() < deadline {
+        let error = page.evaluate(INSPECT_LOGIN_ERROR, &args)?;
+        if !error.is_null() {
+            assert_eq!(error["message"], "Email or password is incorrect.");
+            assert_eq!(error["live"], "polite", "login error must be announced");
+            assert_eq!(error["invalid"], "true", "email must be marked invalid");
+            assert_eq!(error["linked"], true, "email must reference the error");
+            assert_eq!(error["emailRetained"], true, "email must survive rejection");
+            return Ok(());
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    Err("wrong password did not show the login field error".into())
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -53,6 +90,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
         page.try_goto(&login_url)?;
         page.type_text("#email", &email)?;
+        page.type_text("#password", "wrong-fixture-password")?;
+        page.press(Key::Enter)?;
+        check_login_rejection(&page, &email)?;
+        page.clear_text("#password")?;
         page.type_text("#password", &password)?;
         page.press(Key::Enter)?;
         wait_for_url(&page, &admin_url)?;
@@ -107,7 +148,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "the signed-out browser must no longer reach admin"
         );
         page.close()?;
-        println!("Aegis: Legura sign-in and sign-out passed (page scripts: {javascript})");
+        println!("Aegis: Legura sign-in validation, retry and sign-out passed (page scripts: {javascript})");
     }
     Ok(())
 }
