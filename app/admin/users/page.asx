@@ -1,0 +1,62 @@
+import { AdminFrame } from "@/components/AdminFrame"
+import { AdminPageHeader } from "@/components/AdminPageHeader"
+import { Badge } from "@axonyx/ui/foundry/Badge"
+import { Table } from "@axonyx/ui/foundry/Table"
+import { TableBody } from "@axonyx/ui/foundry/TableBody"
+import { TableCaption } from "@axonyx/ui/foundry/TableCaption"
+import { TableCell } from "@axonyx/ui/foundry/TableCell"
+import { TableHead } from "@axonyx/ui/foundry/TableHead"
+import { TableHeaderCell } from "@axonyx/ui/foundry/TableHeaderCell"
+import { TableRow } from "@axonyx/ui/foundry/TableRow"
+
+page Users() {
+  data listing: UserListing = loadUsers(query.page ?? "1")
+  return ASX {
+    <AdminFrame section="users">
+      <AdminPageHeader
+        title="Users"
+        description="View the accounts and roles in this installation."
+      />
+      <Table
+        class="legura-users-table"
+        role="region"
+        aria-label="Scrollable users table"
+        tabindex="0"
+        zebra="true"
+      >
+        <TableCaption>User accounts</TableCaption>
+        <TableHead>
+          <TableRow>
+            <TableHeaderCell>Email</TableHeaderCell>
+            <TableHeaderCell>Role</TableHeaderCell>
+            <TableHeaderCell>Actions</TableHeaderCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          <Each items={listing.users} as="user">
+            <TableRow>
+              <TableHeaderCell scope="row">{user.email}</TableHeaderCell>
+              <TableCell>
+                <Badge>{user.role}</Badge>
+              </TableCell>
+              <TableCell>
+                <a href={"/admin/users/" + user.id} aria-label={"View account: " + user.email}>View account</a>
+              </TableCell>
+            </TableRow>
+          </Each>
+        </TableBody>
+      </Table>
+      <If when={listing.total > 10}>
+        <nav class="legura-links" aria-label="Users pagination">
+          <If when={listing.page > 1}>
+            <a href={"/admin/users?page=" + (listing.page - 1)}>Previous page</a>
+          </If>
+          <span>{"Page " + listing.page}</span>
+          <If when={listing.page * 10 < listing.total}>
+            <a href={"/admin/users?page=" + (listing.page + 1)}>Next page</a>
+          </If>
+        </nav>
+      </If>
+    </AdminFrame>
+  }
+}

@@ -138,6 +138,9 @@ installation/public addresses, the administrative contact, and content language.
 The Posts list renders creation timestamps in the chosen time zone and formats,
 while the stored timestamp remains UTC. Week start is saved for future calendars.
 Public registration and Subscriber accounts are intentionally unavailable.
+The admin-only Users directory lists accounts and opens read-only details.
+Role assignment and invitations are separate work: protect the installation
+owner and test Editor/Subscriber access before exposing account writes.
 
 The administration overview shows guarded database-backed total/draft/published
 counts and links to those lists, plus a first-draft prompt for empty installations.
