@@ -1,4 +1,5 @@
 use aegis::{Browser, BrowserOptions, BrowserPage, Key};
+use std::path::Path;
 use std::time::{Duration, Instant};
 
 const TABLE: &str = "[role='region'][aria-label='Scrollable posts table']";
@@ -84,7 +85,11 @@ fn check_login_rejection(
     Err("wrong password did not show the login field error".into())
 }
 
-fn check_mobile_login(page: &BrowserPage, state: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn check_mobile_login(
+    page: &BrowserPage,
+    screenshots: &Path,
+    state: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     for width in [320, 390] {
         page.set_viewport(width, 844)?;
         let layout = page.evaluate(INSPECT_LOGIN_LAYOUT, &[])?;
@@ -106,6 +111,10 @@ fn check_mobile_login(page: &BrowserPage, state: &str) -> Result<(), Box<dyn std
                 .is_some_and(|size| size >= 16.0),
             "{state}: email input font smaller than 16px at {width}px"
         );
+        std::fs::write(
+            screenshots.join(format!("{state}-{width}.png")),
+            page.full_page_png()?,
+        )?;
     }
     page.set_viewport(1280, 900)?;
     Ok(())
@@ -192,7 +201,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     let login_url = format!("{base_url}/login");
     let admin_url = format!("{base_url}/admin");
+    let screenshots =
+        std::env::temp_dir().join(format!("legura-aegis-auth-{}", std::process::id()));
     for javascript in [true, false] {
+        let mode = if javascript { "javascript" } else { "native" };
+        let output = screenshots.join(mode);
+        std::fs::create_dir_all(&output)?;
         let mut page = BrowserPage::connect(
             &endpoint,
             BrowserOptions {
@@ -202,13 +216,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
         )?;
         page.try_goto(&login_url)?;
-        check_mobile_login(&page, "initial login")?;
+        check_mobile_login(&page, &output, "login")?;
         check_native_login_validation(&page)?;
         page.type_text("#email", &email)?;
         page.type_text("#password", "wrong-fixture-password")?;
         page.press(Key::Enter)?;
         check_login_rejection(&page, &email)?;
-        check_mobile_login(&page, "login with validation error")?;
+        check_mobile_login(&page, &output, "login-validation")?;
         page.clear_text("#password")?;
         page.type_text("#password", &password)?;
         page.press(Key::Enter)?;
@@ -266,5 +280,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         page.close()?;
         println!("Aegis: Legura sign-in validation, retry and sign-out passed (page scripts: {javascript})");
     }
+    println!("Aegis login screenshots: {}", screenshots.display());
     Ok(())
 }

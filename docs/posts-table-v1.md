@@ -45,6 +45,8 @@ native validation for empty or malformed email. It checks that a wrong password
 shows an accessible error linked to the email field, then signs in without
 retyping the email. At 320 and 390 px the login form must fit the viewport,
 with 44 px controls and at least 16 px email text, before and after rejection.
+The smoke prints the temporary folder containing full-page PNGs for each login
+state, width and browser mode. CI does not upload these as artifacts.
 The smoke also checks that the table fits the page at 320 px and
 scrolls within its focusable region, then signs out and checks that the
 dashboard is blocked.
