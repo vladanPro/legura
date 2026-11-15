@@ -1,5 +1,5 @@
 action CreatePage(title: String, slug: String, body: String) {
-  data administrator = loadAdministrator()
+  data administrator = loadContentManager()
   require input.title != "" && input.title.length <= 160 else invalid({ title: "Enter a title of at most 160 characters." })
   require input.slug != "" && input.slug.length <= 120 else invalid({ slug: "Enter a URL slug of at most 120 characters." })
   data slugCheck = db.query("SELECT CASE WHEN ? NOT GLOB '*[^a-z0-9-]*' AND ? NOT GLOB '-*' AND ? NOT GLOB '*-' THEN 1 ELSE 0 END AS allowed", input.slug, input.slug, input.slug)

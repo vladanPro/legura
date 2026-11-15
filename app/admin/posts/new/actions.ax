@@ -1,7 +1,7 @@
 import { validatePost } from "../../../domain/posts.ax"
 
 action CreatePost(title: String, slug: String, body: String, status: String, content_format: String = "plain-text", content_document: String = "") {
-  data administrator = loadAdministrator()
+  data administrator = loadContentManager()
   data validation = validatePost(input.title, input.slug, input.status)
   require validation.title else invalid({ title: validation.titleError })
   require validation.slug else invalid({ slug: validation.slugError })

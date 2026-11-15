@@ -188,6 +188,47 @@ def verify_page_search(admin):
     assert b"Previous page" in second and b"Next page" not in second
 
 
+def verify_content_permissions(database):
+    # Exercise authenticated guards before widening the product's role constraint.
+    with closing(sqlite3.connect(database)) as db, db:
+        db.execute("PRAGMA ignore_check_constraints = ON")
+        password_hash, = db.execute("SELECT password_hash FROM legura_credentials WHERE email = ?", (fixture.EMAIL,)).fetchone()
+        for role in ("editor", "subscriber"):
+            email = f"{role}@example.test"
+            db.execute("INSERT INTO legura_users (id, email, role) VALUES (?, ?, ?)", (role, email, role))
+            db.execute("INSERT INTO legura_credentials (user_id, email, password_hash) VALUES (?, ?, ?)", (role, email, password_hash))
+
+    def sign_in(role):
+        client = fixture.Client()
+        client.action("/login", "SignIn", fields={"email": f"{role}@example.test", "password": fixture.PASSWORD})
+        return client
+
+    editor = sign_in("editor")
+    subscriber = sign_in("subscriber")
+    for route in ("/admin/settings", "/admin/users", "/admin/media"):
+        editor.request(route, 403)
+    for route in ("/admin/posts", "/admin/posts/new", "/admin/pages", "/admin/pages/new"):
+        editor.request(route, 200)
+        subscriber.request(route, 403)
+    fields = {"title": "Editor permission proof", "slug": "editor-proof", "body": "Test content", "status": "draft"}
+    subscriber.action("/admin/posts/new", "CreatePost", 403, fields=fields)
+    editor.action("/admin/posts/new", "CreatePost", fields=fields)
+    with closing(sqlite3.connect(database)) as db:
+        post_id, author = db.execute("SELECT id, created_by FROM legura_posts WHERE slug = 'editor-proof'").fetchone()
+    assert author == "editor"
+    route = f"/admin/posts/{post_id}"
+    edit, _ = editor.request(route + "/edit", 200)
+    assert b"Choose featured image" not in edit
+    editor.request(route + "/preview", 200)
+    editor.request(route + "/image", 403)
+    editor.action(route + "/edit", "UpdatePost", fields=dict(fields, id=post_id, title="Edited by the editor"))
+    editor.action("/admin/posts", "TrashPost", fields={"id": post_id})
+    trash, _ = editor.request("/admin/posts?status=trash&q=Edited", 200)
+    assert b"Restore as draft" in trash and b"Delete permanently" not in trash
+    editor.action(route + "/delete", "DeletePost", 403, fields={"id": post_id, "confirmSlug": "editor-proof"})
+    editor.action("/admin/posts", "RestorePost", fields={"id": post_id})
+
+
 def verify_post_creation(admin, database):
     before = datetime.now(timezone.utc).replace(microsecond=0)
     fields = {"title": "Writer proof", "slug": "writer-proof", "body": "New post", "status": "published"}
@@ -327,6 +368,7 @@ def rehearse(prior_package, candidate_package, root, port):
         settings_page, _ = login().request("/admin/settings", 200)
         assert b"Editorial Test" in settings_page
         assert b"contact@example.test" in settings_page and b"Europe/Belgrade" in settings_page
+        verify_content_permissions(recovery / "database.sqlite")
     assert hashes(original) == before, "Rehearsal changed the stopped source or backup"
 
 

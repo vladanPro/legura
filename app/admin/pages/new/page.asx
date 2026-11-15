@@ -6,7 +6,7 @@ import { FieldLabel } from "@axonyx/ui/foundry/FieldLabel"
 import { Input } from "@axonyx/ui/foundry/Input"
 
 page NewSitePage() {
-  data administrator: Administrator = loadAdministrator()
+  data administrator: Administrator = loadContentManager()
   return ASX {
     <AdminFrame section="pages">
       <Card title="New page">

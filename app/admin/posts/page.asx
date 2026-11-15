@@ -119,7 +119,9 @@ page ManagePosts() {
                           <input type="hidden" name="id" value={post.id} />
                           <Button type="submit" variant="secondary">Restore as draft</Button>
                         </form>
-                        <a href={"/admin/posts/" + post.id + "/delete"}>Delete permanently</a>
+                        <If when={listing.can_delete}>
+                          <a href={"/admin/posts/" + post.id + "/delete"}>Delete permanently</a>
+                        </If>
                       </div>
                     </If>
                   </TableCell>
