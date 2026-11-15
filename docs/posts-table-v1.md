@@ -43,7 +43,9 @@ The smoke runner compiles the actual CMS and seeds a draft in a fresh SQLite
 database. With page scripts on or off, Aegis checks keyboard focus order and
 native validation for empty or malformed email. It checks that a wrong password
 shows an accessible error linked to the email field, then signs in without
-retyping the email. It checks that the table fits the page at 320 px and
+retyping the email. At 320 and 390 px the login form must fit the viewport,
+with 44 px controls and at least 16 px email text, before and after rejection.
+The smoke also checks that the table fits the page at 320 px and
 scrolls within its focusable region, then signs out and checks that the
 dashboard is blocked.
 Playwright still covers broader auth behavior, the remaining Posts scenarios

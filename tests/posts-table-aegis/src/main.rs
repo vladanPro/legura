@@ -39,6 +39,19 @@ return email && {
 };
 "#;
 
+const INSPECT_LOGIN_LAYOUT: &str = r#"
+const email = document.getElementById("email");
+const password = document.getElementById("password");
+const submit = email?.form?.querySelector('button[type="submit"]');
+if (!email || !password || !submit) return null;
+return {
+  viewport: innerWidth,
+  fits: document.documentElement.scrollWidth <= innerWidth,
+  targetHeight: Math.min(...[email, password, submit].map(control => control.getBoundingClientRect().height)),
+  emailFontSize: parseFloat(getComputedStyle(email).fontSize)
+};
+"#;
+
 fn wait_for_url(page: &BrowserPage, expected: &str) -> Result<(), Box<dyn std::error::Error>> {
     let deadline = Instant::now() + Duration::from_secs(5);
     while Instant::now() < deadline {
@@ -69,6 +82,33 @@ fn check_login_rejection(
         std::thread::sleep(Duration::from_millis(50));
     }
     Err("wrong password did not show the login field error".into())
+}
+
+fn check_mobile_login(page: &BrowserPage, state: &str) -> Result<(), Box<dyn std::error::Error>> {
+    for width in [320, 390] {
+        page.set_viewport(width, 844)?;
+        let layout = page.evaluate(INSPECT_LOGIN_LAYOUT, &[])?;
+        assert!(!layout.is_null(), "{state}: missing login controls");
+        assert_eq!(layout["viewport"], width, "{state}: unexpected viewport");
+        assert_eq!(
+            layout["fits"], true,
+            "{state}: horizontal overflow at {width}px"
+        );
+        assert!(
+            layout["targetHeight"]
+                .as_f64()
+                .is_some_and(|height| height >= 44.0),
+            "{state}: login control shorter than 44px at {width}px"
+        );
+        assert!(
+            layout["emailFontSize"]
+                .as_f64()
+                .is_some_and(|size| size >= 16.0),
+            "{state}: email input font smaller than 16px at {width}px"
+        );
+    }
+    page.set_viewport(1280, 900)?;
+    Ok(())
 }
 
 fn check_native_login_validation(page: &BrowserPage) -> Result<(), Box<dyn std::error::Error>> {
@@ -162,11 +202,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
         )?;
         page.try_goto(&login_url)?;
+        check_mobile_login(&page, "initial login")?;
         check_native_login_validation(&page)?;
         page.type_text("#email", &email)?;
         page.type_text("#password", "wrong-fixture-password")?;
         page.press(Key::Enter)?;
         check_login_rejection(&page, &email)?;
+        check_mobile_login(&page, "login with validation error")?;
         page.clear_text("#password")?;
         page.type_text("#password", &password)?;
         page.press(Key::Enter)?;
