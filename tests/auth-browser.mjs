@@ -135,16 +135,14 @@ async function checkKeyboardOrder(fields, button) {
   }), "Keyboard submit focus is not visible");
 }
 
-async function captureMobile(name, { checkLayout = true } = {}) {
+async function captureMobile(name) {
   for (const width of [320, 390]) {
     await page.setViewportSize({ width, height: 844 });
-    if (checkLayout) {
-      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Horizontal overflow at ${width}px`);
-      for (const control of await page.locator("form input:not([type=hidden]), form button[type=submit]").all()) {
-        assert.ok(await control.evaluate((node) => node.getBoundingClientRect().height >= 44), "Form target is shorter than 44px");
-      }
-      assert.ok(await page.locator("#email").evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize) >= 16), "Mobile input text is smaller than 16px");
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Horizontal overflow at ${width}px`);
+    for (const control of await page.locator("form input:not([type=hidden]), form button[type=submit]").all()) {
+      assert.ok(await control.evaluate((node) => node.getBoundingClientRect().height >= 44), "Form target is shorter than 44px");
     }
+    assert.ok(await page.locator("#email").evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize) >= 16), "Mobile input text is smaller than 16px");
     await page.screenshot({ path: resolve(results, `${name}-${width}.png`), fullPage: true });
   }
 }
@@ -301,24 +299,24 @@ try {
   await checkForm("Sign in to Legura", ["email", "password"]);
   assert.equal(await page.locator("#password").getAttribute("autocomplete"), "current-password");
   const signIn = page.getByRole("button", { name: "Sign in", exact: true });
+  const loginEmail = page.getByLabel("Email", { exact: true });
   const beforeMissingLogin = actionRequests;
   await signIn.focus();
   await page.keyboard.press("Enter");
-  await captureMobile("login", { checkLayout: false });
+  // Observe requests through the next browser round trip, not just key dispatch.
+  await loginEmail.focus();
   assert.equal(actionRequests, beforeMissingLogin, "Empty login sent a request");
-  await page.getByLabel("Email", { exact: true }).fill("not-an-email");
+  await loginEmail.fill("not-an-email");
   await page.getByLabel("Password", { exact: true }).fill("wrong-password");
   const beforeBadEmail = actionRequests;
   await signIn.focus();
   await page.keyboard.press("Enter");
-  // Observe requests through the next browser round trip, not just key dispatch.
-  await page.getByLabel("Email", { exact: true }).focus();
+  await loginEmail.focus();
   assert.equal(actionRequests, beforeBadEmail, "Malformed login email sent a request");
-  await page.getByLabel("Email", { exact: true }).fill(email);
+  await loginEmail.fill(email);
   await page.getByLabel("Password", { exact: true }).fill("wrong-password");
   await submitValidation("Sign in", "email", "Email or password is incorrect.");
-  assert.equal(await page.getByLabel("Email", { exact: true }).inputValue(), email);
-  await captureMobile("login-validation", { checkLayout: false });
+  assert.equal(await loginEmail.inputValue(), email);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await submitSuccess("Sign in");
   await page.waitForURL(`${baseUrl}/admin`);
