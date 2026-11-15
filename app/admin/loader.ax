@@ -15,7 +15,8 @@ export query loadAdministrator() -> Administrator {
   require Auth.subject else forbidden()
   data user = db.legura_users.where({ id: Auth.subject }).first()
   require user else forbidden()
-  require user["role"] == "admin" else forbidden()
+  data allowed = Native.call("legura.auth.allows", { role: user["role"], capability: "administer" })
+  require allowed else forbidden()
   return user
 }
 export query loadAdminMediaAvailability() -> Bool {

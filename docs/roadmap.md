@@ -141,6 +141,11 @@ Public registration and Subscriber accounts are intentionally unavailable.
 The admin-only Users directory lists accounts and opens read-only details.
 Role assignment and invitations are separate work: protect the installation
 owner and test Editor/Subscriber access before exposing account writes.
+The server-side policy now defines Admin (administration, users, content),
+Editor (content only), and Subscriber (no back-office capabilities). It denies
+unknown roles and capabilities. Only the existing administrator and Users
+guards use it so far; the schema still allows admin accounts only. Do not
+enable additional roles until the content guards and navigation are wired.
 
 The administration overview shows guarded database-backed total/draft/published
 counts and links to those lists, plus a first-draft prompt for empty installations.

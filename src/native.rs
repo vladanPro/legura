@@ -2,6 +2,7 @@
 use axonyx_runtime::native::{AxNativeError, AxNativeRegistry};
 
 pub fn register(registry: &mut AxNativeRegistry) -> Result<(), AxNativeError> {
+    legura::authorization::register(registry)?;
     legura::media_config::register_availability(
         registry,
         &axonyx_runtime::backend::AxEnv::from_env(),
