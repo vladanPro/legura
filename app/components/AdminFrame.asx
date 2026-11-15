@@ -26,6 +26,7 @@ component AdminFrame(section = "overview") {
             <SidebarItem href="/">View public site</SidebarItem>
           </SidebarSection>
           <SidebarSection title="Account">
+            <SidebarItem href="/admin/users" active={section == "users"}>Users</SidebarItem>
             <SidebarItem href="/admin/profile" active={section == "profile"}>Profile</SidebarItem>
           </SidebarSection>
         </nav>

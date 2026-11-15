@@ -89,6 +89,22 @@ def verify_trash_counts(admin, posts, pages):
         assert re.search(rb'<a[^>]*' + re.escape(link.encode()) + rb'[^>]*>\s*' + label.encode() + rb'\s*</a>', overview), label
 
 
+def verify_users(admin):
+    guest = fixture.Client()
+    route = "/admin/users"
+    guest.request(route, 403)
+    listing, _ = admin.request(route, 200)
+    assert b"User accounts" in listing and b"Actions" in listing
+    assert fixture.EMAIL.encode() in listing and b">admin</" in listing
+    match = re.search(rb'href="(/admin/users/[0-9a-f-]{36})"', listing)
+    assert match, "Missing account details action"
+    detail = match[1].decode()
+    guest.request(detail, 403)
+    account, _ = admin.request(detail, 200)
+    assert b"Back to users" in account and fixture.EMAIL.encode() in account
+    admin.request(route + "/missing", 404)
+
+
 def verify_page_trash(admin, database):
     guest = fixture.Client()
     route = "/admin/pages"
@@ -266,6 +282,7 @@ def rehearse(prior_package, candidate_package, root, port):
         assert b'type="file"' in library
         fixture.Client().request("/admin/media", 403)
         fixture.verify_pages(admin)
+        verify_users(admin)
         fixture.verify_navigation(admin)
         fixture.verify_public_interface(admin)
         fixture.verify_languages(admin)
