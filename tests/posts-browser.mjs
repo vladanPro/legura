@@ -152,12 +152,20 @@ async function checkPostsTable(title) {
   await page.setViewportSize({ width: 320, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Table expands the page on mobile');
   assert.ok(await region.evaluate(node => node.scrollWidth > node.clientWidth), 'Wide table must scroll inside its own region');
+  await page.bringToFront();
+  await region.scrollIntoViewIfNeeded();
   await region.focus();
-  await page.keyboard.press('ArrowRight');
+  const start = await region.evaluate(node => {
+    node.scrollLeft = 0;
+    return { focused: node === document.activeElement, offset: node.scrollLeft };
+  });
+  assert.ok(start.focused, 'The table scroll region must accept focus');
+  await region.press('ArrowRight');
   // Poll in the runner so no-JS coverage does not depend on browser timers.
   let scrolled = false;
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    scrolled = await region.evaluate(node => node.scrollLeft > 0);
+  const deadline = Date.now() + 3000;
+  while (Date.now() < deadline) {
+    scrolled = await region.evaluate((node, offset) => node.scrollLeft > offset, start.offset);
     if (scrolled) break;
     await new Promise(resolve => setTimeout(resolve, 50));
   }
