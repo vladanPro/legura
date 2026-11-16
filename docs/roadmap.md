@@ -141,6 +141,17 @@ Public registration and Subscriber accounts are intentionally unavailable.
 The admin-only Users directory lists accounts and opens read-only details.
 Role assignment and invitations are separate work: protect the installation
 owner and test Editor/Subscriber access before exposing account writes.
+The server-side policy now defines Admin (administration, users, content),
+Editor (content only), and Subscriber (no back-office capabilities). It denies
+unknown roles and capabilities. Posts and Pages now check content capability
+for listing, creation, editing, preview, Trash and restore. Permanent deletion,
+media administration, user management, and site settings stay admin-only.
+Login routes Admin to the dashboard, Editor to Posts, and Subscriber to the
+public site. Editors see only content links and sign-out in their admin menu.
+The account schema accepts Admin, Editor, and Subscriber and protects the
+installation owner from demotion or deletion. The Users UI does not create
+accounts yet: administrator-issued invitations and single-use redemption
+are the next steps. Public registration remains disabled.
 
 The administration overview shows guarded database-backed total/draft/published
 counts and links to those lists, plus a first-draft prompt for empty installations.

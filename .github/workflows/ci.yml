@@ -58,6 +58,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all -- --check
       - run: cargo test --locked --lib
+      - run: cargo test --locked --test account-roles
       - run: cargo test --locked --test media-check
       - run: cargo test --locked --test private-media-read
       - run: cargo test --locked --test post-images
@@ -236,7 +237,7 @@ jobs:
           compression-level: 0
   compiled-auth:
     name: Registry Compiled Auth
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
@@ -257,6 +258,44 @@ jobs:
         run: |
           cargo fmt --manifest-path tests/native-content/Cargo.toml -- --check
           cargo run --locked --manifest-path tests/native-content/Cargo.toml
+      - name: Verify sign-in, Posts keyboard scrolling and sign-out with Aegis
+        shell: pwsh
+        env:
+          AEGIS_WEBDRIVER_URL: http://127.0.0.1:9515
+          AEGIS_TEST_BROWSER: chrome
+        run: |
+          $driverPath = Join-Path $env:CHROMEWEBDRIVER 'chromedriver'
+          & $driverPath --version
+          & google-chrome --version
+          $driver = Start-Process -FilePath $driverPath -ArgumentList '--port=9515' -PassThru
+          try {
+            $ready = $false
+            for ($attempt = 0; $attempt -lt 30; $attempt++) {
+              if ($driver.HasExited) { throw 'ChromeDriver exited before readiness' }
+              try {
+                if ((Invoke-RestMethod "$env:AEGIS_WEBDRIVER_URL/status" -TimeoutSec 1).value.ready) {
+                  $ready = $true
+                  break
+                }
+              } catch { Start-Sleep -Milliseconds 200 }
+            }
+            if (!$ready) { throw 'ChromeDriver did not become ready' }
+            $sessions = "$env:AEGIS_WEBDRIVER_URL/session"
+            $capabilities = @{ capabilities = @{ alwaysMatch = @{
+              browserName = 'chrome'
+              'goog:chromeOptions' = @{ args = @('--headless=new') }
+            } } } | ConvertTo-Json -Depth 6 -Compress
+            try {
+              $probe = Invoke-RestMethod $sessions -Method Post -ContentType 'application/json' -Body $capabilities -TimeoutSec 25
+            } catch {
+              throw "Chrome headless session preflight failed: $($_.ErrorDetails.Message ?? $_.Exception.Message)"
+            }
+            if (!$probe.value.sessionId) { throw 'ChromeDriver preflight did not return a session ID' }
+            Invoke-RestMethod "$sessions/$($probe.value.sessionId)" -Method Delete -TimeoutSec 10 | Out-Null
+            ./scripts/smoke-auth.ps1 -PostsTableAegis -Port 3941
+          } finally {
+            if (!$driver.HasExited) { Stop-Process -Id $driver.Id }
+          }
       - name: Verify isolated compiled setup and identity
         shell: pwsh
         run: ./scripts/smoke-auth.ps1 -Port 3941 -Posts -Theme -BackupRestore
