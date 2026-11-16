@@ -3,7 +3,8 @@ name: Legura Pilot CI
 on:
   pull_request:
   push:
-    branches: [main, dev]
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -15,6 +16,7 @@ concurrency:
 jobs:
   media-upload-http:
     name: Isolated Media Upload HTTP
+    if: github.base_ref == 'main' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -44,6 +46,7 @@ jobs:
         run: ./scripts/smoke-auth.ps1 -Media -ScopedMedia -MediaBrowser -ToolPath (Get-Command cargo-axonyx).Source -Port 3963
   media-storage:
     name: Local Media Storage (${{ matrix.os }})
+    if: github.event_name != 'push'
     strategy:
       fail-fast: false
       matrix:
@@ -68,6 +71,7 @@ jobs:
       - run: cargo clippy --locked --lib --tests -- -D warnings
   source-format:
     name: Axonyx Source Format
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -80,6 +84,7 @@ jobs:
         run: ./scripts/test-format-hook.ps1 -FormatterPath (Get-Command cargo-ax).Source
   native-editor-retry:
     name: Native Editor Retry
+    if: github.base_ref == 'main' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -106,6 +111,7 @@ jobs:
           ./scripts/smoke-auth.ps1 -PostEditor -Mode native -Port 3948
   native-content-http:
     name: Isolated Native Content HTTP
+    if: github.base_ref == 'main' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -143,6 +149,7 @@ jobs:
           ./scripts/smoke-auth.ps1 -ActiveEditor -Mode native -Port 3946
   native-package:
     name: Native Package Archive
+    if: github.base_ref == 'main' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -204,6 +211,7 @@ jobs:
           compression-level: 0
   windows-native-package:
     name: Windows Native ZIP
+    if: github.base_ref == 'main' || github.event_name == 'workflow_dispatch'
     runs-on: windows-2022
     timeout-minutes: 45
     steps:
@@ -236,7 +244,8 @@ jobs:
           retention-days: 7
           compression-level: 0
   compiled-auth:
-    name: Registry Compiled Auth
+    name: Full Registry Compiled Auth
+    if: github.base_ref == 'main' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
@@ -320,3 +329,63 @@ jobs:
         run: |
           ./scripts/smoke-auth.ps1 -Port 3941 -Posts -Mode javascript
           ./scripts/smoke-auth.ps1 -Port 3941 -Posts -Mode native
+  main-smoke:
+    name: Main HTTP Smoke
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: Swatinem/rust-cache@v2
+      - name: Install published CLI
+        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
+      - name: Smoke-test compiled setup and login
+        shell: pwsh
+        run: ./scripts/smoke-auth.ps1 -Port 3941
+  quality-gate:
+    # Keep the context expected by the dev and main branch rules.
+    name: Registry Compiled Auth
+    if: always()
+    needs:
+      - media-upload-http
+      - media-storage
+      - source-format
+      - native-editor-retry
+      - native-content-http
+      - native-package
+      - windows-native-package
+      - compiled-auth
+      - main-smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    env:
+      CI_TIER: ${{ (github.base_ref == 'main' || github.event_name == 'workflow_dispatch') && 'full' || (github.event_name == 'push' && 'smoke' || 'fast') }}
+      SOURCE_FORMAT: ${{ needs.source-format.result }}
+      MEDIA_STORAGE: ${{ needs.media-storage.result }}
+      MEDIA_UPLOAD: ${{ needs.media-upload-http.result }}
+      EDITOR_RETRY: ${{ needs.native-editor-retry.result }}
+      NATIVE_CONTENT: ${{ needs.native-content-http.result }}
+      NATIVE_PACKAGE: ${{ needs.native-package.result }}
+      WINDOWS_PACKAGE: ${{ needs.windows-native-package.result }}
+      COMPILED_AUTH: ${{ needs.compiled-auth.result }}
+      MAIN_SMOKE: ${{ needs.main-smoke.result }}
+    steps:
+      - name: Require every check in the selected tier to pass
+        shell: bash
+        run: |
+          case "$CI_TIER" in
+            fast) checks=(SOURCE_FORMAT MEDIA_STORAGE) ;;
+            full) checks=(SOURCE_FORMAT MEDIA_STORAGE MEDIA_UPLOAD EDITOR_RETRY NATIVE_CONTENT NATIVE_PACKAGE WINDOWS_PACKAGE COMPILED_AUTH) ;;
+            smoke) checks=(MAIN_SMOKE) ;;
+            *) echo "Unknown CI tier: $CI_TIER"; exit 1 ;;
+          esac
+          failed=0
+          for check in "${checks[@]}"; do
+            printf '%s: %s\n' "$check" "${!check}"
+            if [[ "${!check}" != success ]]; then failed=1; fi
+          done
+          exit "$failed"
