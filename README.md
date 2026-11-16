@@ -233,4 +233,11 @@ Feature branches target `dev`. Completed releases move from `dev` to `main`
 through a pull request. Only documented, tested behavior should be described as
 available. Package names and commands in planning documents are not implemented.
 
+Pull requests to development branches run formatting and Rust tests on Linux
+and Windows. Pull requests to `main` also run the full browser, native content,
+and packaging suites. A push to `main` runs only the compiled HTTP smoke on
+the landed commit. Use the workflow's manual trigger for a full run on demand.
+The required GitHub check is still named `Registry Compiled Auth`; it now
+reports whether all jobs required for that event passed.
+
 License selection remains pending; public visibility alone is not a license.
