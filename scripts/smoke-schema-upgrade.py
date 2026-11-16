@@ -89,6 +89,22 @@ def verify_trash_counts(admin, posts, pages):
         assert re.search(rb'<a[^>]*' + re.escape(link.encode()) + rb'[^>]*>\s*' + label.encode() + rb'\s*</a>', overview), label
 
 
+def verify_users(admin):
+    guest = fixture.Client()
+    route = "/admin/users"
+    guest.request(route, 403)
+    listing, _ = admin.request(route, 200)
+    assert b"User accounts" in listing and b"Actions" in listing
+    assert fixture.EMAIL.encode() in listing and b">admin</" in listing
+    match = re.search(rb'href="(/admin/users/[0-9a-f-]{36})"', listing)
+    assert match, "Missing account details action"
+    detail = match[1].decode()
+    guest.request(detail, 403)
+    account, _ = admin.request(detail, 200)
+    assert b"Back to users" in account and fixture.EMAIL.encode() in account
+    admin.request(route + "/missing", 404)
+
+
 def verify_page_trash(admin, database):
     guest = fixture.Client()
     route = "/admin/pages"
@@ -114,6 +130,10 @@ def verify_page_trash(admin, database):
     assert edit.encode() not in active
     trash, _ = admin.request(route + "?status=trash", 200)
     assert delete.encode() in trash and b"Restore as draft" in trash
+    matched, _ = admin.request(route + "?status=trash&q=about", 200)
+    assert delete.encode() in matched
+    missing, _ = admin.request(route + "?status=trash&q=read", 200)
+    assert b"No matching pages" in missing and delete.encode() not in missing
     admin.request(edit, 404)
     admin.request(edit.removesuffix("edit") + "preview", 404)
     admin.action(edit, "UpdatePage", 404, fields=update)
@@ -146,6 +166,75 @@ def verify_page_trash(admin, database):
     with closing(sqlite3.connect(database)) as db:
         remaining, = db.execute("SELECT COUNT(*) FROM legura_menu_items WHERE page_id = ?", (fields["id"],)).fetchone()
         assert remaining == 0, "A permanently deleted page left menu references"
+
+
+def verify_page_search(admin):
+    route = "/admin/pages"
+    match, _ = admin.request(route + "?q=%20aBoUt%20", 200)
+    assert b"About us" in match and b"Read me" not in match
+    missing, _ = admin.request(route + "?q=%25", 200)
+    assert b"No matching pages" in missing
+    for number in range(1, 12):
+        admin.action(route + "/new", "CreatePage", fields={
+            "title": f"Search fixture {number:02}",
+            "slug": f"search-fixture-{number:02}",
+            "body": "Search result",
+        })
+    first, _ = admin.request(route + "?q=search+fixture", 200)
+    assert b"Search fixture 01" in first and b"Search fixture 11" not in first
+    assert b"Next page" in first and b'value="search fixture"' in first
+    second, _ = admin.request(route + "?q=search+fixture&page=2", 200)
+    assert b"Search fixture 11" in second and b"Search fixture 01" not in second
+    assert b"Previous page" in second and b"Next page" not in second
+
+
+def verify_content_permissions(database):
+    with closing(sqlite3.connect(database)) as db, db:
+        password_hash, = db.execute("SELECT password_hash FROM legura_credentials WHERE email = ?", (fixture.EMAIL,)).fetchone()
+        for role in ("editor", "subscriber"):
+            email = f"{role}@example.test"
+            db.execute("INSERT INTO legura_users (id, email, role) VALUES (?, ?, ?)", (role, email, role))
+            db.execute("INSERT INTO legura_credentials (user_id, email, password_hash) VALUES (?, ?, ?)", (role, email, password_hash))
+
+    def sign_in(role, landing):
+        client = fixture.Client()
+        _, headers = client.action("/login", "SignIn", fields={"email": f"{role}@example.test", "password": fixture.PASSWORD})
+        assert headers["Location"] == landing
+        client.request(landing, 200)
+        return client
+
+    editor = sign_in("editor", "/admin/posts")
+    subscriber = sign_in("subscriber", "/")
+    for route in ("/admin/settings", "/admin/users", "/admin/media"):
+        editor.request(route, 403)
+    for route in ("/admin/posts", "/admin/posts/new", "/admin/pages", "/admin/pages/new"):
+        page, _ = editor.request(route, 200)
+        nav = re.search(rb'<nav[^>]*aria-label="Administration"[^>]*>(.*?)</nav>', page, re.S)
+        assert nav, route
+        assert b'href="/admin/posts"' in nav[1] and b'href="/admin/pages"' in nav[1]
+        for admin_link in (b"/admin", b"/admin/media", b"/admin/settings", b"/admin/users", b"/admin/profile"):
+            assert b'href="' + admin_link + b'"' not in nav[1], (route, admin_link)
+        assert b"Sign out" in nav[1] and b"name=SignOut" in nav[1]
+        subscriber.request(route, 403)
+    fields = {"title": "Editor permission proof", "slug": "editor-proof", "body": "Test content", "status": "draft"}
+    subscriber.action("/admin/posts/new", "CreatePost", 403, fields=fields)
+    editor.action("/admin/posts/new", "CreatePost", fields=fields)
+    with closing(sqlite3.connect(database)) as db:
+        post_id, author = db.execute("SELECT id, created_by FROM legura_posts WHERE slug = 'editor-proof'").fetchone()
+    assert author == "editor"
+    route = f"/admin/posts/{post_id}"
+    edit, _ = editor.request(route + "/edit", 200)
+    assert b"Choose featured image" not in edit
+    editor.request(route + "/preview", 200)
+    editor.request(route + "/image", 403)
+    editor.action(route + "/edit", "UpdatePost", fields=dict(fields, id=post_id, title="Edited by the editor"))
+    editor.action("/admin/posts", "TrashPost", fields={"id": post_id})
+    trash, _ = editor.request("/admin/posts?status=trash&q=Edited", 200)
+    assert b"Restore as draft" in trash and b"Delete permanently" not in trash
+    editor.action(route + "/delete", "DeletePost", 403, fields={"id": post_id, "confirmSlug": "editor-proof"})
+    editor.action("/admin/posts", "RestorePost", fields={"id": post_id})
+    editor.action("/admin", "SignOut")
+    editor.request("/admin/posts", 403)
 
 
 def verify_post_creation(admin, database):
@@ -223,7 +312,7 @@ def rehearse(prior_package, candidate_package, root, port):
 
     workspace = root / "rehearsal"
     report = json.loads(fixture.maintenance(candidate, "upgrade-rehearse", archive, workspace, capture=True))
-    assert report["migrations_applied"] == 10 and report["archive"]["files"] == 2, report
+    assert report["migrations_applied"] == 11 and report["archive"]["files"] == 2, report
     migrated = workspace / "rehearsed.legura"
     recovery = workspace / "verified-recovery"
     fixture.maintenance(candidate, "upgrade-preflight", candidate, migrated, recovery)
@@ -242,6 +331,7 @@ def rehearse(prior_package, candidate_package, root, port):
         assert b'type="file"' in library
         fixture.Client().request("/admin/media", 403)
         fixture.verify_pages(admin)
+        verify_users(admin)
         fixture.verify_navigation(admin)
         fixture.verify_public_interface(admin)
         fixture.verify_languages(admin)
@@ -278,6 +368,7 @@ def rehearse(prior_package, candidate_package, root, port):
         editor, _ = admin.request(f"/admin/posts/{post_id}/edit", 200)
         assert f'/api/media/{image_id}'.encode() in editor
         assert b"Preserve this image" in editor
+        verify_page_search(admin)
         verify_page_trash(admin, recovery / "database.sqlite")
         verify_post_creation(admin, recovery / "database.sqlite")
         verify_general_settings(admin)
@@ -285,6 +376,7 @@ def rehearse(prior_package, candidate_package, root, port):
         settings_page, _ = login().request("/admin/settings", 200)
         assert b"Editorial Test" in settings_page
         assert b"contact@example.test" in settings_page and b"Europe/Belgrade" in settings_page
+        verify_content_permissions(recovery / "database.sqlite")
     assert hashes(original) == before, "Rehearsal changed the stopped source or backup"
 
 
@@ -301,4 +393,4 @@ if __name__ == "__main__":
     fixture.BASE = f"http://127.0.0.1:{args.port}"
     with TemporaryDirectory(prefix="legura-schema-upgrade-") as scratch:
         rehearse(args.prior.resolve(strict=True), args.candidate.resolve(strict=True), Path(scratch), args.port)
-    print("Schema upgrade passed: ten migrations, including page Trash, post attribution, and general settings.")
+    print("Schema upgrade passed: eleven migrations, including account roles.")

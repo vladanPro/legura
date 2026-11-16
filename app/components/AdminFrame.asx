@@ -4,7 +4,7 @@ import { SidebarHeader } from "@axonyx/ui/foundry/SidebarHeader"
 import { SidebarSection } from "@axonyx/ui/foundry/SidebarSection"
 import { SidebarItem } from "@axonyx/ui/foundry/SidebarItem"
 
-component AdminFrame(section = "overview") {
+component AdminFrame(section = "overview", showAdmin = true) {
   return ASX {
     <AppShell class="legura-admin-shell" mode="embedded" railWidth="sm">
       <Sidebar slot="sidebar" label="Administration navigation" collapsible="true" open="true">
@@ -12,22 +12,37 @@ component AdminFrame(section = "overview") {
           <strong>Workspace</strong>
         </SidebarHeader>
         <nav class="legura-admin-nav" aria-label="Administration">
-          <SidebarItem href="/admin" active={section == "overview"}>Overview</SidebarItem>
+          <If when={showAdmin}>
+            <SidebarItem href="/admin" active={section == "overview"}>Overview</SidebarItem>
+          </If>
           <SidebarSection title="Content">
             <SidebarItem href="/admin/posts" active={section == "posts"}>Manage posts</SidebarItem>
             <SidebarItem href="/admin/pages" active={section == "pages"}>Pages</SidebarItem>
-            <SidebarItem href="/admin/media" active={section == "media"}>Media</SidebarItem>
+            <If when={showAdmin}>
+              <SidebarItem href="/admin/media" active={section == "media"}>Media</SidebarItem>
+            </If>
           </SidebarSection>
-          <SidebarSection title="Website">
-            <SidebarItem href="/admin/settings" active={section == "settings"}>Settings</SidebarItem>
-            <SidebarItem href="/admin/appearance" active={section == "appearance"}>Appearance</SidebarItem>
-            <SidebarItem href="/admin/navigation" active={section == "navigation"}>Navigation</SidebarItem>
-            <SidebarItem href="/admin/language" active={section == "language"}>Language</SidebarItem>
-            <SidebarItem href="/">View public site</SidebarItem>
-          </SidebarSection>
-          <SidebarSection title="Account">
-            <SidebarItem href="/admin/profile" active={section == "profile"}>Profile</SidebarItem>
-          </SidebarSection>
+          <If when={showAdmin}>
+            <SidebarSection title="Website">
+              <SidebarItem href="/admin/settings" active={section == "settings"}>Settings</SidebarItem>
+              <SidebarItem href="/admin/appearance" active={section == "appearance"}>Appearance</SidebarItem>
+              <SidebarItem href="/admin/navigation" active={section == "navigation"}>Navigation</SidebarItem>
+              <SidebarItem href="/admin/language" active={section == "language"}>Language</SidebarItem>
+              <SidebarItem href="/">View public site</SidebarItem>
+            </SidebarSection>
+            <SidebarSection title="Account">
+              <SidebarItem href="/admin/users" active={section == "users"}>Users</SidebarItem>
+              <SidebarItem href="/admin/profile" active={section == "profile"}>Profile</SidebarItem>
+            </SidebarSection>
+          </If>
+          <If when={!showAdmin}>
+            <SidebarSection title="Account">
+              <SidebarItem href="/">View public site</SidebarItem>
+              <form method="post" action={action SignOut}>
+                <button type="submit" class="ax-button" data-variant="secondary">Sign out</button>
+              </form>
+            </SidebarSection>
+          </If>
         </nav>
       </Sidebar>
       <div class="ax-layout-main legura-admin-content">

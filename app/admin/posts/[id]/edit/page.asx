@@ -4,8 +4,7 @@ import { AdminFrame } from "@/components/AdminFrame"
 
 page EditPost() {
   data post: PostForEditor = loadEditablePost(params.id)
-  data mediaAvailable: Bool = loadAdminMediaAvailability()
-  data image: PostImageTarget = loadPostImageTarget(params.id)
+  data showAdmin: Bool = loadContentAdminControls()
   return ASX {
     <Head>
       <Link
@@ -14,7 +13,7 @@ page EditPost() {
       />
       <Script src="/content-editor/host.js" type="module" />
     </Head>
-    <AdminFrame section="posts">
+    <AdminFrame section="posts" showAdmin={showAdmin}>
       <Card title="Edit post">
         <form
           method="post"
@@ -57,17 +56,17 @@ page EditPost() {
           <button type="submit" class="ax-button" data-variant="secondary">Move to Trash</button>
         </form>
       </Card>
-      <If when={mediaAvailable}>
+      <If when={post.media_available}>
         <Card title="Featured image">
-          <If when={image.image_id != ""}>
+          <If when={post.image_id != ""}>
             <img
               class="legura-media-preview"
-              src={"/api/media/" + image.image_id}
-              alt={image.image_alt}
+              src={"/api/media/" + post.image_id}
+              alt={post.image_alt}
               data-post-image-preview="true"
             />
           </If>
-          <If when={image.image_id == ""}>
+          <If when={post.image_id == ""}>
             <p>No featured image selected.</p>
           </If>
           <a class="ax-button" data-variant="secondary" href={"/admin/posts/" + post.id + "/image"}>Choose featured image</a>

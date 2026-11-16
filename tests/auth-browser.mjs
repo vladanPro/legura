@@ -32,6 +32,12 @@ if (mode === 'javascript') {
 }
 const errors = [];
 const responses = [];
+let actionRequests = 0;
+page.on("request", (request) => {
+  if (request.method() === "POST" && new URL(request.url()).pathname === "/__axonyx/action") {
+    actionRequests += 1;
+  }
+});
 page.on("response", (response) => {
   const route = new URL(response.url());
   responses.push({ path: route.pathname, status: response.status(), type: response.headers()["content-type"] });
@@ -129,7 +135,7 @@ async function checkKeyboardOrder(fields, button) {
   }), "Keyboard submit focus is not visible");
 }
 
-async function checkMobile(name) {
+async function captureMobile(name) {
   for (const width of [320, 390]) {
     await page.setViewportSize({ width, height: 844 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Horizontal overflow at ${width}px`);
@@ -139,10 +145,6 @@ async function checkMobile(name) {
     assert.ok(await page.locator("#email").evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize) >= 16), "Mobile input text is smaller than 16px");
     await page.screenshot({ path: resolve(results, `${name}-${width}.png`), fullPage: true });
   }
-}
-
-function actionCount() {
-  return responses.filter((response) => response.path === "/__axonyx/action").length;
 }
 
 async function checkAppearance() {
@@ -203,11 +205,11 @@ try {
   await page.keyboard.press("Enter");
   assert.equal(await page.locator("#main-content").evaluate((node) => node === document.activeElement), true);
   await checkKeyboardOrder(["siteName", "email", "password", "setupToken"], "Create installation");
-  const beforeMissing = actionCount();
+  const beforeMissing = actionRequests;
   await page.keyboard.press("Enter");
   assert.equal(await page.locator("#siteName").evaluate((node) => node === document.activeElement && node.validity.valueMissing), true);
-  assert.equal(actionCount(), beforeMissing, "Empty setup sent a request");
-  await checkMobile("setup");
+  assert.equal(actionRequests, beforeMissing, "Empty setup sent a request");
+  await captureMobile("setup");
   await page.setViewportSize({ width: 1280, height: 900 });
   assert.ok(!(await page.content()).includes(setupToken), "Owner token exposed in markup");
   await page.screenshot({ path: resolve(results, `setup-${mode}-desktop.png`), fullPage: true });
@@ -229,7 +231,7 @@ try {
     assert.equal(await page.getByLabel("Password", { exact: true }).inputValue(), "");
     assert.equal(await page.getByLabel("Setup token", { exact: true }).inputValue(), "");
   }
-  await checkMobile("setup-validation");
+  await captureMobile("setup-validation");
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByLabel("Setup token", { exact: true }).fill(setupToken);
   await submitSuccess("Create installation");
@@ -296,30 +298,31 @@ try {
   await navigate("/login");
   await checkForm("Sign in to Legura", ["email", "password"]);
   assert.equal(await page.locator("#password").getAttribute("autocomplete"), "current-password");
-  await checkKeyboardOrder(["email", "password"], "Sign in");
-  const beforeMissingLogin = actionCount();
+  const signIn = page.getByRole("button", { name: "Sign in", exact: true });
+  const loginEmail = page.getByLabel("Email", { exact: true });
+  const beforeMissingLogin = actionRequests;
+  await signIn.focus();
   await page.keyboard.press("Enter");
-  assert.equal(await page.locator("#email").evaluate((node) => node === document.activeElement && node.validity.valueMissing), true);
-  assert.equal(actionCount(), beforeMissingLogin, "Empty login sent a request");
-  await checkMobile("login");
-  await page.getByLabel("Email", { exact: true }).fill("not-an-email");
+  // Observe requests through the next browser round trip, not just key dispatch.
+  await loginEmail.focus();
+  assert.equal(actionRequests, beforeMissingLogin, "Empty login sent a request");
+  await loginEmail.fill("not-an-email");
   await page.getByLabel("Password", { exact: true }).fill("wrong-password");
-  const beforeBadEmail = actionCount();
-  await page.getByRole("button", { name: "Sign in", exact: true }).focus();
+  const beforeBadEmail = actionRequests;
+  await signIn.focus();
   await page.keyboard.press("Enter");
-  assert.equal(await page.locator("#email").evaluate((node) => node === document.activeElement && node.validity.typeMismatch), true);
-  assert.equal(actionCount(), beforeBadEmail, "Malformed login email bypassed browser validation");
-  await page.getByLabel("Email", { exact: true }).fill(email);
+  await loginEmail.focus();
+  assert.equal(actionRequests, beforeBadEmail, "Malformed login email sent a request");
+  await loginEmail.fill(email);
   await page.getByLabel("Password", { exact: true }).fill("wrong-password");
   await submitValidation("Sign in", "email", "Email or password is incorrect.");
-  assert.equal(await page.getByLabel("Email", { exact: true }).inputValue(), email);
-  await checkMobile("login-validation");
+  assert.equal(await loginEmail.inputValue(), email);
   await page.getByLabel("Password", { exact: true }).fill(password);
   await submitSuccess("Sign in");
   await page.waitForURL(`${baseUrl}/admin`);
   await page.locator("p").filter({ hasText: email }).waitFor();
   assert.deepEqual(errors, [], "Unexpected browser errors");
-  console.log(`Legura browser auth passed (${mode}): keyboard setup/login, linked validation, skip navigation, 320/390px forms, private session, reload and logout.`);
+  console.log(`Legura browser auth passed (${mode}): keyboard setup, login HTTP checks, linked validation, skip navigation, 320/390px forms, private session, reload and logout.`);
   console.log(`QA screenshots: ${results}`);
 } catch (error) {
   console.error({ mode, path: new URL(page.url()).pathname, headings: await page.locator("h1").allTextContents(), responses, errors });

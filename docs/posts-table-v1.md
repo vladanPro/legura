@@ -26,10 +26,34 @@ Use disposable SQLite fixtures, never an operator installation:
 ./scripts/smoke-auth.ps1 -Posts -Mode native -Port 3961
 ```
 
-These tests cover CRUD, administrator guards, title/status filters, page limits,
-query normalization and responsive table scrolling. They create their own
-temporary configuration and database. Browser QA uses the existing test-only
-Playwright dependency; no new production dependency is added.
+These Playwright tests cover CRUD, administrator guards, title/status filters,
+page limits, query normalization and table screenshots. They create their own
+temporary configuration and database. No production dependency is added.
+
+To run the sign-in, mobile keyboard-scroll and sign-out smoke without Node, start a local
+ChromeDriver or EdgeDriver that matches the installed browser:
+
+```powershell
+$env:AEGIS_WEBDRIVER_URL = "http://127.0.0.1:9515"
+# For EdgeDriver only: $env:AEGIS_TEST_BROWSER = "edge"
+./scripts/smoke-auth.ps1 -PostsTableAegis -Port 3961
+```
+
+The smoke runner compiles the actual CMS and seeds a draft in a fresh SQLite
+database. With page scripts on or off, Aegis checks keyboard focus order and
+native validation for empty or malformed email. It checks that a wrong password
+shows an accessible error linked to the email field, then signs in without
+retyping the email. At 320 and 390 px the login form must fit the viewport,
+with 44 px controls and at least 16 px email text, before and after rejection.
+The smoke prints the temporary folder containing full-page PNGs for each login
+state, width and browser mode. Aegis is the only runner that captures these
+login screenshots; Playwright still captures setup and admin. CI does not
+upload these as artifacts.
+The smoke also checks that the table fits the page at 320 px and
+scrolls within its focusable region, then signs out and checks that the
+dashboard is blocked.
+Playwright still covers broader auth behavior, the remaining Posts scenarios
+and desktop and mobile screenshots.
 
 This is a package adoption and regression-proof step, not a new grid engine,
 interactive server sorting, operator upgrade or CMS production release.

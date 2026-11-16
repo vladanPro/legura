@@ -1,0 +1,35 @@
+export type UserAccount {
+  id: String
+  email: String
+  role: String
+}
+
+export type UserListing {
+  users: UserAccount[]
+  page: Number
+  total: Number
+}
+
+export query loadUsers(page: String = "1") -> UserListing {
+  require Auth.subject else forbidden()
+  data administrator = db.legura_users.where({ id: Auth.subject }).first()
+  require administrator else forbidden()
+  data allowed = Native.call("legura.auth.allows", { role: administrator["role"], capability: "manage_users" })
+  require allowed else forbidden()
+  data filters = Native.call("legura.posts.filters", { status: "all", page: input.page, search: "" })
+  data counts = db.query("SELECT COUNT(*) AS total FROM legura_users")
+  data pagination = Native.call("legura.pagination", { total: counts[0]["total"], requested_page: filters.requested_page, page_size: 10 })
+  data users = db.query("SELECT id, email, role FROM legura_users ORDER BY email COLLATE NOCASE, id LIMIT ? OFFSET ?", pagination.page_size, pagination.offset)
+  return { users: users, page: pagination.page, total: counts[0]["total"] }
+}
+
+export query loadUserAccount(id: String) -> UserAccount {
+  require Auth.subject else forbidden()
+  data administrator = db.legura_users.where({ id: Auth.subject }).first()
+  require administrator else forbidden()
+  data allowed = Native.call("legura.auth.allows", { role: administrator["role"], capability: "manage_users" })
+  require allowed else forbidden()
+  data user = db.legura_users.where({ id: input.id }).first()
+  require user else notFound()
+  return { id: user["id"], email: user["email"], role: user["role"] }
+}

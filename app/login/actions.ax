@@ -6,6 +6,11 @@ type Credential {
 query loadCredential(email: String) -> Credential? {
   return db.legura_credentials.where({ email: input.email }).first()
 }
+query loadLoginDestination(user_id: String) -> String {
+  data rows = db.query("SELECT COALESCE((SELECT role FROM legura_users WHERE id = ?), '') AS role", input.user_id)
+  data destination = Native.call("legura.auth.landing", rows[0]["role"])
+  return destination
+}
 action SignIn(email: String, password: String) {
   before Login.throttle(Login.accountKey(input.email), 5, 60)
   before Login.throttle("legura:login:global", 60, 60)
@@ -13,6 +18,8 @@ action SignIn(email: String, password: String) {
   data verified = Password.verifyOptional(input.password, credential?.password_hash)
   require verified else invalid({ email: "Email or password is incorrect." })
   require credential else invalid({ email: "Email or password is incorrect." })
+  data destination = loadLoginDestination(credential.user_id)
+  require destination != "" else invalid({ email: "Email or password is incorrect." })
   Session.create(credential.user_id, {})
-  return redirect("/admin")
+  return redirect(destination)
 }

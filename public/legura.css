@@ -76,6 +76,8 @@
 .legura-post-pagination a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 .legura-post-pagination .ax-button { min-height: 2.75rem; }
 .legura-posts-table { margin-top: 1.5rem; max-width: 100%; }
+.legura-users-table .ax-table { min-width: 24rem; }
+.legura-users-table tbody th { overflow-wrap: anywhere; text-transform: none; }
 .legura-posts-table .ax-table { min-width: 44rem; }
 .legura-posts-table tbody th { font-size: 1rem; font-weight: 400; letter-spacing: normal; text-transform: none; background: transparent; }
 .legura-posts-table tbody tr:last-child th { border-bottom: 0; }

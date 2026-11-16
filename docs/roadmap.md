@@ -128,6 +128,8 @@ write operations private.
 Administration listing adds status filters, bounded ten-row SQLite pagination
 and literal title search through native GET forms. See posts-listing-v0.md for
 the registry tooling requirement, acceptance coverage and Unicode/adapter limits.
+Pages and Page Trash also support literal title search and preserve the search
+and collection when paging through results.
 New posts record their creator and UTC creation time. The admin list shows both;
 legacy rows stay unknown, and account email is not sent to public pages.
 
@@ -136,6 +138,20 @@ installation/public addresses, the administrative contact, and content language.
 The Posts list renders creation timestamps in the chosen time zone and formats,
 while the stored timestamp remains UTC. Week start is saved for future calendars.
 Public registration and Subscriber accounts are intentionally unavailable.
+The admin-only Users directory lists accounts and opens read-only details.
+Role assignment and invitations are separate work: protect the installation
+owner and test Editor/Subscriber access before exposing account writes.
+The server-side policy now defines Admin (administration, users, content),
+Editor (content only), and Subscriber (no back-office capabilities). It denies
+unknown roles and capabilities. Posts and Pages now check content capability
+for listing, creation, editing, preview, Trash and restore. Permanent deletion,
+media administration, user management, and site settings stay admin-only.
+Login routes Admin to the dashboard, Editor to Posts, and Subscriber to the
+public site. Editors see only content links and sign-out in their admin menu.
+The account schema accepts Admin, Editor, and Subscriber and protects the
+installation owner from demotion or deletion. The Users UI does not create
+accounts yet: administrator-issued invitations and single-use redemption
+are the next steps. Public registration remains disabled.
 
 The administration overview shows guarded database-backed total/draft/published
 counts and links to those lists, plus a first-draft prompt for empty installations.
