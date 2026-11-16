@@ -137,10 +137,8 @@ General Settings manages public header title, tagline and icon, plus
 installation/public addresses, the administrative contact, and content language.
 The Posts list renders creation timestamps in the chosen time zone and formats,
 while the stored timestamp remains UTC. Week start is saved for future calendars.
-Public registration and Subscriber accounts are intentionally unavailable.
+Public registration is intentionally unavailable.
 The admin-only Users directory lists accounts and opens read-only details.
-Role assignment and invitations are separate work: protect the installation
-owner and test Editor/Subscriber access before exposing account writes.
 The server-side policy now defines Admin (administration, users, content),
 Editor (content only), and Subscriber (no back-office capabilities). It denies
 unknown roles and capabilities. Posts and Pages now check content capability
@@ -149,9 +147,11 @@ media administration, user management, and site settings stay admin-only.
 Login routes Admin to the dashboard, Editor to Posts, and Subscriber to the
 public site. Editors see only content links and sign-out in their admin menu.
 The account schema accepts Admin, Editor, and Subscriber and protects the
-installation owner from demotion or deletion. The Users UI does not create
-accounts yet: administrator-issued invitations and single-use redemption
-are the next steps. Public registration remains disabled.
+installation owner from demotion or deletion. Users > Add user lets an
+administrator create Editor and Subscriber accounts with an initial password.
+The account and hashed credentials are saved together. Email invitations,
+role changes, and public registration are outside this first flow.
+Run the compiled fixture with `pwsh -File scripts/smoke-auth.ps1 -Users`.
 
 The administration overview shows guarded database-backed total/draft/published
 counts and links to those lists, plus a first-draft prompt for empty installations.

@@ -1,0 +1,17 @@
+action CreateUser(email: String, password: String, role: String) {
+  data manager = loadUserManager()
+  require input.email.length <= 254 else invalid({ email: "Use at most 254 characters." })
+  require Validate.email(input.email) else invalid({ email: "Enter a valid email address." })
+  require input.role == "editor" || input.role == "subscriber" else invalid({ role: "Choose Editor or Subscriber." })
+  require input.password.length >= 10 else invalid({ password: "Use at least 10 characters." })
+  require input.password.length <= 256 else invalid({ password: "Use at most 256 characters." })
+  data existing = db.legura_users.where({ email: input.email }).first()
+  require existing == null else invalid({ email: "This email address is already in use." })
+  data id = Uuid.new()
+  data passwordHash = Password.hash(input.password)
+  transaction {
+    db.legura_users.insert({ id: id, email: input.email, role: input.role })
+    db.legura_credentials.insert({ user_id: id, email: input.email, password_hash: passwordHash })
+  }
+  return redirect("/admin/users")
+}
