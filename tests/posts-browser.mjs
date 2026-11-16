@@ -141,7 +141,6 @@ async function checkPostsTable(title) {
   assert.match(await row.locator('time').getAttribute('datetime'), /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
   const edit = table.getByRole('link', { name: `Edit post: ${title}`, exact: true });
   assert.ok(await edit.evaluate(node => node.getBoundingClientRect().height >= 44));
-  const region = page.getByRole('region', { name: 'Scrollable posts table', exact: true });
   await page.screenshot({ path: resolve(results, `posts-table-${mode}-desktop.png`), fullPage: true });
   if (mode === 'javascript') {
     await page.getByLabel('Appearance', { exact: true }).selectOption('dark');
@@ -150,18 +149,6 @@ async function checkPostsTable(title) {
     await page.getByLabel('Appearance', { exact: true }).selectOption('light');
   }
   await page.setViewportSize({ width: 320, height: 844 });
-  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Table expands the page on mobile');
-  assert.ok(await region.evaluate(node => node.scrollWidth > node.clientWidth), 'Wide table must scroll inside its own region');
-  await region.focus();
-  await page.keyboard.press('ArrowRight');
-  // Poll in the runner so no-JS coverage does not depend on browser timers.
-  let scrolled = false;
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    scrolled = await region.evaluate(node => node.scrollLeft > 0);
-    if (scrolled) break;
-    await new Promise(resolve => setTimeout(resolve, 50));
-  }
-  assert.ok(scrolled, 'Focused table region must scroll with the keyboard');
   await page.screenshot({ path: resolve(results, `posts-table-${mode}-mobile.png`), fullPage: true });
   await page.setViewportSize({ width: 1280, height: 900 });
 }

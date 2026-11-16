@@ -7,8 +7,9 @@ import { Input } from "@axonyx/ui/foundry/Input"
 
 page NewSitePage() {
   data administrator: Administrator = loadContentManager()
+  data showAdmin: Bool = loadContentAdminControls()
   return ASX {
-    <AdminFrame section="pages">
+    <AdminFrame section="pages" showAdmin={showAdmin}>
       <Card title="New page">
         <form
           method="post"

@@ -3,8 +3,9 @@ import { PostStory } from "@/components/PostStory"
 
 page PreviewSitePage() {
   data entry: SitePage = loadSitePage(params.id)
+  data showAdmin: Bool = loadContentAdminControls()
   return ASX {
-    <AdminFrame section="pages">
+    <AdminFrame section="pages" showAdmin={showAdmin}>
       <section class="legura-preview-notice" aria-label="Private saved preview">
         <p>
           <strong>Private preview</strong>

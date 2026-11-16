@@ -2,6 +2,7 @@ import { NewPostForm } from "@/components/NewPostForm"
 
 page NewPlainPost() {
   data title: String = loadNewPlainPostTitle()
+  data showAdmin: Bool = loadContentAdminControls()
   return ASX {
     <Head>
       <Link
@@ -12,6 +13,7 @@ page NewPlainPost() {
     </Head>
     <NewPostForm
       title={title}
+      showAdmin={showAdmin}
       format="plain-text"
       submitAction={action CreatePost}
     />

@@ -16,8 +16,9 @@ import { TableCell } from "@axonyx/ui/foundry/TableCell"
 page ManagePosts() {
   data listing: AdminPostPage = loadAdminPosts(query.status ?? "all", query.page ?? "1", query.q ?? "")
   const posts = listing.posts
+  data showAdmin: Bool = loadContentAdminControls()
   return ASX {
-    <AdminFrame section="posts">
+    <AdminFrame section="posts" showAdmin={showAdmin}>
       <section class="legura-posts">
         <AdminPageHeader title="Posts" description="Draft privately, publish when ready.">
           <a class="ax-button" data-variant="primary" href="/admin/posts/new">New post</a>

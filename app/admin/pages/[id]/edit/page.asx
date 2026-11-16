@@ -7,8 +7,9 @@ import { Select } from "@axonyx/ui/foundry/Select"
 
 page EditSitePage() {
   data entry: SitePage = loadSitePage(params.id)
+  data showAdmin: Bool = loadContentAdminControls()
   return ASX {
-    <AdminFrame section="pages">
+    <AdminFrame section="pages" showAdmin={showAdmin}>
       <Card title="Edit page">
         <p>{"Page URL: /pages/" + entry.slug}</p>
         <form

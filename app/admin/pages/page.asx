@@ -7,8 +7,9 @@ import { Input } from "@axonyx/ui/foundry/Input"
 
 page AdminPages() {
   data listing: SitePageListing = loadSitePages(query.page ?? "1", query.status ?? "", query.q ?? "")
+  data showAdmin: Bool = loadContentAdminControls()
   return ASX {
-    <AdminFrame section="pages">
+    <AdminFrame section="pages" showAdmin={showAdmin}>
       <AdminPageHeader
         title="Pages"
         description="Create standalone pages such as About or Contact, separate from your blog."
