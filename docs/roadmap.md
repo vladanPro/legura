@@ -148,7 +148,10 @@ for listing, creation, editing, preview, Trash and restore. Permanent deletion,
 media administration, user management, and site settings stay admin-only.
 Login routes Admin to the dashboard, Editor to Posts, and Subscriber to the
 public site. Editors see only content links and sign-out in their admin menu.
-The schema still allows admin accounts only; additional accounts are not enabled.
+The account schema accepts Admin, Editor, and Subscriber and protects the
+installation owner from demotion or deletion. The Users UI does not create
+accounts yet: administrator-issued invitations and single-use redemption
+are the next steps. Public registration remains disabled.
 
 The administration overview shows guarded database-backed total/draft/published
 counts and links to those lists, plus a first-draft prompt for empty installations.
