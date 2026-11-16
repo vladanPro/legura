@@ -52,6 +52,9 @@ struct AccessCheck {
 }
 
 pub fn register(registry: &mut AxNativeRegistry) -> Result<(), AxNativeError> {
+    registry.register("legura.auth.landing", |role: String| {
+        Ok::<_, ()>(landing_route(Role::from_database(&role)))
+    })?;
     registry.register("legura.auth.allows", |input: AccessCheck| {
         Ok::<_, ()>(allows(
             Role::from_database(&input.role),
@@ -60,9 +63,27 @@ pub fn register(registry: &mut AxNativeRegistry) -> Result<(), AxNativeError> {
     })
 }
 
+fn landing_route(role: Option<Role>) -> String {
+    match role {
+        Some(Role::Admin) => "/admin",
+        Some(Role::Editor) => "/admin/posts",
+        Some(Role::Subscriber) => "/",
+        None => "",
+    }
+    .into()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn login_targets_are_fixed_by_role() {
+        assert_eq!(landing_route(Some(Role::Admin)), "/admin");
+        assert_eq!(landing_route(Some(Role::Editor)), "/admin/posts");
+        assert_eq!(landing_route(Some(Role::Subscriber)), "/");
+        assert_eq!(landing_route(Role::from_database("unknown")), "");
+    }
 
     #[test]
     fn role_policy_denies_unknown_roles_and_capabilities() {

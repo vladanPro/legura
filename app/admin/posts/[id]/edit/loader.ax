@@ -6,15 +6,21 @@ export type PostForEditor {
   status: String
   content_format: String
   content_document: String?
+  image_id: String
+  image_alt: String
+  media_available: Bool
 }
 
 export query loadEditablePost(id: String) -> PostForEditor {
   require Auth.subject else forbidden()
   data administrator = db.legura_users.where({ id: Auth.subject }).first()
   require administrator else forbidden()
-  require administrator["role"] == "admin" else forbidden()
+  data allowed = Native.call("legura.auth.allows", { role: administrator["role"], capability: "manage_content" })
+  require allowed else forbidden()
   data post = db.legura_posts.where({ id: input.id, trashed: 0 }).first()
   require post else notFound()
   data content = Native.call("legura.content.load", {content_format: post["content_format"], body: post["body"], content_document: post["content_document"]})
-  return {id: post["id"], title: post["title"], slug: post["slug"], body: content.body, status: post["status"], content_format: content.content_format, content_document: content.content_document}
+  data images = db.query("SELECT COALESCE((SELECT media_id FROM legura_post_images WHERE post_id = ? AND ? = 'admin'), '') AS image_id, COALESCE((SELECT alt FROM legura_post_images WHERE post_id = ? AND ? = 'admin'), '') AS image_alt", input.id, administrator["role"], input.id, administrator["role"])
+  data media = Native.call("legura.media.availability", null)
+  return {id: post["id"], title: post["title"], slug: post["slug"], body: content.body, status: post["status"], content_format: content.content_format, content_document: content.content_document, image_id: images[0]["image_id"], image_alt: images[0]["image_alt"], media_available: administrator["role"] == "admin" && media.available == true}
 }

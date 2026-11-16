@@ -90,6 +90,11 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         include_str!("../db/migrations/20261114030000_017_general_settings/up.sql"),
         include_str!("../db/migrations/20261114030000_017_general_settings/down.sql"),
     ),
+    (
+        "20261115000000_018",
+        include_str!("../db/migrations/20261115000000_018_account_roles/up.sql"),
+        include_str!("../db/migrations/20261115000000_018_account_roles/down.sql"),
+    ),
 ];
 
 pub fn migration_hash(up: &str, down: &str) -> String {
@@ -124,6 +129,7 @@ pub fn embedded_migrations() -> Vec<AxMigration> {
                 "20261114010000_015" => "page_trash",
                 "20261114020000_016" => "post_creation_metadata",
                 "20261114030000_017" => "general_settings",
+                "20261115000000_018" => "account_roles",
                 _ => unreachable!("embedded migration name is missing"),
             }
             .into(),
@@ -213,6 +219,14 @@ pub fn validate_structure(connection: &Connection) -> Result<usize> {
                 .prepare("SELECT 1 FROM legura_general_settings WHERE id = 1")?
                 .exists([])?,
             "missing general settings"
+        );
+    }
+    if count >= 18 {
+        ensure!(
+            !connection
+                .prepare("SELECT 1 FROM legura_installation i LEFT JOIN legura_users u ON u.id = i.admin_id WHERE u.role IS NOT 'admin'")?
+                .exists([])?,
+            "installation owner is not an administrator"
         );
     }
     if count >= 9 {

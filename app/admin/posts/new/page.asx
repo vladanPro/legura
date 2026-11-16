@@ -2,6 +2,7 @@ import { NewPostForm } from "@/components/NewPostForm"
 
 page NewPost() {
   data title: String = loadNewPostTitle()
+  data showAdmin: Bool = loadContentAdminControls()
   return ASX {
     <Head>
       <Link
@@ -12,6 +13,7 @@ page NewPost() {
     </Head>
     <NewPostForm
       title={title}
+      showAdmin={showAdmin}
       format="legura-richtext"
       submitAction={action CreatePost}
     />
