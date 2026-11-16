@@ -1,6 +1,8 @@
 import { AdminFrame } from "@/components/AdminFrame"
 import { AdminPageHeader } from "@/components/AdminPageHeader"
+import { AddUserForm } from "@/components/AddUserForm"
 import { Badge } from "@axonyx/ui/foundry/Badge"
+import { LinkButton } from "@axonyx/ui/foundry/LinkButton"
 import { Table } from "@axonyx/ui/foundry/Table"
 import { TableBody } from "@axonyx/ui/foundry/TableBody"
 import { TableCaption } from "@axonyx/ui/foundry/TableCaption"
@@ -15,8 +17,10 @@ page Users() {
     <AdminFrame section="users">
       <AdminPageHeader
         title="Users"
-        description="View the accounts and roles in this installation."
-      />
+        description="Manage the accounts and roles in this installation."
+      >
+        <LinkButton href="#add-user" variant="primary">Add user</LinkButton>
+      </AdminPageHeader>
       <Table
         class="legura-users-table"
         role="region"
@@ -57,6 +61,7 @@ page Users() {
           </If>
         </nav>
       </If>
+      <AddUserForm submitAction={action CreateUser} />
     </AdminFrame>
   }
 }
