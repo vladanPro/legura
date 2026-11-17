@@ -149,8 +149,10 @@ public site. Editors see only content links and sign-out in their admin menu.
 The account schema accepts Admin, Editor, and Subscriber and protects the
 installation owner from demotion or deletion. Users > Add user lets an
 administrator create Editor and Subscriber accounts with an initial password.
-The account and hashed credentials are saved together. Email invitations,
-role changes, and public registration are outside this first flow.
+The account and hashed credentials are saved together. Administrators can
+switch an existing account between Editor and Subscriber. Administrator
+accounts are not editable, and access checks use the current role on every
+request. Email invitations and public registration remain out of scope.
 Run the compiled fixture with `pwsh -File scripts/smoke-auth.ps1 -Users`.
 
 The administration overview shows guarded database-backed total/draft/published
