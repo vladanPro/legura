@@ -267,7 +267,7 @@ jobs:
         run: |
           cargo fmt --manifest-path tests/native-content/Cargo.toml -- --check
           cargo run --locked --manifest-path tests/native-content/Cargo.toml
-      - name: Verify sign-in, Posts keyboard scrolling and sign-out with Aegis
+      - name: Verify sign-in, Users, Posts keyboard scrolling and sign-out with Aegis
         shell: pwsh
         env:
           AEGIS_WEBDRIVER_URL: http://127.0.0.1:9515
