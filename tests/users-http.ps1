@@ -37,7 +37,8 @@ $editorLink = [regex]::Match($editorRow.Value, 'href="(/admin/users/[a-f0-9-]{36
 if (!$editorLink.Success) { throw "Users did not list the created Editor" }
 $editorDetailsPath = $editorLink.Groups[1].Value
 $details = Invoke-Request -Path $editorDetailsPath -Headers @{ Cookie = $cookie }
-if (!$details.Body.Contains("editor-account@example.com") -or $details.Body.Contains($newUserPassword)) {
+if (!$details.Body.Contains("editor-account@example.com") -or $details.Body.Contains($newUserPassword) -or
+    $details.Body -notmatch 'name=UpdateUserRole') {
   throw "Created account details were not safe or complete"
 }
 $duplicate = Invoke-Request -Path $createUserPath -Method POST -Body $editorForm.Replace("editor-account", "EDITOR-ACCOUNT") -Headers $sessionProof -Status 422
@@ -54,6 +55,7 @@ foreach ($account in @(
   $login = Invoke-Request -Path "/__axonyx/action?path=%2Flogin&name=SignIn" -Method POST -Body "email=$($account.Email)%40example.com&password=$newUserPassword" -Headers (Get-Proof) -Status 303
   if ($login.Headers.Location -ne $account.Landing) { throw "Wrong landing for $($account.Role)" }
   $memberCookie = ([string]$login.Headers["Set-Cookie"]).Split(';')[0]
+  if ($account.Role -eq "editor") { $editorCookie = $memberCookie }
   foreach ($path in "/admin/posts", "/admin/pages", "/admin/posts/new", "/admin/pages/new") {
     Invoke-Request -Path $path -Headers @{ Cookie = $memberCookie } -Status $account.Content | Out-Null
   }
@@ -68,6 +70,37 @@ foreach ($account in @(
   Invoke-Request -Path "/__axonyx/action?path=%2Fadmin%2Fpages%2Fnew&name=CreatePage" -Method POST -Body "title=&slug=account-test&body=Fixture" -Headers $memberProof -Status $writeStatus | Out-Null
 }
 
+$editorId = Split-Path $editorDetailsPath -Leaf
+$roleAction = "/__axonyx/action?path=$([Uri]::EscapeDataString($editorDetailsPath))&name=UpdateUserRole"
+$roleForm = "id=$editorId&role=subscriber"
+$editorProof = Get-Proof -Cookie $editorCookie
+Invoke-Request -Path $roleAction -Method POST -Body $roleForm -Headers $editorProof -Status 403 | Out-Null
+Invoke-Request -Path $roleAction -Method POST -Body $roleForm -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null
+$badRole = Invoke-Request -Path $roleAction -Method POST -Body "id=$editorId&role=admin" -Headers $sessionProof -Status 422
+if ($badRole.Body -notmatch 'data-ax-field-error="role"[^>]*>\s*Choose Editor or Subscriber') {
+  throw "Invalid role did not preserve field-level feedback"
+}
+
+$ownerId = & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);print(d.execute("SELECT admin_id FROM legura_installation WHERE id=1").fetchone()[0]);d.close()' $db
+if ($LASTEXITCODE -ne 0 -or !$ownerId) { throw "Cannot find fixture owner" }
+$ownerPath = "/admin/users/$ownerId"
+$ownerDetails = Invoke-Request -Path $ownerPath -Headers @{ Cookie = $cookie }
+if ($ownerDetails.Body -match 'name=UpdateUserRole') { throw "Administrator was offered a role change form" }
+$ownerAction = "/__axonyx/action?path=$([Uri]::EscapeDataString($ownerPath))&name=UpdateUserRole"
+Invoke-Request -Path $ownerAction -Method POST -Body "id=$ownerId&role=subscriber" -Headers $sessionProof -Status 403 | Out-Null
+Invoke-Request -Path $roleAction -Method POST -Body "id=$ownerId&role=subscriber" -Headers $sessionProof -Status 403 | Out-Null
+Invoke-Request -Path $roleAction -Method POST -Body "id=missing&role=subscriber" -Headers $sessionProof -Status 404 | Out-Null
+
+$changed = Invoke-Request -Path $roleAction -Method POST -Body $roleForm -Headers $sessionProof -Status 303
+if ($changed.Headers.Location -ne $editorDetailsPath) { throw "Role change did not return to the account" }
+foreach ($path in "/admin/posts", "/admin/pages") {
+  Invoke-Request -Path $path -Headers @{ Cookie = $editorCookie } -Status 403 | Out-Null
+}
+Invoke-Request -Path "/__axonyx/action?path=%2Fadmin%2Fposts%2Fnew&name=CreatePost" -Method POST -Body "title=&slug=account-test&body=Fixture&status=draft" -Headers $editorProof -Status 403 | Out-Null
+Invoke-Request -Path $roleAction -Method POST -Body "id=$editorId&role=editor" -Headers $sessionProof -Status 303 | Out-Null
+Invoke-Request -Path "/admin/posts" -Headers @{ Cookie = $editorCookie } | Out-Null
+Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } | Out-Null
+
 $accountRows = & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);print(d.execute("SELECT COUNT(*) FROM legura_users u JOIN legura_credentials c ON c.user_id=u.id AND c.email=u.email WHERE u.email IN (?,?) AND c.password_hash LIKE ?", ("editor-account@example.com","subscriber-account@example.com","$argon2id$%")).fetchone()[0]);d.close()' $db
 if ($LASTEXITCODE -ne 0 -or $accountRows -ne "2") { throw "New accounts must have matching Argon2id credentials" }
-Write-Host "Legura users smoke passed: guarded creation, field errors, unique email, hashed credentials and login by role."
+Write-Host "Legura users smoke passed: guarded creation, validation, hashed credentials, login and live role changes."

@@ -1,0 +1,9 @@
+action UpdateUserRole(id: String, role: String) {
+  data manager = loadUserManager()
+  data account = db.legura_users.where({ id: input.id }).first()
+  require account else notFound()
+  require account["role"] == "editor" || account["role"] == "subscriber" else forbidden()
+  require input.role == "editor" || input.role == "subscriber" else invalid({ role: "Choose Editor or Subscriber." })
+  db.legura_users.where({ id: input.id, role: account["role"] }).update({ role: input.role })
+  return redirect("/admin/users/" + input.id)
+}
