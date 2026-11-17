@@ -66,11 +66,10 @@
 .legura-preview-notice .ax-badge { margin-left: 0.5rem; }
 .legura-links a, .legura-story > a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 .legura-post-list { display: grid; gap: 1rem; margin-top: 1.5rem; }
-.legura-post-filters { display: flex; align-items: center; flex-wrap: wrap; margin-block: 1.5rem 0.75rem; }
-.legura-post-filters .ax-select { width: auto; min-height: 2.75rem; }
-.legura-post-filter-field { display: grid; gap: 0.5rem; min-width: 0; max-width: 100%; }
-.legura-post-filter-field .ax-input { width: 100%; min-width: 0; box-sizing: border-box; }
-.legura-post-filters { align-items: flex-end; }
+.legura-list-filters { display: flex; align-items: flex-end; flex-wrap: wrap; margin-block: 1.5rem 0.75rem; }
+.legura-list-filters .ax-select { width: auto; min-height: 2.75rem; }
+.legura-list-filter-field { display: grid; gap: 0.5rem; min-width: 0; max-width: 100%; }
+.legura-list-filter-field .ax-input { width: 100%; min-width: 0; box-sizing: border-box; }
 .legura-filter-reset { display: inline-flex; align-items: center; min-height: 2.75rem; }
 .legura-post-pagination { display: flex; align-items: center; flex-wrap: wrap; gap: 1.5rem; margin-top: 1rem; --ax-button-min-height: 2.75rem; }
 .legura-post-pagination a { display: inline-flex; align-items: center; min-height: 2.75rem; }

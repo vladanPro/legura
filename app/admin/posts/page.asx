@@ -27,12 +27,12 @@ page ManagePosts() {
           <a href="/admin/posts" aria-current={listing.status != "trash"}>Posts</a>
           <a href="/admin/posts?status=trash" aria-current={listing.status == "trash"}>Trash</a>
         </nav>
-        <form method="get" action="/admin/posts" class="legura-post-filters legura-form">
-          <div class="legura-post-filter-field">
+        <form method="get" action="/admin/posts" class="legura-list-filters legura-form">
+          <div class="legura-list-filter-field">
             <label for="post-search">Search titles</label>
             <Input type="search" id="post-search" name="q" value={listing.search} maxlength="200" />
           </div>
-          <div class="legura-post-filter-field">
+          <div class="legura-list-filter-field">
             <label for="post-status">Filter status</label>
             <Select id="post-status" name="status">
               <option value="all" selected={listing.status == "all"}>All posts</option>
