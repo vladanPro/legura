@@ -153,6 +153,8 @@ The account and hashed credentials are saved together. Administrators can
 switch an existing account between Editor and Subscriber. Administrator
 accounts are not editable, and access checks use the current role on every
 request. Email invitations and public registration remain out of scope.
+The Users directory supports literal email search and role filters, applied
+before server-side pagination and preserved when moving between pages.
 Run the compiled fixture with `pwsh -File scripts/smoke-auth.ps1 -Users`.
 
 The administration overview shows guarded database-backed total/draft/published

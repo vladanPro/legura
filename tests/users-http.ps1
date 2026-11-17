@@ -4,7 +4,8 @@ $newUserPassword = "account-fixture-" + [guid]::NewGuid().ToString("N")
 $editorForm = "email=editor-account%40example.com&role=editor&password=$newUserPassword"
 $usersList = Invoke-Request -Path "/admin/users" -Headers @{ Cookie = $cookie }
 if ($usersList.Body -notmatch 'href="#add-user"' -or $usersList.Body -notmatch 'id="add-user"') { throw "Users list is missing the create section" }
-if ($usersList.Body -notmatch 'autocomplete="new-password"' -or $usersList.Body -match '<option[^>]+value="admin"') {
+$createUserMarkup = [regex]::Match($usersList.Body, '<form\b(?=[^>]*name=CreateUser)[^>]*>[\s\S]*?</form>').Value
+if ($createUserMarkup -notmatch 'autocomplete="new-password"' -or $createUserMarkup -match '<option[^>]+value="admin"') {
   throw "Create user form lost password semantics or offered an administrator role"
 }
 Invoke-Request -Path "/admin/users" -Status 403 | Out-Null
@@ -103,4 +104,31 @@ Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } | Out-Null
 
 $accountRows = & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);print(d.execute("SELECT COUNT(*) FROM legura_users u JOIN legura_credentials c ON c.user_id=u.id AND c.email=u.email WHERE u.email IN (?,?) AND c.password_hash LIKE ?", ("editor-account@example.com","subscriber-account@example.com","$argon2id$%")).fetchone()[0]);d.close()' $db
 if ($LASTEXITCODE -ne 0 -or $accountRows -ne "2") { throw "New accounts must have matching Argon2id credentials" }
-Write-Host "Legura users smoke passed: guarded creation, validation, hashed credentials, login and live role changes."
+
+& $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);rows=[(f"filters-{i}",f"qa_user{i:02d}@example.com","editor" if i<=12 else "subscriber") for i in range(1,14)];d.executemany("INSERT INTO legura_users(id,email,role) VALUES (?,?,?)",rows);d.executemany("INSERT INTO legura_credentials(user_id,email,password_hash) SELECT ?,?,password_hash FROM legura_credentials WHERE email=?",[(id,email,"editor-account@example.com") for id,email,_ in rows]);d.commit();d.close()' $db
+if ($LASTEXITCODE -ne 0) { throw "Cannot seed accounts for filtered pagination" }
+$managerHeaders = @{ Cookie = $cookie }
+$allEditors = Invoke-Request -Path "/admin/users?role=editor" -Headers $managerHeaders
+if (!$allEditors.Body.Contains("13 matching accounts") -or $allEditors.Body.Contains("subscriber-account@example.com")) {
+  throw "Role filter did not isolate Editor accounts"
+}
+$firstPage = Invoke-Request -Path "/admin/users?q=%20QA_%20&role=editor" -Headers $managerHeaders
+if (!$firstPage.Body.Contains("12 matching accounts") -or !$firstPage.Body.Contains("qa_user10@example.com") -or
+    $firstPage.Body.Contains("qa_user11@example.com") -or
+    $firstPage.Body -notmatch '<input(?=[^>]*\bname="q")(?=[^>]*\bvalue="QA_")(?=[^>]*\btype="hidden")' -or
+    $firstPage.Body -notmatch '<input(?=[^>]*\bname="role")(?=[^>]*\bvalue="editor")(?=[^>]*\btype="hidden")' -or
+    $firstPage.Body -notmatch '<input(?=[^>]*\bname="page")(?=[^>]*\bvalue="2")(?=[^>]*\btype="hidden")') {
+  throw "First page did not apply filters before pagination or preserve the query"
+}
+$lastPage = Invoke-Request -Path "/admin/users?q=QA_&role=editor&page=9999" -Headers $managerHeaders
+if (!$lastPage.Body.Contains("Page 2") -or !$lastPage.Body.Contains("qa_user11@example.com") -or
+    !$lastPage.Body.Contains("qa_user12@example.com") -or $lastPage.Body.Contains("qa_user13@example.com") -or
+    $lastPage.Body.Contains("Next page")) {
+  throw "Filtered page was not clamped to the final matching page"
+}
+$emptyUsers = Invoke-Request -Path "/admin/users?q=%25" -Headers $managerHeaders
+if (!$emptyUsers.Body.Contains("No matching accounts") -or $emptyUsers.Body.Contains("qa_user01@example.com")) {
+  throw "A literal percent sign must not act as an email wildcard"
+}
+Invoke-Request -Path "/admin/users?role=editor&q=qa_" -Headers @{ Cookie = $editorCookie } -Status 403 | Out-Null
+Write-Host "Legura users smoke passed: guarded creation, validation, hashed credentials, login, role changes, search and filtered pagination."
