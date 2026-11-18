@@ -157,8 +157,9 @@ Administrators can deactivate and reactivate Editors and Subscribers without
 deleting their accounts or content. Deactivation revokes their SQLite-backed
 sessions and blocks sign-in. Reactivation requires a fresh sign-in; old
 cookies do not work again. Administrator accounts cannot be deactivated.
-The Users directory supports literal email search and role filters, applied
-before server-side pagination and preserved when moving between pages.
+The Users directory supports literal email search, role and active/inactive
+status filters, applied before server-side pagination and preserved when
+moving between pages.
 The Node-free Aegis smoke exercises account creation, combined search and role
 filters, and role changes in Chromium with page scripts enabled and disabled.
 Run the compiled fixture with `pwsh -File scripts/smoke-auth.ps1 -Users`.

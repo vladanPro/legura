@@ -10,20 +10,21 @@ export type UserListing {
   page: Number
   total: Number
   role: String
+  status: String
   search: String
 }
 
-export query loadUsers(role: String = "all", page: String = "1", search: String = "") -> UserListing {
+export query loadUsers(role: String = "all", page: String = "1", search: String = "", status: String = "all") -> UserListing {
   require Auth.subject else forbidden()
   data administrator = db.legura_users.where({ id: Auth.subject }).first()
   require administrator else forbidden()
   data allowed = Native.call("legura.auth.allows", { role: administrator["role"], capability: "manage_users" })
   require allowed else forbidden()
-  data filters = Native.call("legura.users.filters", { role: input.role, page: input.page, search: input.search })
-  data counts = db.query("SELECT COUNT(*) AS total FROM legura_users WHERE (? = 'all' OR role = ?) AND instr(lower(email), lower(?)) > 0", filters.role, filters.role, filters.search)
+  data filters = Native.call("legura.users.filters", { role: input.role, status: input.status, page: input.page, search: input.search })
+  data counts = db.query("SELECT COUNT(*) AS total FROM legura_users WHERE (? = 'all' OR role = ?) AND (? = 'all' OR status = ?) AND instr(lower(email), lower(?)) > 0", filters.role, filters.role, filters.status, filters.status, filters.search)
   data pagination = Native.call("legura.pagination", { total: counts[0]["total"], requested_page: filters.requested_page, page_size: 10 })
-  data users = db.query("SELECT id, email, role, status FROM legura_users WHERE (? = 'all' OR role = ?) AND instr(lower(email), lower(?)) > 0 ORDER BY email COLLATE NOCASE, id LIMIT ? OFFSET ?", filters.role, filters.role, filters.search, pagination.page_size, pagination.offset)
-  return { users: users, page: pagination.page, total: counts[0]["total"], role: filters.role, search: filters.search }
+  data users = db.query("SELECT id, email, role, status FROM legura_users WHERE (? = 'all' OR role = ?) AND (? = 'all' OR status = ?) AND instr(lower(email), lower(?)) > 0 ORDER BY email COLLATE NOCASE, id LIMIT ? OFFSET ?", filters.role, filters.role, filters.status, filters.status, filters.search, pagination.page_size, pagination.offset)
+  return { users: users, page: pagination.page, total: counts[0]["total"], role: filters.role, status: filters.status, search: filters.search }
 }
 
 export query loadUserAccount(id: String) -> UserAccount {
