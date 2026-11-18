@@ -23,22 +23,51 @@ pub fn normalize_post_filters(input: PostFilterInput) -> PostFilters {
         "draft" | "published" | "trash" => input.status,
         _ => "all".to_owned(),
     };
-    // Match the existing SQLite trim/substr and GLOB text-prefix semantics.
-    let search = input
-        .search
+    PostFilters {
+        status,
+        search: normalize_search(&input.search),
+        requested_page: normalize_page(&input.page),
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct UserFilterInput {
+    role: String,
+    page: String,
+    search: String,
+}
+
+#[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct UserFilters {
+    role: String,
+    search: String,
+    requested_page: i64,
+}
+
+fn normalize_user_filters(input: UserFilterInput) -> UserFilters {
+    let role = match input.role.as_str() {
+        "admin" | "editor" | "subscriber" => input.role,
+        _ => "all".to_owned(),
+    };
+    UserFilters {
+        role,
+        search: normalize_search(&input.search),
+        requested_page: normalize_page(&input.page),
+    }
+}
+
+fn normalize_search(search: &str) -> String {
+    // Preserve the SQLite trim/substr text-prefix semantics used by Posts.
+    search
         .trim_matches(' ')
         .split('\0')
         .next()
         .unwrap_or_default()
         .chars()
         .take(200)
-        .collect();
-    let requested_page = normalize_page(&input.page);
-    PostFilters {
-        status,
-        search,
-        requested_page,
-    }
+        .collect()
 }
 
 fn normalize_page(page: &str) -> i64 {
@@ -113,12 +142,38 @@ pub fn register(registry: &mut AxNativeRegistry) -> Result<(), AxNativeError> {
     registry.register("legura.posts.filters", |input: PostFilterInput| {
         Ok::<_, ()>(normalize_post_filters(input))
     })?;
+    registry.register("legura.users.filters", |input: UserFilterInput| {
+        Ok::<_, ()>(normalize_user_filters(input))
+    })?;
     registry.register("legura.pagination", paginate)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn user_filters_accept_only_account_roles_and_keep_literal_search_text() {
+        for (role, expected) in [
+            ("admin", "admin"),
+            ("editor", "editor"),
+            ("subscriber", "subscriber"),
+            ("trash", "all"),
+        ] {
+            assert_eq!(
+                normalize_user_filters(UserFilterInput {
+                    role: role.to_owned(),
+                    page: "003".to_owned(),
+                    search: "  QA_%  ".to_owned(),
+                }),
+                UserFilters {
+                    role: expected.to_owned(),
+                    search: "QA_%".to_owned(),
+                    requested_page: 3
+                },
+            );
+        }
+    }
 
     #[test]
     fn filter_normalization_matches_the_previous_sqlite_expression() {

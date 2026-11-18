@@ -23,11 +23,11 @@ page AdminPages() {
       <form
         method="get"
         action="/admin/pages"
-        class="legura-form legura-post-filters"
+        class="legura-form legura-list-filters"
         role="search"
       >
         <input type="hidden" name="status" value={listing.status} />
-        <div class="legura-post-filter-field">
+        <div class="legura-list-filter-field">
           <label for="page-search">Search page titles</label>
           <Input type="search" id="page-search" name="q" value={listing.search} maxlength="200" />
         </div>

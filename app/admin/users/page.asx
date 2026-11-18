@@ -1,6 +1,13 @@
 import { AdminFrame } from "@/components/AdminFrame"
 import { AdminPageHeader } from "@/components/AdminPageHeader"
+import { AddUserForm } from "@/components/AddUserForm"
 import { Badge } from "@axonyx/ui/foundry/Badge"
+import { Button } from "@axonyx/ui/foundry/Button"
+import { Card } from "@axonyx/ui/foundry/Card"
+import { FieldLabel } from "@axonyx/ui/foundry/FieldLabel"
+import { Input } from "@axonyx/ui/foundry/Input"
+import { LinkButton } from "@axonyx/ui/foundry/LinkButton"
+import { Select } from "@axonyx/ui/foundry/Select"
 import { Table } from "@axonyx/ui/foundry/Table"
 import { TableBody } from "@axonyx/ui/foundry/TableBody"
 import { TableCaption } from "@axonyx/ui/foundry/TableCaption"
@@ -8,55 +15,96 @@ import { TableCell } from "@axonyx/ui/foundry/TableCell"
 import { TableHead } from "@axonyx/ui/foundry/TableHead"
 import { TableHeaderCell } from "@axonyx/ui/foundry/TableHeaderCell"
 import { TableRow } from "@axonyx/ui/foundry/TableRow"
+import { TextLink } from "@axonyx/ui/foundry/TextLink"
 
 page Users() {
-  data listing: UserListing = loadUsers(query.page ?? "1")
+  data listing: UserListing = loadUsers(query.role ?? "all", query.page ?? "1", query.q ?? "")
   return ASX {
     <AdminFrame section="users">
       <AdminPageHeader
         title="Users"
-        description="View the accounts and roles in this installation."
-      />
-      <Table
-        class="legura-users-table"
-        role="region"
-        aria-label="Scrollable users table"
-        tabindex="0"
-        zebra="true"
+        description="Manage the accounts and roles in this installation."
       >
-        <TableCaption>User accounts</TableCaption>
-        <TableHead>
-          <TableRow>
-            <TableHeaderCell>Email</TableHeaderCell>
-            <TableHeaderCell>Role</TableHeaderCell>
-            <TableHeaderCell>Actions</TableHeaderCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          <Each items={listing.users} as="user">
+        <LinkButton href="#add-user" variant="primary">Add user</LinkButton>
+      </AdminPageHeader>
+      <form method="get" action="/admin/users" class="legura-list-filters legura-form">
+        <div class="legura-list-filter-field">
+          <FieldLabel htmlFor="user-search">Search email</FieldLabel>
+          <Input id="user-search" name="q" type="search" value={listing.search} />
+        </div>
+        <div class="legura-list-filter-field">
+          <FieldLabel htmlFor="user-role">Filter role</FieldLabel>
+          <Select id="user-role" name="role">
+            <option value="all" selected={listing.role == "all"}>All roles</option>
+            <option value="admin" selected={listing.role == "admin"}>Administrator</option>
+            <option value="editor" selected={listing.role == "editor"}>Editor</option>
+            <option value="subscriber" selected={listing.role == "subscriber"}>Subscriber</option>
+          </Select>
+        </div>
+        <Button type="submit" variant="secondary">Apply filters</Button>
+        <If when={listing.role != "all" || listing.search != ""}>
+          <TextLink href="/admin/users">Reset filters</TextLink>
+        </If>
+      </form>
+      <p class="legura-hint">{listing.total + " matching accounts"}</p>
+      <If when={listing.total == 0}>
+        <Card title="No matching accounts">
+          <p>Try a different email or role.</p>
+        </Card>
+      </If>
+      <If when={listing.total > 0}>
+        <Table
+          class="legura-users-table"
+          role="region"
+          aria-label="Scrollable users table"
+          tabindex="0"
+          zebra="true"
+        >
+          <TableCaption>User accounts</TableCaption>
+          <TableHead>
             <TableRow>
-              <TableHeaderCell scope="row">{user.email}</TableHeaderCell>
-              <TableCell>
-                <Badge>{user.role}</Badge>
-              </TableCell>
-              <TableCell>
-                <a href={"/admin/users/" + user.id} aria-label={"View account: " + user.email}>View account</a>
-              </TableCell>
+              <TableHeaderCell>Email</TableHeaderCell>
+              <TableHeaderCell>Role</TableHeaderCell>
+              <TableHeaderCell>Actions</TableHeaderCell>
             </TableRow>
-          </Each>
-        </TableBody>
-      </Table>
+          </TableHead>
+          <TableBody>
+            <Each items={listing.users} as="user">
+              <TableRow>
+                <TableHeaderCell scope="row">{user.email}</TableHeaderCell>
+                <TableCell>
+                  <Badge>{user.role}</Badge>
+                </TableCell>
+                <TableCell>
+                  <a href={"/admin/users/" + user.id} aria-label={"View account: " + user.email}>View account</a>
+                </TableCell>
+              </TableRow>
+            </Each>
+          </TableBody>
+        </Table>
+      </If>
       <If when={listing.total > 10}>
         <nav class="legura-links" aria-label="Users pagination">
           <If when={listing.page > 1}>
-            <a href={"/admin/users?page=" + (listing.page - 1)}>Previous page</a>
+            <form method="get" action="/admin/users">
+              <input type="hidden" name="q" value={listing.search} />
+              <input type="hidden" name="role" value={listing.role} />
+              <input type="hidden" name="page" value={listing.page - 1} />
+              <Button type="submit" variant="secondary">Previous page</Button>
+            </form>
           </If>
           <span>{"Page " + listing.page}</span>
           <If when={listing.page * 10 < listing.total}>
-            <a href={"/admin/users?page=" + (listing.page + 1)}>Next page</a>
+            <form method="get" action="/admin/users">
+              <input type="hidden" name="q" value={listing.search} />
+              <input type="hidden" name="role" value={listing.role} />
+              <input type="hidden" name="page" value={listing.page + 1} />
+              <Button type="submit" variant="secondary">Next page</Button>
+            </form>
           </If>
         </nav>
       </If>
+      <AddUserForm submitAction={action CreateUser} />
     </AdminFrame>
   }
 }

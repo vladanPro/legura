@@ -2,6 +2,8 @@ use aegis::{Browser, BrowserOptions, BrowserPage, Key};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
+mod users;
+
 const TABLE: &str = "[role='region'][aria-label='Scrollable posts table']";
 const INSPECT_TABLE: &str = r#"
 const table = document.querySelector(arguments[0]);
@@ -264,6 +266,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             std::thread::sleep(Duration::from_millis(50));
         }
         println!("Aegis: Legura Posts table scrolls at 320 px (page scripts: {javascript})");
+        users::check_users(&page, mode, &format!("member-{password}"))?;
         page.try_goto(&admin_url)?;
         page.try_click("form[action*='name=SignOut'] button[type='submit']")?;
         wait_for_url(&page, &login_url)?;
