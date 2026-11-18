@@ -33,6 +33,21 @@ def hashes(paths):
     return [digest(path) for path in paths]
 
 
+def migration_history(path):
+    with closing(sqlite3.connect(f"{path.as_uri()}?mode=ro", uri=True)) as db:
+        return db.execute(
+            "SELECT version, name, checksum FROM _axonyx_migrations ORDER BY version"
+        ).fetchall()
+
+
+def pending_migrations(prior, current):
+    assert prior and current, "Migration histories must not be empty"
+    assert current[:len(prior)] == prior, "Prior migrations are not an exact candidate prefix"
+    pending = len(current) - len(prior)
+    assert pending > 0, "Schema upgrade must exercise at least one pending migration"
+    return pending
+
+
 def seed_prior(package, port):
     data = package / "data"
     media = data / "media"
@@ -310,12 +325,17 @@ def rehearse(prior_package, candidate_package, root, port):
     original = [database, media / image_id, archive, prior / ".env"]
     before = hashes(original)
 
+    candidate_contract = root / "candidate-contract.db"
+    fixture.maintenance(candidate, "init", candidate_contract)
+    current_history = migration_history(candidate_contract)
+    expected_pending = pending_migrations(migration_history(database), current_history)
     workspace = root / "rehearsal"
     report = json.loads(fixture.maintenance(candidate, "upgrade-rehearse", archive, workspace, capture=True))
-    assert report["migrations_applied"] == 11 and report["archive"]["files"] == 2, report
+    assert report["migrations_applied"] == expected_pending and report["archive"]["files"] == 2, report
     migrated = workspace / "rehearsed.legura"
     recovery = workspace / "verified-recovery"
     fixture.maintenance(candidate, "upgrade-preflight", candidate, migrated, recovery)
+    assert migration_history(recovery / "database.sqlite") == current_history, "Rehearsed migration history differs from the candidate"
     assert not (candidate / ".env").exists(), "Preflight configured the candidate"
     fixture.maintenance(candidate, "config-recovery", migrated, recovery, candidate, "local-http")
     assert settings(candidate / ".env")["AX_SECRET_SESSION_KEY"] != settings(prior / ".env")["AX_SECRET_SESSION_KEY"]
@@ -393,4 +413,4 @@ if __name__ == "__main__":
     fixture.BASE = f"http://127.0.0.1:{args.port}"
     with TemporaryDirectory(prefix="legura-schema-upgrade-") as scratch:
         rehearse(args.prior.resolve(strict=True), args.candidate.resolve(strict=True), Path(scratch), args.port)
-    print("Schema upgrade passed: eleven migrations, including account roles.")
+    print("Schema upgrade passed: exact candidate migration history and preserved content.")
