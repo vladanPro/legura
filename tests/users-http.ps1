@@ -165,5 +165,35 @@ $emptyUsers = Invoke-Request -Path "/admin/users?q=%25" -Headers $managerHeaders
 if (!$emptyUsers.Body.Contains("No matching accounts") -or $emptyUsers.Body.Contains("qa_user01@example.com")) {
   throw "A literal percent sign must not act as an email wildcard"
 }
+& $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);d.execute("UPDATE legura_users SET status=?,session_generation=? WHERE id=?",("inactive","filter-fixture","filters-13"));d.commit();d.close()' $db
+if ($LASTEXITCODE -ne 0) { throw "Cannot prepare inactive account filter fixture" }
+$inactiveUsers = Invoke-Request -Path "/admin/users?status=inactive" -Headers $managerHeaders
+if (!$inactiveUsers.Body.Contains("1 matching accounts") -or
+    !$inactiveUsers.Body.Contains("qa_user13@example.com") -or
+    $inactiveUsers.Body.Contains("qa_user12@example.com") -or
+    $inactiveUsers.Body -notmatch '<option(?=[^>]*value="inactive")(?=[^>]*selected)') {
+  throw "Inactive status filter did not isolate the disabled account or preserve selection"
+}
+$inactiveEditors = Invoke-Request -Path "/admin/users?status=inactive&role=editor&q=qa_" -Headers $managerHeaders
+if (!$inactiveEditors.Body.Contains("No matching accounts")) {
+  throw "Status and role filters must both apply"
+}
+$activeFirst = Invoke-Request -Path "/admin/users?status=active&role=editor&q=qa_" -Headers $managerHeaders
+if (!$activeFirst.Body.Contains("12 matching accounts") -or
+    $activeFirst.Body -notmatch '<input(?=[^>]*name="status")(?=[^>]*value="active")(?=[^>]*type="hidden")') {
+  throw "Pagination must preserve the active status filter"
+}
+$activeLast = Invoke-Request -Path "/admin/users?status=active&role=editor&q=qa_&page=999" -Headers $managerHeaders
+if (!$activeLast.Body.Contains("Page 2") -or !$activeLast.Body.Contains("qa_user12@example.com") -or
+    $activeLast.Body.Contains("qa_user13@example.com") -or
+    $activeLast.Body -notmatch '<input(?=[^>]*name="status")(?=[^>]*value="active")(?=[^>]*type="hidden")') {
+  throw "Filtered last page must exclude inactive accounts and preserve status on Previous"
+}
+$invalidStatus = Invoke-Request -Path "/admin/users?status=unknown&role=subscriber&q=qa_" -Headers $managerHeaders
+if (!$invalidStatus.Body.Contains("1 matching accounts") -or !$invalidStatus.Body.Contains("qa_user13@example.com") -or
+    $invalidStatus.Body -notmatch '<option(?=[^>]*value="all")(?=[^>]*selected)') {
+  throw "Unknown status must normalize to All without discarding role or search"
+}
+Invoke-Request -Path "/admin/users?status=inactive" -Status 403 | Out-Null
 Invoke-Request -Path "/admin/users?role=editor&q=qa_" -Headers @{ Cookie = $editorCookie } -Status 403 | Out-Null
-Write-Host "Legura users smoke passed: guarded creation, validation, hashed credentials, login, role changes, search and filtered pagination."
+Write-Host "Legura users smoke passed: guarded creation, validation, hashed credentials, login, role/status changes, search and filtered pagination."
