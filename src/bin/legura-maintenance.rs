@@ -579,7 +579,7 @@ mod tests {
                     )
                     .unwrap();
             }
-            connection.execute_batch("INSERT INTO legura_users VALUES ('owner','owner@example.test','admin'); INSERT INTO legura_credentials VALUES ('owner','owner@example.test','fixture-hash'); INSERT INTO legura_installation VALUES (1,'Fixture','owner'); INSERT INTO legura_posts(id,title,slug,body,status) VALUES ('post','Published','story','Before deletion','published'); INSERT INTO legura_posts(id,title,slug,body,status) VALUES ('draft','Draft','draft','Private','draft');").unwrap();
+            connection.execute_batch("INSERT INTO legura_users (id,email,role) VALUES ('owner','owner@example.test','admin'); INSERT INTO legura_credentials VALUES ('owner','owner@example.test','fixture-hash'); INSERT INTO legura_installation VALUES (1,'Fixture','owner'); INSERT INTO legura_posts(id,title,slug,body,status) VALUES ('post','Published','story','Before deletion','published'); INSERT INTO legura_posts(id,title,slug,body,status) VALUES ('draft','Draft','draft','Private','draft');").unwrap();
             Self(path)
         }
         fn path(&self, name: &str) -> std::path::PathBuf {
@@ -613,11 +613,7 @@ mod tests {
         )
         .unwrap();
         db.execute_batch(
-            "CREATE TABLE ax_sessions (
-                id TEXT PRIMARY KEY NOT NULL, subject TEXT NOT NULL, data_json TEXT NOT NULL,
-                created_at_unix INTEGER NOT NULL, last_seen_at_unix INTEGER NOT NULL, expires_at_unix INTEGER NOT NULL
-            );
-            CREATE INDEX ax_sessions_expires_at_idx ON ax_sessions (expires_at_unix);
+            "INSERT INTO legura_users (id,email,role) VALUES ('other','other@example.test','subscriber');
             INSERT INTO ax_sessions VALUES ('old-session', 'owner', '{}', 1, 1, 2);
             INSERT INTO ax_sessions VALUES ('other-session', 'other', '{}', 1, 1, 2);",
         ).unwrap();

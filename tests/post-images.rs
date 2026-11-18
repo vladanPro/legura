@@ -297,7 +297,7 @@ fn fixture() -> (Connection, Objects, StoreId, String) {
     }
     database
         .execute_batch(
-            "INSERT INTO legura_users VALUES ('owner','owner@example.test','admin');
+            "INSERT INTO legura_users (id, email, role) VALUES ('owner','owner@example.test','admin');
          INSERT INTO legura_posts(id,title,slug,body,status) VALUES
          ('one','First','first','Body','draft'), ('two','Second','second','Body','published');",
         )

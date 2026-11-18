@@ -54,7 +54,9 @@ foreach ($account in @(
   @{ Email = "subscriber-account"; Role = "subscriber"; Landing = "/"; Content = 403 }
 )) {
   $login = Invoke-Request -Path "/__axonyx/action?path=%2Flogin&name=SignIn" -Method POST -Body "email=$($account.Email)%40example.com&password=$newUserPassword" -Headers (Get-Proof) -Status 303
-  if ($login.Headers.Location -ne $account.Landing) { throw "Wrong landing for $($account.Role)" }
+  if ($login.Headers.Location -ne $account.Landing) {
+    throw "Expected $($account.Landing) for $($account.Role), got $($login.Headers.Location)"
+  }
   $memberCookie = ([string]$login.Headers["Set-Cookie"]).Split(';')[0]
   if ($account.Role -eq "editor") { $editorCookie = $memberCookie }
   foreach ($path in "/admin/posts", "/admin/pages", "/admin/posts/new", "/admin/pages/new") {
@@ -100,6 +102,39 @@ foreach ($path in "/admin/posts", "/admin/pages") {
 Invoke-Request -Path "/__axonyx/action?path=%2Fadmin%2Fposts%2Fnew&name=CreatePost" -Method POST -Body "title=&slug=account-test&body=Fixture&status=draft" -Headers $editorProof -Status 403 | Out-Null
 Invoke-Request -Path $roleAction -Method POST -Body "id=$editorId&role=editor" -Headers $sessionProof -Status 303 | Out-Null
 Invoke-Request -Path "/admin/posts" -Headers @{ Cookie = $editorCookie } | Out-Null
+Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } | Out-Null
+
+$statusAction = "/__axonyx/action?path=$([Uri]::EscapeDataString($editorDetailsPath))&name=UpdateUserStatus"
+$deactivate = "id=$editorId&status=inactive"
+$reactivate = "id=$editorId&status=active"
+$editorLoginPath = "/__axonyx/action?path=%2Flogin&name=SignIn"
+$editorLoginForm = "email=editor-account%40example.com&password=$newUserPassword"
+$login = Invoke-Request -Path $editorLoginPath -Method POST -Body $editorLoginForm -Headers (Get-Proof) -Status 303
+$otherEditorCookie = ([string]$login.Headers["Set-Cookie"]).Split(';')[0]
+if ($editorCookie -eq $otherEditorCookie) { throw "Expected two independent Editor sessions" }
+Invoke-Request -Path $statusAction -Method POST -Body $deactivate -Headers $editorProof -Status 403 | Out-Null
+Invoke-Request -Path $statusAction -Method POST -Body $deactivate -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null
+Invoke-Request -Path $statusAction -Method POST -Body "id=$ownerId&status=inactive" -Headers $sessionProof -Status 403 | Out-Null
+Invoke-Request -Path $statusAction -Method POST -Body "id=$editorId&status=unknown" -Headers $sessionProof -Status 422 | Out-Null
+Invoke-Request -Path $statusAction -Method POST -Body $deactivate -Headers $sessionProof -Status 303 | Out-Null
+$inactive = Invoke-Request -Path $editorDetailsPath -Headers @{ Cookie = $cookie }
+if ($inactive.Body -notmatch 'Reactivate account' -or $inactive.Body -match 'Deactivate account') {
+  throw "Inactive account details did not offer reactivation"
+}
+foreach ($revoked in @($editorCookie, $otherEditorCookie)) {
+  Invoke-Request -Path "/admin/posts" -Headers @{ Cookie = $revoked } -Status 403 | Out-Null
+}
+$blockedLogin = Invoke-Request -Path $editorLoginPath -Method POST -Body $editorLoginForm -Headers (Get-Proof) -Status 422
+if ($blockedLogin.Body -notmatch 'Email or password is incorrect' -or $blockedLogin.Headers["Set-Cookie"]) {
+  throw "Inactive login did not return generic feedback with no session"
+}
+Invoke-Request -Path $statusAction -Method POST -Body $reactivate -Headers $sessionProof -Status 303 | Out-Null
+foreach ($revoked in @($editorCookie, $otherEditorCookie)) {
+  Invoke-Request -Path "/admin/posts" -Headers @{ Cookie = $revoked } -Status 403 | Out-Null
+}
+$fresh = Invoke-Request -Path $editorLoginPath -Method POST -Body $editorLoginForm -Headers (Get-Proof) -Status 303
+Invoke-Request -Path $statusAction -Method POST -Body $reactivate -Headers $sessionProof -Status 303 | Out-Null
+Invoke-Request -Path "/admin/posts" -Headers @{ Cookie = ([string]$fresh.Headers["Set-Cookie"]).Split(';')[0] } | Out-Null
 Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } | Out-Null
 
 $accountRows = & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);print(d.execute("SELECT COUNT(*) FROM legura_users u JOIN legura_credentials c ON c.user_id=u.id AND c.email=u.email WHERE u.email IN (?,?) AND c.password_hash LIKE ?", ("editor-account@example.com","subscriber-account@example.com","$argon2id$%")).fetchone()[0]);d.close()' $db

@@ -7,3 +7,14 @@ action UpdateUserRole(id: String, role: String) {
   db.legura_users.where({ id: input.id, role: account["role"] }).update({ role: input.role })
   return redirect("/admin/users/" + input.id)
 }
+
+action UpdateUserStatus(id: String, status: String) {
+  data manager = loadUserManager()
+  data account = db.legura_users.where({ id: input.id }).first()
+  require account else notFound()
+  require account["role"] == "editor" || account["role"] == "subscriber" else forbidden()
+  require input.status == "active" || input.status == "inactive" else invalid({ status: "Choose Active or Inactive." })
+  data generation = Uuid.new()
+  db.legura_users.where({ id: input.id, role: account["role"], session_generation: account["session_generation"] }).whereNot({ status: input.status }).update({ status: input.status, session_generation: generation })
+  return redirect("/admin/users/" + input.id)
+}

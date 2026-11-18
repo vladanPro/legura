@@ -11,13 +11,15 @@ page UserAccountDetails() {
   data user: UserAccount = loadUserAccount(params.id)
   return ASX {
     <AdminFrame section="users">
-      <AdminPageHeader title="User account" description="Account details and its current role." />
+      <AdminPageHeader title="User account" description="Manage the account role and access." />
       <Card>
         <dl class="legura-profile-details">
           <dt>Email</dt>
           <dd>{user.email}</dd>
           <dt>Role</dt>
           <dd>{user.role}</dd>
+          <dt>Status</dt>
+          <dd>{user.status}</dd>
         </dl>
         <If when={user.role == "editor" || user.role == "subscriber"}>
           <form method="post" action={action UpdateUserRole} class="legura-form">
@@ -38,6 +40,20 @@ page UserAccountDetails() {
             <div class="legura-form-actions">
               <Button type="submit" variant="primary">Save role</Button>
             </div>
+          </form>
+          <form method="post" action={action UpdateUserStatus} class="legura-form">
+            <input type="hidden" name="id" value={user.id} />
+            <If when={user.status == "active"}>
+              <input type="hidden" name="status" value="inactive" />
+              <p class="legura-hint">Deactivation signs the user out and blocks new sign-ins without removing their content.</p>
+              <Button type="submit" variant="secondary">Deactivate account</Button>
+            </If>
+            <If when={user.status == "inactive"}>
+              <input type="hidden" name="status" value="active" />
+              <p class="legura-hint">The user will need to sign in again after reactivation.</p>
+              <Button type="submit" variant="secondary">Reactivate account</Button>
+            </If>
+            <p class="ax-field__error" data-ax-field-error="status" aria-live="polite"></p>
           </form>
         </If>
         <TextLink href="/admin/users">Back to users</TextLink>
