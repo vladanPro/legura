@@ -28,7 +28,7 @@ fn fixture() -> (Connection, Removal, StoreId, String) {
         db.execute_batch(up).unwrap();
     }
     db.execute(
-        "INSERT INTO legura_users VALUES ('owner','owner@example.test','admin')",
+        "INSERT INTO legura_users (id, email, role) VALUES ('owner','owner@example.test','admin')",
         [],
     )
     .unwrap();
