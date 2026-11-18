@@ -6,9 +6,15 @@ type Credential {
 query loadCredential(email: String) -> Credential? {
   return db.legura_credentials.where({ email: input.email }).first()
 }
-query loadLoginDestination(user_id: String) -> String {
-  data rows = db.query("SELECT COALESCE((SELECT role FROM legura_users WHERE id = ?), '') AS role", input.user_id)
-  data destination = Native.call("legura.auth.landing", rows[0]["role"])
+type LoginAccount {
+  role: String
+  session_generation: String
+}
+query loadLoginAccount(user_id: String) -> LoginAccount? {
+  return db.legura_users.where({ id: input.user_id, status: "active" }).first()
+}
+query loadLoginDestination(role: String) -> String {
+  data destination = Native.call("legura.auth.landing", input.role)
   return destination
 }
 action SignIn(email: String, password: String) {
@@ -18,8 +24,10 @@ action SignIn(email: String, password: String) {
   data verified = Password.verifyOptional(input.password, credential?.password_hash)
   require verified else invalid({ email: "Email or password is incorrect." })
   require credential else invalid({ email: "Email or password is incorrect." })
-  data destination = loadLoginDestination(credential.user_id)
+  data account = loadLoginAccount(credential.user_id)
+  require account else invalid({ email: "Email or password is incorrect." })
+  data destination = loadLoginDestination(account.role)
   require destination != "" else invalid({ email: "Email or password is incorrect." })
-  Session.create(credential.user_id, {})
+  Session.create(credential.user_id, { legura_generation: account.session_generation })
   return redirect(destination)
 }

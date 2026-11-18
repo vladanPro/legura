@@ -138,7 +138,7 @@ installation/public addresses, the administrative contact, and content language.
 The Posts list renders creation timestamps in the chosen time zone and formats,
 while the stored timestamp remains UTC. Week start is saved for future calendars.
 Public registration is intentionally unavailable.
-The admin-only Users directory lists accounts and opens read-only details.
+The admin-only Users directory lists accounts and opens account details.
 The server-side policy now defines Admin (administration, users, content),
 Editor (content only), and Subscriber (no back-office capabilities). It denies
 unknown roles and capabilities. Posts and Pages now check content capability
@@ -153,11 +153,24 @@ The account and hashed credentials are saved together. Administrators can
 switch an existing account between Editor and Subscriber. Administrator
 accounts are not editable, and access checks use the current role on every
 request. Email invitations and public registration remain out of scope.
-The Users directory supports literal email search and role filters, applied
-before server-side pagination and preserved when moving between pages.
-The Node-free Aegis smoke exercises account creation, combined search and role
-filters, and role changes in Chromium with page scripts enabled and disabled.
+Administrators can deactivate and reactivate Editors and Subscribers without
+deleting their accounts or content. Deactivation revokes their SQLite-backed
+sessions and blocks sign-in. Reactivation requires a fresh sign-in; old
+cookies do not work again. Administrator accounts cannot be deactivated.
+The Users directory supports literal email search, role and active/inactive
+status filters, applied before server-side pagination and preserved when
+moving between pages.
+The Node-free Aegis smoke exercises account creation, role/status changes and
+combined email/role/status filters in Chromium with page scripts enabled and
+disabled. It captures the inactive account listing at 320 and 390 pixels.
 Run the compiled fixture with `pwsh -File scripts/smoke-auth.ps1 -Users`.
+
+Administrator Profile now has a current-password-confirmed password change.
+The guarded action hashes through Axonyx Password, then compares the stored
+hash and session generation again inside an immediate SQLite transaction.
+Password replacement and revocation of all that account's sessions commit
+together. A fresh sign-in is required. Editor/Subscriber self-service,
+email-based reset links and administrator-managed resets are not included.
 
 The administration overview shows guarded database-backed total/draft/published
 counts and links to those lists, plus a first-draft prompt for empty installations.

@@ -3,9 +3,64 @@
   "driver": "sqlite",
   "transport": "direct",
   "url": "sqlite://data/legura.db",
-  "schema_hash": "sha256:2b7ca92a23229242d8aa82b5f47fe22894c6047644424f9328a5cb89b51a44be",
+  "schema_hash": "sha256:87801b980db3ffef7b9352c050dd404c7d9856521b4d27e585a9db5810c07952",
   "types_path": "app/generated/db.ax",
   "tables": [
+    {
+      "name": "ax_sessions",
+      "kind": "table",
+      "record": "AxSessionsRow",
+      "columns": [
+        {
+          "name": "id",
+          "ty": "TEXT",
+          "ax_type": "String",
+          "nullable": false,
+          "primary_key": true,
+          "default": null
+        },
+        {
+          "name": "subject",
+          "ty": "TEXT",
+          "ax_type": "String",
+          "nullable": false,
+          "primary_key": false,
+          "default": null
+        },
+        {
+          "name": "data_json",
+          "ty": "TEXT",
+          "ax_type": "String",
+          "nullable": false,
+          "primary_key": false,
+          "default": null
+        },
+        {
+          "name": "created_at_unix",
+          "ty": "INTEGER",
+          "ax_type": "Int",
+          "nullable": false,
+          "primary_key": false,
+          "default": null
+        },
+        {
+          "name": "last_seen_at_unix",
+          "ty": "INTEGER",
+          "ax_type": "Int",
+          "nullable": false,
+          "primary_key": false,
+          "default": null
+        },
+        {
+          "name": "expires_at_unix",
+          "ty": "INTEGER",
+          "ax_type": "Int",
+          "nullable": false,
+          "primary_key": false,
+          "default": null
+        }
+      ]
+    },
     {
       "name": "legura_credentials",
       "kind": "table",
@@ -621,6 +676,22 @@
           "nullable": false,
           "primary_key": false,
           "default": null
+        },
+        {
+          "name": "status",
+          "ty": "TEXT",
+          "ax_type": "String",
+          "nullable": false,
+          "primary_key": false,
+          "default": "'active'"
+        },
+        {
+          "name": "session_generation",
+          "ty": "TEXT",
+          "ax_type": "String",
+          "nullable": false,
+          "primary_key": false,
+          "default": "''"
         }
       ]
     }

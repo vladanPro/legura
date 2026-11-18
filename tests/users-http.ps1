@@ -54,7 +54,9 @@ foreach ($account in @(
   @{ Email = "subscriber-account"; Role = "subscriber"; Landing = "/"; Content = 403 }
 )) {
   $login = Invoke-Request -Path "/__axonyx/action?path=%2Flogin&name=SignIn" -Method POST -Body "email=$($account.Email)%40example.com&password=$newUserPassword" -Headers (Get-Proof) -Status 303
-  if ($login.Headers.Location -ne $account.Landing) { throw "Wrong landing for $($account.Role)" }
+  if ($login.Headers.Location -ne $account.Landing) {
+    throw "Expected $($account.Landing) for $($account.Role), got $($login.Headers.Location)"
+  }
   $memberCookie = ([string]$login.Headers["Set-Cookie"]).Split(';')[0]
   if ($account.Role -eq "editor") { $editorCookie = $memberCookie }
   foreach ($path in "/admin/posts", "/admin/pages", "/admin/posts/new", "/admin/pages/new") {
@@ -102,6 +104,39 @@ Invoke-Request -Path $roleAction -Method POST -Body "id=$editorId&role=editor" -
 Invoke-Request -Path "/admin/posts" -Headers @{ Cookie = $editorCookie } | Out-Null
 Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } | Out-Null
 
+$statusAction = "/__axonyx/action?path=$([Uri]::EscapeDataString($editorDetailsPath))&name=UpdateUserStatus"
+$deactivate = "id=$editorId&status=inactive"
+$reactivate = "id=$editorId&status=active"
+$editorLoginPath = "/__axonyx/action?path=%2Flogin&name=SignIn"
+$editorLoginForm = "email=editor-account%40example.com&password=$newUserPassword"
+$login = Invoke-Request -Path $editorLoginPath -Method POST -Body $editorLoginForm -Headers (Get-Proof) -Status 303
+$otherEditorCookie = ([string]$login.Headers["Set-Cookie"]).Split(';')[0]
+if ($editorCookie -eq $otherEditorCookie) { throw "Expected two independent Editor sessions" }
+Invoke-Request -Path $statusAction -Method POST -Body $deactivate -Headers $editorProof -Status 403 | Out-Null
+Invoke-Request -Path $statusAction -Method POST -Body $deactivate -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null
+Invoke-Request -Path $statusAction -Method POST -Body "id=$ownerId&status=inactive" -Headers $sessionProof -Status 403 | Out-Null
+Invoke-Request -Path $statusAction -Method POST -Body "id=$editorId&status=unknown" -Headers $sessionProof -Status 422 | Out-Null
+Invoke-Request -Path $statusAction -Method POST -Body $deactivate -Headers $sessionProof -Status 303 | Out-Null
+$inactive = Invoke-Request -Path $editorDetailsPath -Headers @{ Cookie = $cookie }
+if ($inactive.Body -notmatch 'Reactivate account' -or $inactive.Body -match 'Deactivate account') {
+  throw "Inactive account details did not offer reactivation"
+}
+foreach ($revoked in @($editorCookie, $otherEditorCookie)) {
+  Invoke-Request -Path "/admin/posts" -Headers @{ Cookie = $revoked } -Status 403 | Out-Null
+}
+$blockedLogin = Invoke-Request -Path $editorLoginPath -Method POST -Body $editorLoginForm -Headers (Get-Proof) -Status 422
+if ($blockedLogin.Body -notmatch 'Email or password is incorrect' -or $blockedLogin.Headers["Set-Cookie"]) {
+  throw "Inactive login did not return generic feedback with no session"
+}
+Invoke-Request -Path $statusAction -Method POST -Body $reactivate -Headers $sessionProof -Status 303 | Out-Null
+foreach ($revoked in @($editorCookie, $otherEditorCookie)) {
+  Invoke-Request -Path "/admin/posts" -Headers @{ Cookie = $revoked } -Status 403 | Out-Null
+}
+$fresh = Invoke-Request -Path $editorLoginPath -Method POST -Body $editorLoginForm -Headers (Get-Proof) -Status 303
+Invoke-Request -Path $statusAction -Method POST -Body $reactivate -Headers $sessionProof -Status 303 | Out-Null
+Invoke-Request -Path "/admin/posts" -Headers @{ Cookie = ([string]$fresh.Headers["Set-Cookie"]).Split(';')[0] } | Out-Null
+Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } | Out-Null
+
 $accountRows = & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);print(d.execute("SELECT COUNT(*) FROM legura_users u JOIN legura_credentials c ON c.user_id=u.id AND c.email=u.email WHERE u.email IN (?,?) AND c.password_hash LIKE ?", ("editor-account@example.com","subscriber-account@example.com","$argon2id$%")).fetchone()[0]);d.close()' $db
 if ($LASTEXITCODE -ne 0 -or $accountRows -ne "2") { throw "New accounts must have matching Argon2id credentials" }
 
@@ -130,5 +165,35 @@ $emptyUsers = Invoke-Request -Path "/admin/users?q=%25" -Headers $managerHeaders
 if (!$emptyUsers.Body.Contains("No matching accounts") -or $emptyUsers.Body.Contains("qa_user01@example.com")) {
   throw "A literal percent sign must not act as an email wildcard"
 }
+& $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);d.execute("UPDATE legura_users SET status=?,session_generation=? WHERE id=?",("inactive","filter-fixture","filters-13"));d.commit();d.close()' $db
+if ($LASTEXITCODE -ne 0) { throw "Cannot prepare inactive account filter fixture" }
+$inactiveUsers = Invoke-Request -Path "/admin/users?status=inactive" -Headers $managerHeaders
+if (!$inactiveUsers.Body.Contains("1 matching accounts") -or
+    !$inactiveUsers.Body.Contains("qa_user13@example.com") -or
+    $inactiveUsers.Body.Contains("qa_user12@example.com") -or
+    $inactiveUsers.Body -notmatch '<option(?=[^>]*value="inactive")(?=[^>]*selected)') {
+  throw "Inactive status filter did not isolate the disabled account or preserve selection"
+}
+$inactiveEditors = Invoke-Request -Path "/admin/users?status=inactive&role=editor&q=qa_" -Headers $managerHeaders
+if (!$inactiveEditors.Body.Contains("No matching accounts")) {
+  throw "Status and role filters must both apply"
+}
+$activeFirst = Invoke-Request -Path "/admin/users?status=active&role=editor&q=qa_" -Headers $managerHeaders
+if (!$activeFirst.Body.Contains("12 matching accounts") -or
+    $activeFirst.Body -notmatch '<input(?=[^>]*name="status")(?=[^>]*value="active")(?=[^>]*type="hidden")') {
+  throw "Pagination must preserve the active status filter"
+}
+$activeLast = Invoke-Request -Path "/admin/users?status=active&role=editor&q=qa_&page=999" -Headers $managerHeaders
+if (!$activeLast.Body.Contains("Page 2") -or !$activeLast.Body.Contains("qa_user12@example.com") -or
+    $activeLast.Body.Contains("qa_user13@example.com") -or
+    $activeLast.Body -notmatch '<input(?=[^>]*name="status")(?=[^>]*value="active")(?=[^>]*type="hidden")') {
+  throw "Filtered last page must exclude inactive accounts and preserve status on Previous"
+}
+$invalidStatus = Invoke-Request -Path "/admin/users?status=unknown&role=subscriber&q=qa_" -Headers $managerHeaders
+if (!$invalidStatus.Body.Contains("1 matching accounts") -or !$invalidStatus.Body.Contains("qa_user13@example.com") -or
+    $invalidStatus.Body -notmatch '<option(?=[^>]*value="all")(?=[^>]*selected)') {
+  throw "Unknown status must normalize to All without discarding role or search"
+}
+Invoke-Request -Path "/admin/users?status=inactive" -Status 403 | Out-Null
 Invoke-Request -Path "/admin/users?role=editor&q=qa_" -Headers @{ Cookie = $editorCookie } -Status 403 | Out-Null
-Write-Host "Legura users smoke passed: guarded creation, validation, hashed credentials, login, role changes, search and filtered pagination."
+Write-Host "Legura users smoke passed: guarded creation, validation, hashed credentials, login, role/status changes, search and filtered pagination."

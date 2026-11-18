@@ -34,6 +34,7 @@ pub fn normalize_post_filters(input: PostFilterInput) -> PostFilters {
 #[serde(deny_unknown_fields)]
 struct UserFilterInput {
     role: String,
+    status: String,
     page: String,
     search: String,
 }
@@ -42,6 +43,7 @@ struct UserFilterInput {
 #[serde(deny_unknown_fields)]
 struct UserFilters {
     role: String,
+    status: String,
     search: String,
     requested_page: i64,
 }
@@ -51,8 +53,13 @@ fn normalize_user_filters(input: UserFilterInput) -> UserFilters {
         "admin" | "editor" | "subscriber" => input.role,
         _ => "all".to_owned(),
     };
+    let status = match input.status.as_str() {
+        "active" | "inactive" => input.status,
+        _ => "all".to_owned(),
+    };
     UserFilters {
         role,
+        status,
         search: normalize_search(&input.search),
         requested_page: normalize_page(&input.page),
     }
@@ -163,15 +170,40 @@ mod tests {
             assert_eq!(
                 normalize_user_filters(UserFilterInput {
                     role: role.to_owned(),
+                    status: "all".to_owned(),
                     page: "003".to_owned(),
                     search: "  QA_%  ".to_owned(),
                 }),
                 UserFilters {
                     role: expected.to_owned(),
+                    status: "all".to_owned(),
                     search: "QA_%".to_owned(),
                     requested_page: 3
                 },
             );
+        }
+    }
+
+    #[test]
+    fn user_status_filters_are_allowlisted_and_compose_with_roles() {
+        for (status, expected) in [
+            ("active", "active"),
+            ("inactive", "inactive"),
+            ("all", "all"),
+            ("", "all"),
+            ("ACTIVE", "all"),
+            ("inactive' OR 1=1 --", "all"),
+        ] {
+            let filters = normalize_user_filters(UserFilterInput {
+                role: "editor".to_owned(),
+                status: status.to_owned(),
+                page: "999".to_owned(),
+                search: "  QA_%  ".to_owned(),
+            });
+            assert_eq!(filters.status, expected);
+            assert_eq!(filters.role, "editor");
+            assert_eq!(filters.search, "QA_%");
+            assert_eq!(filters.requested_page, 999);
         }
     }
 

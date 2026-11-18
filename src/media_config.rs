@@ -543,7 +543,7 @@ mod tests {
     fn post_image_callbacks_validate_inputs_authority_and_independent_mutations() {
         let fixture = Fixture::new();
         let database = Connection::open(fixture.0.join("cms.db")).unwrap();
-        database.execute_batch("INSERT INTO legura_users VALUES('owner','owner@example.test','admin'); INSERT INTO legura_posts(id,title,slug,body,status) VALUES('post','Title','title','Body','draft');").unwrap();
+        database.execute_batch("INSERT INTO legura_users (id,email,role) VALUES('owner','owner@example.test','admin'); INSERT INTO legura_posts(id,title,slug,body,status) VALUES('post','Title','title','Body','draft');").unwrap();
         let upload = configure(&fixture.env(), &fixture.0, Arc::new(Fallback::default())).unwrap();
         let image = upload.save_file(MEDIA_CAPABILITY, &incoming()).unwrap();
         let mut registry = AxNativeRegistry::default();
@@ -592,7 +592,7 @@ mod tests {
         );
         database
             .execute(
-                "INSERT INTO legura_users VALUES('owner','owner@example.test','admin')",
+                "INSERT INTO legura_users (id,email,role) VALUES('owner','owner@example.test','admin')",
                 [],
             )
             .unwrap();
@@ -650,7 +650,7 @@ mod tests {
         let connection = Connection::open(fixture.0.join("cms.db")).unwrap();
         connection
             .execute(
-                "INSERT INTO legura_users VALUES ('owner', 'owner@example.test', 'admin')",
+                "INSERT INTO legura_users (id,email,role) VALUES ('owner', 'owner@example.test', 'admin')",
                 [],
             )
             .unwrap();
@@ -689,7 +689,7 @@ mod tests {
         assert_eq!(read().status, 403);
         connection
             .execute(
-                "INSERT INTO legura_users VALUES ('owner', 'owner@example.test', 'admin')",
+                "INSERT INTO legura_users (id,email,role) VALUES ('owner', 'owner@example.test', 'admin')",
                 [],
             )
             .unwrap();

@@ -95,6 +95,11 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         include_str!("../db/migrations/20261115000000_018_account_roles/up.sql"),
         include_str!("../db/migrations/20261115000000_018_account_roles/down.sql"),
     ),
+    (
+        "20261118000000_019",
+        include_str!("../db/migrations/20261118000000_019_account_status/up.sql"),
+        include_str!("../db/migrations/20261118000000_019_account_status/down.sql"),
+    ),
 ];
 
 pub fn migration_hash(up: &str, down: &str) -> String {
@@ -130,6 +135,7 @@ pub fn embedded_migrations() -> Vec<AxMigration> {
                 "20261114020000_016" => "post_creation_metadata",
                 "20261114030000_017" => "general_settings",
                 "20261115000000_018" => "account_roles",
+                "20261118000000_019" => "account_status",
                 _ => unreachable!("embedded migration name is missing"),
             }
             .into(),
@@ -229,6 +235,14 @@ pub fn validate_structure(connection: &Connection) -> Result<usize> {
             "installation owner is not an administrator"
         );
     }
+    if count >= 19 {
+        ensure!(
+            !connection
+                .prepare("SELECT 1 FROM legura_users WHERE role = 'admin' AND status != 'active'")?
+                .exists([])?,
+            "administrator account is inactive"
+        );
+    }
     if count >= 9 {
         let valid: bool = connection.query_row(
             "SELECT admin_language IN ('en', 'sr-Latn') AND site_language IN ('en', 'sr-Latn') FROM legura_languages WHERE id = 1",
@@ -290,8 +304,8 @@ fn schema(connection: &Connection) -> rusqlite::Result<Vec<SchemaRow>> {
     rows.collect()
 }
 
-// Runtime 0.6.9 creates these two objects at first session-store startup, not
-// through product migrations. Recognize only that bounded runtime contract.
+// The runtime can create these objects at startup; migration 019 also needs
+// them before the server starts. Check their shape separately from product SQL.
 fn validate_runtime_sessions(connection: &Connection) -> Result<()> {
     let objects: usize = connection.query_row(
         "SELECT COUNT(*) FROM sqlite_schema WHERE name IN ('ax_sessions', 'ax_sessions_expires_at_idx')",
