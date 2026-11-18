@@ -1,6 +1,9 @@
 import { AdminFrame } from "@/components/AdminFrame"
 import { AdminPageHeader } from "@/components/AdminPageHeader"
 import { Card } from "@axonyx/ui/foundry/Card"
+import { Button } from "@axonyx/ui/foundry/Button"
+import { Field } from "@axonyx/ui/foundry/Field"
+import { FieldLabel } from "@axonyx/ui/foundry/FieldLabel"
 
 page Profile() {
   data administrator: Administrator = loadAdministrator()
@@ -14,6 +17,71 @@ page Profile() {
           <dt>Role</dt>
           <dd>Administrator</dd>
         </dl>
+      </Card>
+      <Card title="Change password">
+        <p>All your sessions will be signed out. Sign in again with the new password.</p>
+        <form method="post" action={action ChangeProfilePassword} class="legura-form">
+          <Field>
+            <FieldLabel htmlFor="currentPassword">Current password</FieldLabel>
+            <input
+              class="ax-input"
+              id="currentPassword"
+              name="currentPassword"
+              type="password"
+              autocomplete="current-password"
+              required="true"
+              maxlength="256"
+              aria-describedby="current-password-error"
+            />
+            <p
+              id="current-password-error"
+              class="ax-field__error"
+              data-ax-field-error="currentPassword"
+              aria-live="polite"
+            ></p>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="new-password">New password</FieldLabel>
+            <input
+              class="ax-input"
+              id="new-password"
+              name="password"
+              type="password"
+              autocomplete="new-password"
+              required="true"
+              minlength="10"
+              maxlength="256"
+              aria-describedby="new-password-error"
+            />
+            <p
+              id="new-password-error"
+              class="ax-field__error"
+              data-ax-field-error="password"
+              aria-live="polite"
+            ></p>
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="confirmPassword">Confirm new password</FieldLabel>
+            <input
+              class="ax-input"
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              autocomplete="new-password"
+              required="true"
+              minlength="10"
+              maxlength="256"
+              aria-describedby="confirm-password-error"
+            />
+            <p
+              id="confirm-password-error"
+              class="ax-field__error"
+              data-ax-field-error="confirmPassword"
+              aria-live="polite"
+            ></p>
+          </Field>
+          <Button type="submit" variant="primary">Change password and sign out</Button>
+        </form>
       </Card>
       <Card title="Preferences">
         <p>Manage the admin panel language separately from the public website.</p>
