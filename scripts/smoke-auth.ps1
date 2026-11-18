@@ -360,7 +360,10 @@ try {
   if ($Media) { . (Join-Path $root "tests/media-http/proof.ps1") }
   if ($Posts) { . (Join-Path $root "tests/posts-http.ps1") }
   if ($Theme) { . (Join-Path $root "tests/theme-http.ps1") }
-  if ($Users) { . (Join-Path $root "tests/users-http.ps1") }
+  if ($Users) {
+    . (Join-Path $root "tests/users-http.ps1")
+    . (Join-Path $root "tests/profile-password-http.ps1")
+  }
   $logoutPath = "/__axonyx/action?path=%2Fadmin&name=SignOut"
   Invoke-Request -Path $logoutPath -Method POST -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null
   Invoke-Request -Path "/admin" -Headers @{ Cookie = $cookie } | Out-Null

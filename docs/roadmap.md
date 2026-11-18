@@ -165,6 +165,13 @@ combined email/role/status filters in Chromium with page scripts enabled and
 disabled. It captures the inactive account listing at 320 and 390 pixels.
 Run the compiled fixture with `pwsh -File scripts/smoke-auth.ps1 -Users`.
 
+Administrator Profile now has a current-password-confirmed password change.
+The guarded action hashes through Axonyx Password, then compares the stored
+hash and session generation again inside an immediate SQLite transaction.
+Password replacement and revocation of all that account's sessions commit
+together. A fresh sign-in is required. Editor/Subscriber self-service,
+email-based reset links and administrator-managed resets are not included.
+
 The administration overview shows guarded database-backed total/draft/published
 counts and links to those lists, plus a first-draft prompt for empty installations.
 A separate Trash card links to both collections with independent counts; trashed

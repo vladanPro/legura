@@ -2,6 +2,11 @@
 use axonyx_runtime::native::{AxNativeError, AxNativeRegistry};
 
 pub fn register(registry: &mut AxNativeRegistry) -> Result<(), AxNativeError> {
+    legura::account_password::register(
+        registry,
+        &axonyx_runtime::backend::AxEnv::from_env(),
+        &std::env::current_dir().map_err(|_| AxNativeError::Rejected)?,
+    )?;
     legura::authorization::register(registry)?;
     legura::media_config::register_availability(
         registry,

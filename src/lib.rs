@@ -1,4 +1,5 @@
 //! Product contracts and explicitly registered native helpers.
+pub mod account_password;
 pub mod authorization;
 pub mod backup_archive;
 pub mod backup_compatibility;
