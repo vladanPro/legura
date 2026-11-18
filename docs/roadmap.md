@@ -160,8 +160,9 @@ cookies do not work again. Administrator accounts cannot be deactivated.
 The Users directory supports literal email search, role and active/inactive
 status filters, applied before server-side pagination and preserved when
 moving between pages.
-The Node-free Aegis smoke exercises account creation, combined search and role
-filters, and role changes in Chromium with page scripts enabled and disabled.
+The Node-free Aegis smoke exercises account creation, role/status changes and
+combined email/role/status filters in Chromium with page scripts enabled and
+disabled. It captures the inactive account listing at 320 and 390 pixels.
 Run the compiled fixture with `pwsh -File scripts/smoke-auth.ps1 -Users`.
 
 The administration overview shows guarded database-backed total/draft/published
