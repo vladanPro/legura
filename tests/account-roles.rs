@@ -3,7 +3,11 @@ use rusqlite::Connection;
 
 #[test]
 fn role_migration_preserves_owner_credentials_and_post_attribution() {
-    let (prior, migration) = MIGRATIONS.split_at(MIGRATIONS.len() - 1);
+    let index = MIGRATIONS
+        .iter()
+        .position(|(version, _, _)| *version == "20261115000000_018")
+        .unwrap();
+    let (prior, migration) = MIGRATIONS.split_at(index);
     let (version, up, down) = migration[0];
     assert_eq!(version, "20261115000000_018");
     for foreign_keys in [false, true] {

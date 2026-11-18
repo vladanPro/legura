@@ -1,3 +1,30 @@
+export type AxSessionsRow {
+  id: String
+  subject: String
+  data_json: String
+  created_at_unix: Int
+  last_seen_at_unix: Int
+  expires_at_unix: Int
+}
+
+export type AxSessionsCreateInput {
+  id: String
+  subject: String
+  data_json: String
+  created_at_unix: Int
+  last_seen_at_unix: Int
+  expires_at_unix: Int
+}
+
+export type AxSessionsUpdateInput {
+  id: Optional<String>
+  subject: Optional<String>
+  data_json: Optional<String>
+  created_at_unix: Optional<Int>
+  last_seen_at_unix: Optional<Int>
+  expires_at_unix: Optional<Int>
+}
+
 export type LeguraCredentialsRow {
   user_id: String
   email: String
@@ -305,17 +332,23 @@ export type LeguraUsersRow {
   id: String
   email: String
   role: String
+  status: String
+  session_generation: String
 }
 
 export type LeguraUsersCreateInput {
   id: String
   email: String
   role: String
+  status: Optional<String>
+  session_generation: Optional<String>
 }
 
 export type LeguraUsersUpdateInput {
   id: Optional<String>
   email: Optional<String>
   role: Optional<String>
+  status: Optional<String>
+  session_generation: Optional<String>
 }
 
