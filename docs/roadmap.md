@@ -38,11 +38,13 @@ the current pilot intentionally uses explicit 403 guards.
 
 ## 1. First End-to-End CMS
 
-Post Categories V0 is being delivered in scoped steps. The first schema step
-adds category records and many-to-many post assignments with non-destructive
-deletion and rollback guards. Management screens, post assignment/filtering,
-public published-only routes and full HTTP/Aegis acceptance remain follow-ups.
-See [the category contract](post-categories-v0.md); no category UI is claimed yet.
+Post Categories V0 is being delivered in scoped steps. The schema adds category
+records and many-to-many post assignments with non-destructive deletion and
+rollback guards. Administrator management adds a searchable/paginated Foundry
+list, validated create/edit forms and a separate slug-confirmed delete screen.
+Editors/Subscribers cannot manage categories. Post assignment/filtering and
+public published-only routes remain follow-ups; the management HTTP/Aegis gates
+must pass before merging. See [the category contract](post-categories-v0.md).
 
 Media Deletion Service V0 adds an administrator-checked Rust service
 that refuses referenced images and commits metadata removal before file cleanup.

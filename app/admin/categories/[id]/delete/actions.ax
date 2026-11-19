@@ -1,0 +1,8 @@
+action DeleteCategory(id: String, confirmSlug: String) {
+  data administrator = loadAdministrator()
+  data category = db.legura_categories.where({ id: input.id }).first()
+  require category else notFound()
+  require input.confirmSlug == category["slug"] else invalid({ confirmSlug: "Enter this category's URL slug to confirm deletion." })
+  db.legura_categories.where({ id: input.id, slug: input.confirmSlug }).delete()
+  return redirect("/admin/categories")
+}

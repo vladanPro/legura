@@ -1,0 +1,34 @@
+import { AdminFrame } from "@/components/AdminFrame"
+import { AdminPageHeader } from "@/components/AdminPageHeader"
+import { CategoryFields } from "@/components/CategoryFields"
+import { Card } from "@axonyx/ui/foundry/Card"
+import { Button } from "@axonyx/ui/foundry/Button"
+
+page EditCategory() {
+  data category: Category = loadCategory(params.id)
+  return ASX {
+    <AdminFrame section="categories">
+      <AdminPageHeader
+        title="Edit category"
+        description="Changes apply to every post assigned to this category."
+      />
+      <Card>
+        <form
+          method="post"
+          action={action UpdateCategory}
+          class="legura-form"
+          data-ax-retain-fields="name,slug"
+        >
+          <input type="hidden" name="id" value={category.id} />
+          <CategoryFields name={category.name} slug={category.slug} />
+          <div class="legura-form-actions">
+            <Button type="submit" variant="primary">Save category</Button>
+            <a href="/admin/categories">Back to categories</a>
+          </div>
+        </form>
+        <p class="legura-hint">{category.post_count + " assigned posts, including drafts and Trash."}</p>
+        <a href={"/admin/categories/" + category.id + "/delete"}>Delete category</a>
+      </Card>
+    </AdminFrame>
+  }
+}

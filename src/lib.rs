@@ -3,6 +3,7 @@ pub mod account_password;
 pub mod authorization;
 pub mod backup_archive;
 pub mod backup_compatibility;
+pub mod categories;
 pub mod content;
 pub mod content_audit;
 pub mod content_loading;

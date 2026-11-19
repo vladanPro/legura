@@ -59,6 +59,11 @@ foreach ($account in @(
   }
   $memberCookie = ([string]$login.Headers["Set-Cookie"]).Split(';')[0]
   if ($account.Role -eq "editor") { $editorCookie = $memberCookie }
+  Invoke-Request -Path "/admin/categories" -Headers @{ Cookie = $memberCookie } -Status 403 | Out-Null
+  Invoke-Request -Path "/admin/categories/missing" -Headers @{ Cookie = $memberCookie } -Status 403 | Out-Null
+  Invoke-Request -Path "/__axonyx/action?path=%2Fadmin%2Fcategories&name=CreateCategory" -Method POST -Body "name=Denied&slug=denied" -Headers (Get-Proof -Cookie $memberCookie) -Status 403 | Out-Null
+  Invoke-Request -Path "/__axonyx/action?path=%2Fadmin%2Fcategories%2Fmissing&name=UpdateCategory" -Method POST -Body "id=missing&name=Denied&slug=denied" -Headers (Get-Proof -Cookie $memberCookie) -Status 403 | Out-Null
+  Invoke-Request -Path "/__axonyx/action?path=%2Fadmin%2Fcategories%2Fmissing%2Fdelete&name=DeleteCategory" -Method POST -Body "id=missing&confirmSlug=denied" -Headers (Get-Proof -Cookie $memberCookie) -Status 403 | Out-Null
   $ownProfile = Invoke-Request -Path "/admin/profile" -Headers @{ Cookie = $memberCookie }
   if (!$ownProfile.Body.Contains("$($account.Email)@example.com") -or
       $ownProfile.Body.Contains($identity.email) -or $ownProfile.Body -match 'password_hash|session_generation|argon2') {

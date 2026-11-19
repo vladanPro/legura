@@ -1,0 +1,44 @@
+import { AdminFrame } from "@/components/AdminFrame"
+import { AdminPageHeader } from "@/components/AdminPageHeader"
+import { Card } from "@axonyx/ui/foundry/Card"
+import { Button } from "@axonyx/ui/foundry/Button"
+import { FieldLabel } from "@axonyx/ui/foundry/FieldLabel"
+import { Input } from "@axonyx/ui/foundry/Input"
+
+page DeleteCategoryConfirmation() {
+  data category: Category = loadCategory(params.id)
+  return ASX {
+    <AdminFrame section="categories">
+      <AdminPageHeader
+        title="Delete category"
+        description="This permanently removes the category, not its posts."
+      />
+      <Card title={category.name}>
+        <p id="category-delete-warning">Post assignments will be removed. The posts themselves, their content and publication status will not change.</p>
+        <p>{category.post_count + " assigned posts, including drafts and Trash."}</p>
+        <form method="post" action={action DeleteCategory} class="legura-form">
+          <input type="hidden" name="id" value={category.id} />
+          <FieldLabel htmlFor="confirmSlug">Type the URL slug to confirm</FieldLabel>
+          <Input
+            id="confirmSlug"
+            name="confirmSlug"
+            required="true"
+            maxlength="120"
+            describedBy="category-delete-warning category-delete-hint confirmSlug-error"
+          />
+          <p id="category-delete-hint" class="legura-hint">{"Enter exactly: " + category.slug}</p>
+          <p
+            id="confirmSlug-error"
+            class="ax-field__error"
+            data-ax-field-error="confirmSlug"
+            aria-live="polite"
+          ></p>
+          <div class="legura-form-actions">
+            <Button type="submit" variant="primary">Delete category permanently</Button>
+            <a href={"/admin/categories/" + category.id}>Cancel</a>
+          </div>
+        </form>
+      </Card>
+    </AdminFrame>
+  }
+}
