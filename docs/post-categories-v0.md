@@ -37,12 +37,12 @@ unfinished rich-text document or coupling content saves to category saves.
 Save unsaved post edits before leaving the editor. A new post must be saved
 before its categories can be assigned.
 
-Tooling gate: published CLI 0.8.9 quotes a redirect URL returned by `Native.call`.
-This step preserves search/page through such a URL and therefore requires the
-compiler fix in [runtime PR #297](https://github.com/vladanPro/axonyx-runtime/pull/297)
-to be published and adopted by the CLI before registry-only acceptance can pass.
-The isolated HTTP proof passes with a source CLI containing that fix; this is
-not a claim that the published toolchain already supports this complete flow.
+Tooling gate: CLI 0.8.9 quotes a redirect URL returned by `Native.call`.
+Published CLI 0.8.10 adopts compiler core 0.8.4 and fixes this issue through
+[runtime PR #297](https://github.com/vladanPro/axonyx-runtime/pull/297).
+CI pins 0.8.10. The isolated registry HTTP and Aegis gates must pass on this
+published toolchain before merging; the earlier source-CLI proof alone is not
+registry acceptance.
 
 The picker has literal category name/slug search and ten-row pagination. Search
 and page are preserved after each mutation. Its assigned-total includes links

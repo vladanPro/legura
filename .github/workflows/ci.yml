@@ -27,7 +27,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug --force
+        run: cargo install cargo-axonyx --version '=0.8.10' --locked --debug --force
       - name: Check storage hook formatting
         shell: pwsh
         run: |
@@ -79,7 +79,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
+      - run: cargo install cargo-axonyx --version '=0.8.10' --locked --debug
       - run: bash scripts/format-sources.sh --check
       - name: Check staged-source hook safety
         shell: pwsh
@@ -97,7 +97,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
+        run: cargo install cargo-axonyx --version '=0.8.10' --locked --debug
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -124,7 +124,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
+        run: cargo install cargo-axonyx --version '=0.8.10' --locked --debug
       - name: Verify compiled native content with disposable SQLite
         shell: pwsh
         run: |
@@ -161,7 +161,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
+        run: cargo install cargo-axonyx --version '=0.8.10' --locked --debug
       - name: Verify archive extraction and toolchain-free native flow
         shell: pwsh
         run: ./scripts/smoke-local.ps1 -Port 3943 -Package -Systemd
@@ -223,7 +223,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
+        run: cargo install cargo-axonyx --version '=0.8.10' --locked --debug
       - name: Build and verify the Windows candidate
         shell: pwsh
         run: |
@@ -258,7 +258,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
+        run: cargo install cargo-axonyx --version '=0.8.10' --locked --debug
       - name: Verify SQLite maintenance safety
         run: |
           cargo fmt --all -- --check
@@ -344,7 +344,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published CLI
-        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
+        run: cargo install cargo-axonyx --version '=0.8.10' --locked --debug
       - name: Smoke-test compiled setup and login
         shell: pwsh
         run: ./scripts/smoke-auth.ps1 -Port 3941

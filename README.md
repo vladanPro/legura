@@ -52,7 +52,8 @@ is integrated into dev.
 Posts V0 adds private create/edit, draft/published status, public published pages
 and plain-text rendering. Its typed not-found framework fixes are published in
 core 0.6.6/runtime 0.6.5/CLI 0.6.9/scaffold 0.6.7 after green release CI.
-The current registry pins are core `0.8.3`, runtime `0.8.4`, and CI CLI `0.8.9` for
+The application lockfile uses core `0.8.3` and runtime `0.8.4`; CI pins CLI
+`0.8.10` with compiler core `0.8.4` for
 public/private images and post authoring, replacing temporary source pins. See
 [Private Media HTTP](docs/private-media-http-v0.md) for registry acceptance and
 boundaries. The editor remains on its independent locked Git revision.
@@ -129,7 +130,7 @@ validated, server-owned boolean for product navigation, not an upload grant.
 An isolated protected-upload proof is merged in `dev` (PR #48), after all seven
 CI gates passed. Its startup hook (framework PR #357) is published in CLI 0.6.15,
 first adopted from crates.io; the current private-image CI uses registry CLI
-0.8.9. The
+0.8.10. The
 [library view pilot](docs/media-library-view-v0.md) is the basis of the opt-in
 product page. Existing operator installations are not automatically activated.
 
@@ -150,7 +151,7 @@ changing the developer's running CMS or claiming an operator activation command.
 The [native media configuration](docs/native-media-config-v0.md) now uses Legura's
 own startup hook and the application DB settings, disabled by default. Operator
 media pages and delivery were still inactive at that stage. The current pilot
-uses registry CLI 0.8.9 and runtime 0.8.4.
+uses registry CLI 0.8.10 and runtime 0.8.4.
 
 The native tool can now generate a NEW [private recovery configuration](docs/recovery-private-config-v0.md)
 with independent session/setup secrets after archive compatibility checks. It
