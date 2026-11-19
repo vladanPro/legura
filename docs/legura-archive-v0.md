@@ -83,8 +83,8 @@ regular USTAR payloads with exact allowed paths. It rejects path traversal,
 absolute/backslash paths, links, directories/devices/FIFOs, extension headers,
 duplicates, hidden concatenated entries, missing/changed inventories, mismatched
 hashes, unknown product/format/version and entries after the final manifest.
-The `0.0.2` maintenance reader accepts archives produced by `0.0.1` or `0.0.2`.
-Other producer versions are refused; the older `0.0.1` reader rejects `0.0.2`.
+The `0.0.3` maintenance reader accepts archives produced by `0.0.1`, `0.0.2`
+or `0.0.3`. Other producer versions are refused; older readers reject `0.0.3`.
 This explicit backup-reader policy does not perform a schema migration or
 authorize automatic replacement of a running server.
 

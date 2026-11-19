@@ -13,8 +13,10 @@ without forcing the user to learn the framework underneath.
 
 Legura is a source and native-package pilot with setup, administration, posts,
 editor, media and backup/restore flows. The runtime-only package can initialize
-a fresh local SQLite installation without Cargo at runtime, but there is no
-public binary release, production installer or supported upgrade path yet.
+a fresh local SQLite installation without Cargo at runtime.
+Experimental Windows/Linux downloads are available on
+[GitHub Releases](https://github.com/vladanPro/legura/releases);
+there is no stable production installer or automatic upgrade path yet.
 The isolated compiled setup/auth smoke covers setup races, CSRF, sessions and
 authorization. The following paragraphs record earlier implementation steps;
 current dependency pins live in `Cargo.toml` and `.github/workflows/ci.yml`.
@@ -85,7 +87,7 @@ accessibility audit or production certification.
 The shared administration frame composes Foundry AppShell and Sidebar for
 overview, posts and editor screens. See [the layout contract](docs/admin-shell-v0.md)
 and [Light/Dark appearance](docs/appearance-v0.md). These remain development
-pilots, not an installable product release.
+pilots, not a stable production release.
 The [public theme boundary](docs/public-theme-boundary-v0.md) separates the
 public home/blog frame from setup/login/admin appearance. An administrator can
 select either built-in Default or Editorial at `/admin/appearance`; this changes
