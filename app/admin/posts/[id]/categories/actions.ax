@@ -1,0 +1,10 @@
+action SetPostCategory(id: String, category_id: String, assigned: Int, page: String = "1", search: String = "") {
+  data actor = loadContentManager()
+  require input.assigned == 0 || input.assigned == 1 else invalid({ category_id: "Choose add or remove." })
+  data result = Native.call("legura.post_categories.set", { actor_id: actor.id, post_id: input.id, category_id: input.category_id, assigned: input.assigned == 1 })
+  require result.authorized else forbidden()
+  require result.found else notFound()
+  require result.available else invalid({ category_id: "This category is no longer available. Reload the list." })
+  data target = Native.call("legura.post_categories.return_url", { post_id: input.id, page: input.page, search: input.search })
+  return redirect(target)
+}

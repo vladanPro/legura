@@ -65,7 +65,7 @@ fn normalize_user_filters(input: UserFilterInput) -> UserFilters {
     }
 }
 
-fn normalize_search(search: &str) -> String {
+pub(crate) fn normalize_search(search: &str) -> String {
     // Preserve the SQLite trim/substr text-prefix semantics used by Posts.
     search
         .trim_matches(' ')

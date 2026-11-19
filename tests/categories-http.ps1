@@ -26,6 +26,7 @@ $categoryEdited = Invoke-Request -Path $categoryRoute -Headers @{ Cookie = $cook
 if (!$categoryEdited.Body.Contains('value="Renamed"') -or !$categoryEdited.Body.Contains('value="renamed-pilot"')) { throw "Category edit was not persisted" }
 & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);d.execute("INSERT INTO legura_posts(id,title,slug,body,status) VALUES (?,?,?,?,?)",("category-proof","Preserved post","category-proof","Original body","published"));d.execute("INSERT INTO legura_post_categories VALUES (?,?)",("category-proof",sys.argv[2]));d.executemany("INSERT INTO legura_categories VALUES (?,?,?)",[(f"category-page-{i}",f"Page fixture {i:02}",f"page-fixture-{i:02}") for i in range(12)]);d.commit();d.close()' $db $categoryId
 if ($LASTEXITCODE -ne 0) { throw "Cannot prepare category assignment/pagination fixture" }
+. (Join-Path $root "tests/post-categories-http.ps1")
 $categoryPage = Invoke-Request -Path "/admin/categories?q=page-fixture&page=999" -Headers @{ Cookie = $cookie }
 if (!$categoryPage.Body.Contains('12 matching categories') -or !$categoryPage.Body.Contains('Page 2') -or $categoryPage.Body -notmatch '<input(?=[^>]*name="q")(?=[^>]*value="page-fixture")') { throw "Category search/pagination lost filtering or page clamp" }
 $categoryLiteral = Invoke-Request -Path "/admin/categories?q=%25" -Headers @{ Cookie = $cookie }
