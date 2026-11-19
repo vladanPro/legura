@@ -363,6 +363,7 @@ try {
   if ($Users) {
     . (Join-Path $root "tests/users-http.ps1")
     . (Join-Path $root "tests/profile-password-http.ps1")
+    . (Join-Path $root "tests/own-profile-http.ps1")
   }
   $logoutPath = "/__axonyx/action?path=%2Fadmin&name=SignOut"
   Invoke-Request -Path $logoutPath -Method POST -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null

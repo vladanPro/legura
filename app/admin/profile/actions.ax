@@ -14,15 +14,15 @@ query loadProfilePasswordContext(user_id: String) -> ProfilePasswordContext {
 
 action ChangeProfilePassword(currentPassword: String, password: String, confirmPassword: String) {
   before Login.throttle("legura:profile-password:" + Auth.subject, 5, 60)
-  data administrator = loadAdministrator()
-  data context = loadProfilePasswordContext(administrator.id)
+  data account = loadOwnProfile()
+  data context = loadProfilePasswordContext(account.id)
   require input.currentPassword.length > 0 && input.currentPassword.length <= 256 else invalid({ currentPassword: "Enter your current password." })
   require input.password.length >= 10 && input.password.length <= 256 else invalid({ password: "Use 10 to 256 characters." })
   require input.password == input.confirmPassword else invalid({ confirmPassword: "The new passwords do not match." })
   data verified = Password.verify(input.currentPassword, context.password_hash)
   require verified else invalid({ currentPassword: "Current password is incorrect." })
   data hash = Password.hash(input.password)
-  data changed = Native.call("legura.profile.password", { administrator_id: context.id, expected_hash: context.password_hash, new_hash: hash, session_generation: context.session_generation })
+  data changed = Native.call("legura.profile.password", { account_id: context.id, expected_hash: context.password_hash, new_hash: hash, session_generation: context.session_generation })
   require changed else invalid({ currentPassword: "Your account changed. Sign in again before retrying." })
   Session.destroy()
   return redirect("/login")

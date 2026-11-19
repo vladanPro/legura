@@ -219,7 +219,7 @@ def verify_content_permissions(database):
         return client
 
     editor = sign_in("editor", "/admin/posts")
-    subscriber = sign_in("subscriber", "/")
+    subscriber = sign_in("subscriber", "/admin/profile")
     for route in ("/admin/settings", "/admin/users", "/admin/media"):
         editor.request(route, 403)
     for route in ("/admin/posts", "/admin/posts/new", "/admin/pages", "/admin/pages/new"):
@@ -227,7 +227,8 @@ def verify_content_permissions(database):
         nav = re.search(rb'<nav[^>]*aria-label="Administration"[^>]*>(.*?)</nav>', page, re.S)
         assert nav, route
         assert b'href="/admin/posts"' in nav[1] and b'href="/admin/pages"' in nav[1]
-        for admin_link in (b"/admin", b"/admin/media", b"/admin/settings", b"/admin/users", b"/admin/profile"):
+        assert b'href="/admin/profile"' in nav[1], route
+        for admin_link in (b"/admin", b"/admin/media", b"/admin/settings", b"/admin/users"):
             assert b'href="' + admin_link + b'"' not in nav[1], (route, admin_link)
         assert b"Sign out" in nav[1] and b"name=SignOut" in nav[1]
         subscriber.request(route, 403)
