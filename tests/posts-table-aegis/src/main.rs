@@ -2,6 +2,7 @@ use aegis::{Browser, BrowserOptions, BrowserPage, Key};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
+mod categories;
 mod profile;
 mod users;
 
@@ -277,6 +278,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             &output,
             &profile_context,
         )?;
+        categories::check_categories(&mut page, mode, &output)?;
         page.try_goto(&admin_url)?;
         page.try_click("form[action*='name=SignOut'] button[type='submit']")?;
         wait_for_url(&page, &login_url)?;

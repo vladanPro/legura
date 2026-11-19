@@ -5,15 +5,31 @@
 This is a development-source feature, not part of the published 0.0.3 Pilot 1
 package. Work is delivered in separate reviewed steps:
 
-1. Schema and integrity contract (this step).
-2. Administrator category management with native form validation.
+1. Schema and integrity contract (implemented).
+2. Administrator category management with native form validation (this step).
 3. Editor/Admin post assignments and administration filtering.
 4. Public category routes showing only published, non-trashed posts.
 5. Compiled HTTP and Aegis browser acceptance of the complete flow.
 
-Only step 1 is implemented here. There is no Categories sidebar link, management
-screen, assignment action or public category endpoint yet. No installed database
-is migrated by this PR, and no new package or release is published.
+The administrator's Content sidebar now includes Categories. The list supports
+literal name/slug search, stable ten-row pagination, assignment counts and links
+to edit or confirm deletion. The create/edit forms share Foundry fields and
+server validation; invalid fields are retained for retry. Display names are
+escaped, not treated as HTML. Slugs can be edited before public category URLs
+are introduced; URL stability must be decided with that later step.
+
+Deletion requires typing the current slug on a separate confirmation screen.
+The delete predicate also matches that slug, so a concurrent rename cannot
+silently confirm a different value. Cancellation is a link, not a mutation.
+Administrator checks protect every loader/action, independently of navigation;
+Editors, Subscribers and anonymous visitors cannot manage categories.
+Names and slugs are checked before writes, with database uniqueness as the
+final concurrent-write boundary. Category editing is last-write-wins; there is
+no multi-editor revision/conflict UI.
+
+There is no post-assignment UI, post category filter or public category endpoint
+yet. No installed database is migrated by this PR, and no new package or release
+is published.
 
 ## Data Model
 
@@ -72,3 +88,11 @@ preservation and lossless/refused rollback. Linux and Windows CI run this test.
 Library and package/recovery suites must also pass before this schema foundation
 is merged. Schema tests do not prove HTTP authorization or public visibility;
 those require the later route and browser gates.
+
+`pwsh -File scripts/smoke-auth.ps1 -Users` now also checks category CRUD, 403/404,
+CSRF, invalid/duplicate slugs, escaped labels, literal search, page clamping and
+deletion of an attached category without changing the post. Only that disposable
+fixture seeds assignments directly until post assignment actions exist.
+The Aegis `-PostsTableAegis` gate includes category validation retry, search,
+editing, slug-confirmed deletion and 320/390-pixel captures, in JS and no-JS modes.
+Browser execution must pass in CI before merging this management step.

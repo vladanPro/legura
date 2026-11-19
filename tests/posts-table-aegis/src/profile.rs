@@ -64,7 +64,7 @@ fn exercise(
     );
     assert_eq!(
         page.evaluate(
-            "const nav = document.querySelector('nav[aria-label=Administration]'); return [...nav.querySelectorAll('a')].some(a => ['/admin', '/admin/users', '/admin/settings', '/admin/media', '/admin/language'].includes(a.getAttribute('href')))",
+            "const nav = document.querySelector('nav[aria-label=Administration]'); return [...nav.querySelectorAll('a')].some(a => ['/admin', '/admin/users', '/admin/settings', '/admin/media', '/admin/language', '/admin/categories'].includes(a.getAttribute('href')))",
             &[],
         )?,
         false

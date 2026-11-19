@@ -1,0 +1,43 @@
+import { Field } from "@axonyx/ui/foundry/Field"
+import { FieldLabel } from "@axonyx/ui/foundry/FieldLabel"
+import { Input } from "@axonyx/ui/foundry/Input"
+
+component CategoryFields(name = "", slug = "") {
+  return ASX {
+    <Field>
+      <FieldLabel htmlFor="category-name">Name</FieldLabel>
+      <Input
+        id="category-name"
+        name="name"
+        value={name}
+        required="true"
+        maxlength="80"
+        describedBy="category-name-error"
+      />
+      <p
+        id="category-name-error"
+        class="ax-field__error"
+        data-ax-field-error="name"
+        aria-live="polite"
+      ></p>
+    </Field>
+    <Field>
+      <FieldLabel htmlFor="category-slug">URL slug</FieldLabel>
+      <Input
+        id="category-slug"
+        name="slug"
+        value={slug}
+        required="true"
+        maxlength="120"
+        describedBy="category-slug-hint category-slug-error"
+      />
+      <p id="category-slug-hint" class="legura-hint">Lowercase letters, digits and hyphens, for example: product-news.</p>
+      <p
+        id="category-slug-error"
+        class="ax-field__error"
+        data-ax-field-error="slug"
+        aria-live="polite"
+      ></p>
+    </Field>
+  }
+}

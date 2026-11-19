@@ -362,6 +362,7 @@ try {
   if ($Theme) { . (Join-Path $root "tests/theme-http.ps1") }
   if ($Users) {
     . (Join-Path $root "tests/users-http.ps1")
+      . (Join-Path $root "tests/categories-http.ps1")
     . (Join-Path $root "tests/profile-password-http.ps1")
     . (Join-Path $root "tests/own-profile-http.ps1")
   }

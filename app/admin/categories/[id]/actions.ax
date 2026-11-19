@@ -1,0 +1,12 @@
+action UpdateCategory(id: String, name: String, slug: String) {
+  data administrator = loadAdministrator()
+  data category = db.legura_categories.where({ id: input.id }).first()
+  require category else notFound()
+  data validation = Native.call("legura.categories.validate", { name: input.name, slug: input.slug })
+  require validation.name else invalid({ name: "Use 1 to 80 characters without outer spaces or line breaks." })
+  require validation.slug else invalid({ slug: "Use 1 to 120 lowercase letters, digits or hyphens; start and end with a letter or digit." })
+  data existing = db.legura_categories.where({ slug: input.slug }).first()
+  require existing == null || existing["id"] == input.id else invalid({ slug: "This category slug is already in use." })
+  db.legura_categories.where({ id: input.id }).update({ name: input.name, slug: input.slug })
+  return redirect("/admin/categories/" + input.id)
+}

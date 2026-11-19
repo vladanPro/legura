@@ -20,6 +20,7 @@ component AdminFrame(section = "overview", showAdmin = true, showContent = true)
               <SidebarItem href="/admin/posts" active={section == "posts"}>Manage posts</SidebarItem>
               <SidebarItem href="/admin/pages" active={section == "pages"}>Pages</SidebarItem>
               <If when={showAdmin}>
+                <SidebarItem href="/admin/categories" active={section == "categories"}>Categories</SidebarItem>
                 <SidebarItem href="/admin/media" active={section == "media"}>Media</SidebarItem>
               </If>
             </SidebarSection>

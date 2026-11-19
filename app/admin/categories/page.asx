@@ -1,0 +1,98 @@
+import { AdminFrame } from "@/components/AdminFrame"
+import { AdminPageHeader } from "@/components/AdminPageHeader"
+import { CategoryFields } from "@/components/CategoryFields"
+import { Card } from "@axonyx/ui/foundry/Card"
+import { Button } from "@axonyx/ui/foundry/Button"
+import { Input } from "@axonyx/ui/foundry/Input"
+import { FieldLabel } from "@axonyx/ui/foundry/FieldLabel"
+import { Table } from "@axonyx/ui/foundry/Table"
+import { TableBody } from "@axonyx/ui/foundry/TableBody"
+import { TableCaption } from "@axonyx/ui/foundry/TableCaption"
+import { TableCell } from "@axonyx/ui/foundry/TableCell"
+import { TableHead } from "@axonyx/ui/foundry/TableHead"
+import { TableHeaderCell } from "@axonyx/ui/foundry/TableHeaderCell"
+import { TableRow } from "@axonyx/ui/foundry/TableRow"
+
+page Categories() {
+  data listing: CategoryListing = loadCategories(query.page ?? "1", query.q ?? "")
+  return ASX {
+    <AdminFrame section="categories">
+      <AdminPageHeader
+        title="Categories"
+        description="Organize posts without changing their content or publication status."
+      />
+      <form method="get" action="/admin/categories" class="legura-list-filters legura-form">
+        <div class="legura-list-filter-field">
+          <FieldLabel htmlFor="category-search">Search name or slug</FieldLabel>
+          <Input id="category-search" name="q" type="search" value={listing.search} />
+        </div>
+        <Button type="submit" variant="secondary">Search categories</Button>
+        <If when={listing.search != ""}>
+          <a href="/admin/categories">Reset search</a>
+        </If>
+      </form>
+      <p class="legura-hint">{listing.total + " matching categories"}</p>
+      <If when={listing.total == 0}>
+        <Card title="No matching categories">
+          <p>Add a category below or try another search.</p>
+        </Card>
+      </If>
+      <If when={listing.total > 0}>
+        <Table role="region" aria-label="Scrollable categories table" tabindex="0" zebra="true">
+          <TableCaption>Post categories</TableCaption>
+          <TableHead>
+            <TableRow>
+              <TableHeaderCell>Name</TableHeaderCell>
+              <TableHeaderCell>Slug</TableHeaderCell>
+              <TableHeaderCell>Assigned posts</TableHeaderCell>
+              <TableHeaderCell>Actions</TableHeaderCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            <Each items={listing.categories} as="category">
+              <TableRow>
+                <TableHeaderCell scope="row">{category.name}</TableHeaderCell>
+                <TableCell>{category.slug}</TableCell>
+                <TableCell>{category.post_count}</TableCell>
+                <TableCell>
+                  <a
+                    href={"/admin/categories/" + category.id}
+                    aria-label={"Edit category: " + category.name}
+                  >Edit category</a>
+                </TableCell>
+              </TableRow>
+            </Each>
+          </TableBody>
+        </Table>
+      </If>
+      <If when={listing.total > 10}>
+        <nav class="legura-links" aria-label="Categories pagination">
+          <If when={listing.page > 1}>
+            <form method="get" action="/admin/categories">
+              <input type="hidden" name="q" value={listing.search} /><input type="hidden" name="page" value={listing.page - 1} />
+              <Button type="submit" variant="secondary">Previous page</Button>
+            </form>
+          </If>
+          <span>{"Page " + listing.page}</span>
+          <If when={listing.page * 10 < listing.total}>
+            <form method="get" action="/admin/categories">
+              <input type="hidden" name="q" value={listing.search} /><input type="hidden" name="page" value={listing.page + 1} />
+              <Button type="submit" variant="secondary">Next page</Button>
+            </form>
+          </If>
+        </nav>
+      </If>
+      <Card title="Add category">
+        <form
+          method="post"
+          action={action CreateCategory}
+          class="legura-form"
+          data-ax-retain-fields="name,slug"
+        >
+          <CategoryFields />
+          <Button type="submit" variant="primary">Add category</Button>
+        </form>
+      </Card>
+    </AdminFrame>
+  }
+}
