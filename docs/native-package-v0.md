@@ -57,9 +57,11 @@ This creates `legura-<version>-<platform>.zip` on Windows or
 file, refusing to replace either. Extract into a new directory, verify the
 archive against the separately obtained checksum, then run `verify-package`
 there before adding data/ or .env. The checksum detects corruption but does
-not authenticate the publisher. These artifacts are not signed, published or
-supported as production installers yet. CI retains verified Windows x64 and
-Linux x64 candidates for seven days as workflow artifacts, not public releases.
+not authenticate the publisher. These artifacts are not signed or supported
+as production installers. Selected verified candidates are published as
+experimental pilots on [GitHub Releases](https://github.com/vladanPro/legura/releases).
+CI also retains Windows x64 and Linux x64 candidates for seven days as
+workflow artifacts; a successful CI run alone does not publish a release.
 The Windows test uses the native binaries with a system-only PATH; the Linux
 test runs in a non-root container without a build toolchain. Both start a new
 site from the extracted archive, publish a post with an image, and verify
@@ -318,10 +320,10 @@ python -B scripts/smoke-schema-upgrade.py /path/to/prior /path/to/candidate
 
 The test copies both packages before use and does not accept a live installation.
 
-Both backup formats record their producer version. The `0.0.2` maintenance
-reader explicitly accepts `0.0.1` and `0.0.2` backups; the `0.0.1` reader
-still rejects `0.0.2` backups. CI builds the pinned `0.0.1` maintenance binary
-and the current `0.0.2` binary separately, then verifies and restores both
+Both backup formats record their producer version. The `0.0.3` maintenance
+reader explicitly accepts `0.0.1`, `0.0.2` and `0.0.3` backups; older readers
+reject `0.0.3` backups. Historical CI builds the pinned `0.0.1` maintenance binary
+and a pinned `0.0.2` binary separately, then verifies and restores both
 database-only and media-inclusive `0.0.1` backups with the new reader. It also
 checks that the old reader refuses new backups. This is backup compatibility,
 not a schema migration. The separate cross-version native-package gate builds

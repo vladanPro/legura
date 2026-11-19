@@ -915,7 +915,7 @@ dependencies = [
 
 [[package]]
 name = "legura"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "anyhow",
  "axonyx-runtime",
