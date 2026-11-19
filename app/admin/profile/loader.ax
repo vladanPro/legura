@@ -1,0 +1,14 @@
+export type OwnProfile {
+  id: String
+  email: String
+  role: String
+}
+
+export query loadOwnProfile() -> OwnProfile {
+  require Auth.subject else forbidden()
+  data user = db.legura_users.where({ id: Auth.subject, status: "active" }).first()
+  require user else forbidden()
+  data allowed = Native.call("legura.auth.allows", { role: user["role"], capability: "manage_own_profile" })
+  require allowed else forbidden()
+  return { id: user["id"], email: user["email"], role: user["role"] }
+}

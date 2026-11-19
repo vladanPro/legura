@@ -1,3 +1,4 @@
+use super::profile::{check_own_profile, ProfileContext};
 use aegis::BrowserPage;
 use std::path::Path;
 use std::time::{Duration, Instant};
@@ -14,6 +15,7 @@ pub(super) fn check_users(
     mode: &str,
     test_password: &str,
     screenshots: &Path,
+    profile_context: &ProfileContext<'_>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let email = format!("aegis-{mode}-user@example.test");
     page.set_viewport(1280, 900)?;
@@ -44,6 +46,13 @@ pub(super) fn check_users(
         true
     );
 
+    let member_password = check_own_profile(
+        profile_context,
+        &email,
+        test_password,
+        "editor",
+        screenshots,
+    )?;
     page.try_click(&format!("a[aria-label='View account: {email}']"))?;
     page.try_click("select[name='role'] option[value='subscriber']")?;
     page.try_click("form[action*='name=UpdateUserRole'] button[type='submit']")?;
@@ -116,10 +125,17 @@ pub(super) fn check_users(
     assert_eq!(
         page.evaluate(
             FIND_ACCOUNT,
-            &[email.into(), "subscriber".into(), "active".into()]
+            &[email.clone().into(), "subscriber".into(), "active".into()]
         )?,
         true
     );
+    check_own_profile(
+        profile_context,
+        &email,
+        &member_password,
+        "subscriber",
+        screenshots,
+    )?;
     println!("Aegis: Legura Users creation, role/status changes, filters and mobile layout passed ({mode})");
     Ok(())
 }

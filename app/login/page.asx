@@ -5,7 +5,7 @@ page Login() {
   return ASX {
     <Card>
       <h1 id="login-title">Sign in to Legura</h1>
-      <p id="login-introduction">Use your administrator account. Both fields are required.</p>
+      <p id="login-introduction">Use your Legura account. Both fields are required.</p>
       <form
         method="post"
         action={action SignIn}
