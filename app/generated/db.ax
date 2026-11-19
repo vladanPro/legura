@@ -384,4 +384,3 @@ export type LeguraUsersUpdateInput {
   status: Optional<String>
   session_generation: Optional<String>
 }
-
