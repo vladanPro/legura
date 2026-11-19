@@ -100,6 +100,11 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         include_str!("../db/migrations/20261118000000_019_account_status/up.sql"),
         include_str!("../db/migrations/20261118000000_019_account_status/down.sql"),
     ),
+    (
+        "20261119000000_020",
+        include_str!("../db/migrations/20261119000000_020_post_categories/up.sql"),
+        include_str!("../db/migrations/20261119000000_020_post_categories/down.sql"),
+    ),
 ];
 
 pub fn migration_hash(up: &str, down: &str) -> String {
@@ -136,6 +141,7 @@ pub fn embedded_migrations() -> Vec<AxMigration> {
                 "20261114030000_017" => "general_settings",
                 "20261115000000_018" => "account_roles",
                 "20261118000000_019" => "account_status",
+                "20261119000000_020" => "post_categories",
                 _ => unreachable!("embedded migration name is missing"),
             }
             .into(),
@@ -242,6 +248,10 @@ pub fn validate_structure(connection: &Connection) -> Result<usize> {
                 .exists([])?,
             "administrator account is inactive"
         );
+    }
+    if count >= 20 {
+        connection.prepare("SELECT id, name, slug FROM legura_categories LIMIT 0")?;
+        connection.prepare("SELECT post_id, category_id FROM legura_post_categories LIMIT 0")?;
     }
     if count >= 9 {
         let valid: bool = connection.query_row(
