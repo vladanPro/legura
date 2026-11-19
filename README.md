@@ -17,6 +17,9 @@ a fresh local SQLite installation without Cargo at runtime.
 Experimental Windows/Linux downloads are available on
 [GitHub Releases](https://github.com/vladanPro/legura/releases);
 there is no stable production installer or automatic upgrade path yet.
+For account roles, adding/deactivating users and personal password changes, see
+[Accounts and personal profiles](docs/accounts-guide.md). The guide explicitly
+separates current `dev` behavior from the published Pilot 1 download.
 The isolated compiled setup/auth smoke covers setup races, CSRF, sessions and
 authorization. The following paragraphs record earlier implementation steps;
 current dependency pins live in `Cargo.toml` and `.github/workflows/ci.yml`.
