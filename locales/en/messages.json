@@ -33,5 +33,15 @@
   "public.posts.empty.hint": "Check back for the first story.",
   "public.posts.read": "Read post",
   "public.posts.all": "All posts",
-  "public.image.unavailable": "Featured image is unavailable."
+  "public.image.unavailable": "Featured image is unavailable.",
+  "public.categories": "Categories",
+  "public.categories.browse": "Browse categories",
+  "public.categories.all": "All categories",
+  "public.categories.count": "Published posts",
+  "public.categories.empty": "No published categories yet",
+  "public.categories.empty.hint": "Categories appear here when they contain published posts.",
+  "public.pagination.label": "Pagination",
+  "public.pagination.page": "Page",
+  "public.pagination.previous": "Previous page",
+  "public.pagination.next": "Next page"
 }

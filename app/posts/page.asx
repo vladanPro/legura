@@ -29,6 +29,7 @@ page PublicPosts() {
     >
       <section class="legura-posts">
         <h1>{translate("public.posts")}</h1>
+        <a href={"/categories" + language.suffix}>{translate("public.categories.browse")}</a>
         <If when={!posts}>
           <Card title={translate("public.posts.empty")}>
             <p>{translate("public.posts.empty.hint")}</p>

@@ -1,3 +1,4 @@
+use super::profile::ProfileContext;
 use aegis::BrowserPage;
 use std::{
     path::Path,
@@ -8,6 +9,7 @@ pub(super) fn check_categories(
     page: &mut BrowserPage,
     mode: &str,
     screenshots: &Path,
+    context: &ProfileContext<'_>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let name = format!("Aegis {mode} category");
     let slug = format!("aegis-{mode}");
@@ -71,6 +73,7 @@ pub(super) fn check_categories(
     wait_for(page, "return !!document.querySelector('form[action*=\"name=UpdateCategory\"]') && document.querySelector('#category-slug')?.getAttribute('value') === arguments[0]", &[&renamed])?;
     let category_url = page.current_url()?;
     check_assignment(page, &renamed, screenshots)?;
+    check_public_archive(page, &renamed, screenshots, context)?;
     page.try_goto(&category_url)?;
     page.try_click("a[href$='/delete']")?;
     wait_for(
@@ -193,6 +196,97 @@ fn check_post_filter(
     page.try_click("a.legura-filter-reset")?;
     wait_for(page, "return location.pathname === '/admin/posts' && location.search === '' && document.querySelector('#post-category')?.value === '' && document.querySelector('#post-status')?.value === 'all' && document.querySelector('#post-search')?.value === ''", &[])?;
     println!("Aegis: combined post category/status/title filter, reset and mobile layout passed");
+    Ok(())
+}
+
+fn check_public_archive(
+    owner: &BrowserPage,
+    slug: &str,
+    screenshots: &Path,
+    context: &ProfileContext<'_>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut reader = BrowserPage::connect(context.endpoint, context.options.clone())?;
+    let result = exercise_public_archive(owner, &mut reader, slug, screenshots, context.base_url);
+    let closed = reader.close();
+    result?;
+    closed?;
+    Ok(())
+}
+
+fn exercise_public_archive(
+    owner: &BrowserPage,
+    reader: &mut BrowserPage,
+    slug: &str,
+    screenshots: &Path,
+    base_url: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let archive = format!("{base_url}/categories/{slug}");
+    reader.try_goto(&format!("{base_url}/categories"))?;
+    reader.expect_text("No published categories yet");
+    reader.try_goto(&archive)?;
+    assert_eq!(
+        reader.evaluate(
+            "return performance.getEntriesByType('navigation')[0]?.responseStatus",
+            &[]
+        )?,
+        404
+    );
+    owner.try_click("a.legura-post-title")?;
+    let edit = owner.current_url()?;
+    owner.try_click("#status option[value=published]")?;
+    owner.try_click("form[action*='name=UpdatePost'] button[type=submit]")?;
+    wait_for(owner, "return location.href === arguments[0] && document.querySelector('#status')?.value === 'published' && document.querySelector('#status option[value=published]')?.hasAttribute('selected')", &[&edit])?;
+    reader.try_goto(&format!("{base_url}/posts"))?;
+    reader.try_click("a[href='/categories']")?;
+    reader.try_click(&format!("a[href='/categories/{slug}']"))?;
+    wait_for(reader, "return location.pathname === arguments[0] && document.querySelector('h1')?.textContent === 'Renamed category'", &[&format!("/categories/{slug}")])?;
+    assert_eq!(
+        reader.evaluate(
+            "return !!document.querySelector('.legura-admin-shell')",
+            &[]
+        )?,
+        false
+    );
+    for width in [320, 390] {
+        reader.set_viewport(width, 844)?;
+        assert_eq!(
+            reader.evaluate(
+                "return document.documentElement.scrollWidth <= innerWidth",
+                &[]
+            )?,
+            true,
+            "Public category overflow at {width}px"
+        );
+        std::fs::write(
+            screenshots.join(format!("public-category-{width}.png")),
+            reader.full_page_png()?,
+        )?;
+    }
+    reader.set_viewport(1280, 900)?;
+    reader.try_click("a[href='/posts/aegis-table-draft']")?;
+    wait_for(
+        reader,
+        "return !!document.querySelector(arguments[0])",
+        &[&format!(
+            "nav[aria-label=Categories] a[href='/categories/{slug}']"
+        )],
+    )?;
+    owner.try_goto(&edit)?;
+    owner.try_click("#status option[value=draft]")?;
+    owner.try_click("form[action*='name=UpdatePost'] button[type=submit]")?;
+    wait_for(owner, "return location.href === arguments[0] && document.querySelector('#status')?.value === 'draft' && document.querySelector('#status option[value=draft]')?.hasAttribute('selected')", &[&edit])?;
+    reader.try_goto(&archive)?;
+    assert_eq!(
+        reader.evaluate(
+            "return performance.getEntriesByType('navigation')[0]?.responseStatus",
+            &[]
+        )?,
+        404
+    );
+    reader.expect_text("This category is not available.");
+    reader.try_goto(&format!("{base_url}/categories"))?;
+    reader.expect_text("No published categories yet");
+    println!("Aegis: anonymous category discovery, publication/unpublication, story links and mobile public layout passed");
     Ok(())
 }
 

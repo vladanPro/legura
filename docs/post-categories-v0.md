@@ -8,15 +8,15 @@ package. Work is delivered in separate reviewed steps:
 1. Schema and integrity contract (implemented).
 2. Administrator category management with native form validation (implemented).
 3. Editor/Admin post assignments and administration post filtering (implemented).
-4. Public category routes showing only published, non-trashed posts.
+4. Public category routes showing only published, non-trashed posts (this step).
 5. Compiled HTTP and Aegis browser acceptance of the complete flow.
 
 The administrator's Content sidebar now includes Categories. The list supports
 literal name/slug search, stable ten-row pagination, assignment counts and links
 to edit or confirm deletion. The create/edit forms share Foundry fields and
 server validation; invalid fields are retained for retry. Display names are
-escaped, not treated as HTML. Slugs can be edited before public category URLs
-are introduced; URL stability must be decided with that later step.
+escaped, not treated as HTML. Slug editing changes the public category address;
+the edit screen warns that old URLs return 404 and no redirect alias is created.
 
 Deletion requires typing the current slug on a separate confirmation screen.
 The delete predicate also matches that slug, so a concurrent rename cannot
@@ -77,8 +77,34 @@ Search remains literal and parameter-bound; SQLite's built-in case folding is
 ASCII-only, not locale-aware Unicode search. The native dropdown lists all
 categories; remote searchable category selection is not included in V0.
 
-There is no public category endpoint yet. No installed database is migrated by
-this PR, and no new package or release is published.
+## Public Catalog And Archives
+
+`/categories` lists only categories with at least one published, non-trashed
+post. `/categories/:slug` serves that category's published post titles/links,
+with ten-row stable pagination. Counts and rows use the same publication
+predicates; no draft/Trash titles, bodies, category names, internal IDs or
+account metadata are included in the public loader projection.
+
+Empty, draft-only, Trash-only, missing and deleted categories return the same
+public 404. A category disappears from the catalog when its last published
+post is unpublished or trashed. Restoring a post to Draft does not republish it.
+Requests are served dynamically with no-store headers, not persisted as static
+catalog HTML. Separate reads do not promise a transactionally frozen snapshot
+during concurrent editorial changes.
+
+The published-post list links to Browse categories. Published stories expose
+their current category links; saved private previews do not gain public links
+from this change. Successful catalog/archive pages reuse the selected public
+theme, color mode, palette, navigation and identity. English/French interface
+labels and visitor locale survive archive links and native GET pagination;
+content/category names keep the separately configured content language.
+Fallback pages follow the existing public-story pattern: a static English,
+default-public frame without database access or private error details.
+
+The shared `PublicPagination` component uses native GET forms. No new client
+JavaScript or automatic navigation-menu insertion is introduced. Slug aliases,
+SEO metadata, category-specific templates and APIs remain outside V0. No
+installed database is migrated by this PR, and no package/release is published.
 
 ## Data Model
 
@@ -96,7 +122,7 @@ outside V0.
 Names have 1-80 characters, no outer ASCII spaces, NUL or line breaks. Slugs
 have 1-120 lowercase ASCII letters/digits/hyphens, begin and end with a letter
 or digit, and are unique across categories. Display names need not be unique.
-Later form validation must report these constraints before writing; the SQL
+Forms report these constraints before writing; the SQL
 constraints also protect non-UI writers.
 
 ## Deletion And Trash
@@ -160,3 +186,12 @@ literal percent/underscore/SQL-looking input, final-page clamping and retained
 category/status/search. Unknown and deleted category filters must remain empty.
 Subscriber/anonymous access is denied. Aegis exercises the combined category,
 status and title controls, reset and 320/390-pixel layouts in both browser modes.
+
+The public HTTP fixture checks anonymous catalog/archive reads, more than ten
+visible categories/posts, safe projections and escaped names, no static catalog,
+no-store caching, French controls and language retention, private/empty 404s,
+live unpublish/Trash/restore, slug edits and deletion without deleting posts.
+Its temporary appearance/language settings are restored afterward. Aegis uses
+a separate anonymous browser session to prove discovery from published posts,
+draft-only 404, publish/read/story links, unpublish/404 and 320/390-pixel public
+layouts with JavaScript on and off. Browser execution must pass before merging.

@@ -1,0 +1,14 @@
+import { PublicFrame } from "@/components/PublicFrame"
+
+page PublicCategoryError() {
+  return ASX {
+    <PublicFrame>
+      <section class="legura-route-fallback" aria-labelledby="category-error-title">
+        <p class="legura-route-fallback__code">PAGE UNAVAILABLE</p>
+        <h1 id="category-error-title">We could not load these categories.</h1>
+        <p>Please try again in a moment.</p>
+        <a class="ax-button" data-variant="secondary" href="/categories">Back to categories</a>
+      </section>
+    </PublicFrame>
+  }
+}

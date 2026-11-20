@@ -48,8 +48,10 @@ the transactional service preserves other links and checks current authority.
 The picker has search/pagination, separate from unsaved content editing.
 The Posts category filter combines title/status/category before counting and
 pagination, preserves filters across pages and returns empty results for an
-unavailable category. Public published-only routes remain a follow-up; each
-step's HTTP/Aegis gates must pass before merging.
+unavailable category. Public `/categories` and `/categories/:slug` add paginated
+published-only discovery and story links; empty/private-only categories return
+404. Routes preserve public appearance/locale and never prerender category data
+as static HTML. Each step's HTTP/Aegis gates must pass before merging.
 See [the category contract](post-categories-v0.md).
 
 Media Deletion Service V0 adds an administrator-checked Rust service
