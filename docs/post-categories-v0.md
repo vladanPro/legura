@@ -6,8 +6,8 @@ This is a development-source feature, not part of the published 0.0.3 Pilot 1
 package. Work is delivered in separate reviewed steps:
 
 1. Schema and integrity contract (implemented).
-2. Administrator category management with native form validation (this step).
-3. Editor/Admin post assignments and administration filtering.
+2. Administrator category management with native form validation (implemented).
+3. Editor/Admin post assignments (this step), then administration post filtering.
 4. Public category routes showing only published, non-trashed posts.
 5. Compiled HTTP and Aegis browser acceptance of the complete flow.
 
@@ -27,9 +27,39 @@ Names and slugs are checked before writes, with database uniqueness as the
 final concurrent-write boundary. Category editing is last-write-wins; there is
 no multi-editor revision/conflict UI.
 
-There is no post-assignment UI, post category filter or public category endpoint
-yet. No installed database is migrated by this PR, and no new package or release
-is published.
+## Saved Post Assignments
+
+After saving a post, open **Edit post > Categories > Choose categories**.
+Administrators and Editors can add several existing categories or remove an
+individual assignment. Each Add/Remove submits and saves immediately; this is
+not a batch of unsaved checkboxes. The separate page avoids submitting an
+unfinished rich-text document or coupling content saves to category saves.
+Save unsaved post edits before leaving the editor. A new post must be saved
+before its categories can be assigned.
+
+Tooling gate: CLI 0.8.9 quotes a redirect URL returned by `Native.call`.
+Published CLI 0.8.10 adopts compiler core 0.8.4 and fixes this issue through
+[runtime PR #297](https://github.com/vladanPro/axonyx-runtime/pull/297).
+CI pins 0.8.10. The isolated registry HTTP and Aegis gates must pass on this
+published toolchain before merging; the earlier source-CLI proof alone is not
+registry acceptance.
+
+The picker has literal category name/slug search and ten-row pagination. Search
+and page are preserved after each mutation. Its assigned-total includes links
+outside the current search/page. Editors do not receive category-management
+links. Only administrators can create, edit or delete categories themselves.
+
+A Rust native service checks the actor's current active content capability,
+the non-trashed post and the category in an immediate SQLite transaction.
+Actor identity comes from the server guard, not an action parameter. A repeated
+Add/Remove is idempotent and affects only that `(post, category)` pair. Separate
+choices are not overwritten by another writer. Missing categories produce a
+validation error; missing/trashed posts are not editable. No content,
+publication status or other post's assignments change.
+
+There is no post-list category filter or public category endpoint yet. No
+installed database is migrated by this PR, and no new package or release is
+published.
 
 ## Data Model
 
@@ -96,3 +126,11 @@ fixture seeds assignments directly until post assignment actions exist.
 The Aegis `-PostsTableAegis` gate includes category validation retry, search,
 editing, slug-confirmed deletion and 320/390-pixel captures, in JS and no-JS modes.
 Browser execution must pass in CI before merging this management step.
+
+The same `-Users` fixture now proves Admin/Editor assignment, repeated Add/Remove,
+independent links/posts, retained search/page, CSRF, missing/trashed resources and
+denial after an Editor is demoted. Rust tests check those transactional service
+boundaries and SQL-failure rollback. The Aegis category flow opens the saved
+post picker, adds/removes a category, reloads saved state, checks search retention
+and captures 320/390-pixel layouts with page scripts on and off. These browser
+checks must pass before merging the assignment step.

@@ -55,6 +55,10 @@ pub(crate) fn allows_own_profile(role: &str) -> bool {
     )
 }
 
+pub(crate) fn allows_content(role: &str) -> bool {
+    allows(Role::from_database(role), Some(Capability::ManageContent))
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct AccessCheck {

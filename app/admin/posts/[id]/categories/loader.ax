@@ -1,0 +1,33 @@
+export type PostCategoryOption {
+  id: String
+  name: String
+  slug: String
+  assigned: Number
+}
+
+export type PostCategorySelection {
+  id: String
+  title: String
+  options: PostCategoryOption[]
+  total: Number
+  assigned_total: Number
+  page: Number
+  search: String
+  show_admin: Bool
+}
+
+export query loadPostCategorySelection(id: String, page: String = "1", search: String = "") -> PostCategorySelection {
+  require Auth.subject else forbidden()
+  data actor = db.legura_users.where({ id: Auth.subject, status: "active" }).first()
+  require actor else forbidden()
+  data allowed = Native.call("legura.auth.allows", { role: actor["role"], capability: "manage_content" })
+  require allowed else forbidden()
+  data post = db.legura_posts.where({ id: input.id, trashed: 0 }).first()
+  require post else notFound()
+  data filters = Native.call("legura.listing.filters", { page: input.page, search: input.search })
+  data counts = db.query("SELECT COUNT(*) AS total FROM legura_categories WHERE instr(lower(name),lower(?)) > 0 OR instr(slug,lower(?)) > 0", filters.search, filters.search)
+  data assigned = db.query("SELECT COUNT(*) AS total FROM legura_post_categories WHERE post_id=?", input.id)
+  data pagination = Native.call("legura.pagination", { total: counts[0]["total"], requested_page: filters.requested_page, page_size: 10 })
+  data options = db.query("SELECT c.id,c.name,c.slug,EXISTS(SELECT 1 FROM legura_post_categories pc WHERE pc.category_id=c.id AND pc.post_id=?) AS assigned FROM legura_categories c WHERE instr(lower(c.name),lower(?)) > 0 OR instr(c.slug,lower(?)) > 0 ORDER BY c.name COLLATE NOCASE,c.id LIMIT ? OFFSET ?", input.id, filters.search, filters.search, pagination.page_size, pagination.offset)
+  return { id: post["id"], title: post["title"], options: options, total: counts[0]["total"], assigned_total: assigned[0]["total"], page: pagination.page, search: filters.search, show_admin: actor["role"] == "admin" }
+}

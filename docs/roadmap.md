@@ -42,9 +42,13 @@ Post Categories V0 is being delivered in scoped steps. The schema adds category
 records and many-to-many post assignments with non-destructive deletion and
 rollback guards. Administrator management adds a searchable/paginated Foundry
 list, validated create/edit forms and a separate slug-confirmed delete screen.
-Editors/Subscribers cannot manage categories. Post assignment/filtering and
-public published-only routes remain follow-ups; the management HTTP/Aegis gates
-must pass before merging. See [the category contract](post-categories-v0.md).
+Editors/Subscribers cannot manage categories. Saved-post category selection lets
+Admin/Editor add/remove individual existing categories through native forms;
+the transactional service preserves other links and checks current authority.
+The picker has search/pagination, separate from unsaved content editing.
+Post-list filtering and public published-only routes remain follow-ups; each
+step's HTTP/Aegis gates must pass before merging.
+See [the category contract](post-categories-v0.md).
 
 Media Deletion Service V0 adds an administrator-checked Rust service
 that refuses referenced images and commits metadata removal before file cleanup.

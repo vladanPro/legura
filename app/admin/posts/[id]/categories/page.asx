@@ -1,0 +1,115 @@
+import { AdminFrame } from "@/components/AdminFrame"
+import { AdminPageHeader } from "@/components/AdminPageHeader"
+import { Card } from "@axonyx/ui/foundry/Card"
+import { Button } from "@axonyx/ui/foundry/Button"
+import { Input } from "@axonyx/ui/foundry/Input"
+import { FieldLabel } from "@axonyx/ui/foundry/FieldLabel"
+import { Table } from "@axonyx/ui/foundry/Table"
+import { TableBody } from "@axonyx/ui/foundry/TableBody"
+import { TableCaption } from "@axonyx/ui/foundry/TableCaption"
+import { TableCell } from "@axonyx/ui/foundry/TableCell"
+import { TableHead } from "@axonyx/ui/foundry/TableHead"
+import { TableHeaderCell } from "@axonyx/ui/foundry/TableHeaderCell"
+import { TableRow } from "@axonyx/ui/foundry/TableRow"
+
+page PostCategories() {
+  data selection: PostCategorySelection = loadPostCategorySelection(params.id, query.page ?? "1", query.q ?? "")
+  return ASX {
+    <AdminFrame section="posts" showAdmin={selection.show_admin}>
+      <AdminPageHeader title="Post categories" description={selection.title} />
+      <Card>
+        <p>{selection.assigned_total + " categories assigned to this post."}</p>
+        <p class="legura-hint">Each Add or Remove saves immediately. Other categories, post content and publication status stay unchanged.</p>
+        <a href={"/admin/posts/" + selection.id + "/edit"}>Back to post</a>
+        <If when={selection.show_admin}>
+          <a href="/admin/categories">Manage categories</a>
+        </If>
+      </Card>
+      <form
+        method="get"
+        action={"/admin/posts/" + selection.id + "/categories"}
+        class="legura-list-filters legura-form"
+      >
+        <div class="legura-list-filter-field">
+          <FieldLabel htmlFor="post-category-search">Search categories</FieldLabel>
+          <Input id="post-category-search" name="q" type="search" value={selection.search} />
+        </div>
+        <Button type="submit" variant="secondary">Search categories</Button>
+      </form>
+      <If when={selection.total == 0}>
+        <Card title="No matching categories">
+          <p>Try another search, or ask the administrator to add a category.</p>
+        </Card>
+      </If>
+      <If when={selection.total > 0}>
+        <Table
+          role="region"
+          aria-label="Scrollable post categories table"
+          tabindex="0"
+          zebra="true"
+        >
+          <TableCaption>Available categories</TableCaption>
+          <TableHead>
+            <TableRow>
+              <TableHeaderCell>Name</TableHeaderCell>
+              <TableHeaderCell>Slug</TableHeaderCell>
+              <TableHeaderCell>Assignment</TableHeaderCell>
+              <TableHeaderCell>Action</TableHeaderCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            <Each items={selection.options} as="category">
+              <TableRow>
+                <TableHeaderCell scope="row">{category.name}</TableHeaderCell>
+                <TableCell>{category.slug}</TableCell>
+                <TableCell>
+                  <If when={category.assigned == 1}>Assigned</If>
+                  <If when={category.assigned == 0}>Not assigned</If>
+                </TableCell>
+                <TableCell>
+                  <form
+                    method="post"
+                    action={action SetPostCategory}
+                    aria-label={"Category assignment: " + category.name}
+                  >
+                    <input type="hidden" name="id" value={selection.id} />
+                    <input type="hidden" name="category_id" value={category.id} />
+                    <input type="hidden" name="page" value={selection.page} />
+                    <input type="hidden" name="search" value={selection.search} />
+                    <p class="ax-field__error" data-ax-field-error="category_id" aria-live="polite"></p>
+                    <If when={category.assigned == 1}>
+                      <input type="hidden" name="assigned" value="0" />
+                      <Button type="submit" variant="secondary">Remove</Button>
+                    </If>
+                    <If when={category.assigned == 0}>
+                      <input type="hidden" name="assigned" value="1" />
+                      <Button type="submit" variant="secondary">Add</Button>
+                    </If>
+                  </form>
+                </TableCell>
+              </TableRow>
+            </Each>
+          </TableBody>
+        </Table>
+      </If>
+      <p class="ax-field__error" data-ax-field-error="category_id" aria-live="polite"></p>
+      <If when={selection.total > 10}>
+        <nav class="legura-links" aria-label="Post categories pagination">
+          <If when={selection.page > 1}>
+            <form method="get" action={"/admin/posts/" + selection.id + "/categories"}>
+              <input type="hidden" name="q" value={selection.search} /><input type="hidden" name="page" value={selection.page - 1} />
+              <Button type="submit" variant="secondary">Previous page</Button>
+            </form>
+          </If>
+          <span>{"Page " + selection.page}</span>
+          <If when={selection.page * 10 < selection.total}>
+            <form method="get" action={"/admin/posts/" + selection.id + "/categories"}>
+              <input type="hidden" name="q" value={selection.search} /><input type="hidden" name="page" value={selection.page + 1} />
+              <Button type="submit" variant="secondary">Next page</Button>
+            </form>
+          </If>
+        </nav>
+      </If>
+    </AdminFrame>
+  }
+}

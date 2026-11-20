@@ -9,6 +9,11 @@ pub fn register(registry: &mut AxNativeRegistry) -> Result<(), AxNativeError> {
     )?;
     legura::authorization::register(registry)?;
     legura::categories::register(registry)?;
+    legura::post_categories::register(
+        registry,
+        &axonyx_runtime::backend::AxEnv::from_env(),
+        &std::env::current_dir().map_err(|_| AxNativeError::Rejected)?,
+    )?;
     legura::media_config::register_availability(
         registry,
         &axonyx_runtime::backend::AxEnv::from_env(),
