@@ -20,6 +20,7 @@ page PostCategories() {
       <Card>
         <p>{selection.assigned_total + " categories assigned to this post."}</p>
         <p class="legura-hint">Each Add or Remove saves immediately. Other categories, post content and publication status stay unchanged.</p>
+        <p class="legura-hint">Categories assigned to a published post are visible on the public site.</p>
         <a href={"/admin/posts/" + selection.id + "/edit"}>Back to post</a>
         <If when={selection.show_admin}>
           <a href="/admin/categories">Manage categories</a>

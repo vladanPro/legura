@@ -21,6 +21,7 @@ page Categories() {
         title="Categories"
         description="Organize posts without changing their content or publication status."
       />
+      <p class="legura-hint">Categories with published posts appear in the public catalog. Empty categories and categories with only drafts or Trash stay hidden.</p>
       <form method="get" action="/admin/categories" class="legura-list-filters legura-form">
         <div class="legura-list-filter-field">
           <FieldLabel htmlFor="category-search">Search name or slug</FieldLabel>

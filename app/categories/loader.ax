@@ -1,0 +1,48 @@
+export type PublicCategory {
+  name: String
+  slug: String
+  total: Number
+}
+export type PublicCategoryLink {
+  name: String
+  slug: String
+}
+export type PublicCategoryListing {
+  categories: PublicCategory[]
+  page: Number
+  pages: Number
+}
+export type PublicCategoryPost {
+  title: String
+  slug: String
+}
+export type PublicCategoryArchive {
+  name: String
+  slug: String
+  total: Number
+  posts: PublicCategoryPost[]
+  page: Number
+  pages: Number
+}
+
+export query loadPublicCategories(page: String = "1") -> PublicCategoryListing {
+  data requested = Native.call("legura.pagination.request", { page: input.page })
+  data counts = db.query("SELECT COUNT(*) AS total FROM legura_categories c WHERE EXISTS(SELECT 1 FROM legura_post_categories pc JOIN legura_posts p ON p.id=pc.post_id WHERE pc.category_id=c.id AND p.status='published' AND p.trashed=0)")
+  data pagination = Native.call("legura.pagination", { total: counts[0]["total"], requested_page: requested.requested_page, page_size: 10 })
+  data categories = db.query("SELECT c.name,c.slug,COUNT(p.id) AS total FROM legura_categories c JOIN legura_post_categories pc ON pc.category_id=c.id JOIN legura_posts p ON p.id=pc.post_id AND p.status='published' AND p.trashed=0 GROUP BY c.id ORDER BY c.name COLLATE NOCASE,c.id LIMIT ? OFFSET ?", pagination.page_size, pagination.offset)
+  return { categories: categories, page: pagination.page, pages: pagination.total_pages }
+}
+
+export query loadPublicCategory(slug: String, page: String = "1") -> PublicCategoryArchive {
+  data categories = db.query("SELECT c.name,c.slug,COUNT(p.id) AS total FROM legura_categories c JOIN legura_post_categories pc ON pc.category_id=c.id JOIN legura_posts p ON p.id=pc.post_id AND p.status='published' AND p.trashed=0 WHERE c.slug=? GROUP BY c.id", input.slug)
+  require categories[0] else notFound()
+  data category = categories[0]
+  data requested = Native.call("legura.pagination.request", { page: input.page })
+  data pagination = Native.call("legura.pagination", { total: category["total"], requested_page: requested.requested_page, page_size: 10 })
+  data posts = db.query("SELECT p.title,p.slug FROM legura_posts p JOIN legura_post_categories pc ON pc.post_id=p.id JOIN legura_categories c ON c.id=pc.category_id WHERE c.slug=? AND p.status='published' AND p.trashed=0 ORDER BY p.title COLLATE NOCASE,p.id LIMIT ? OFFSET ?", input.slug, pagination.page_size, pagination.offset)
+  return { name: category["name"], slug: category["slug"], total: category["total"], posts: posts, page: pagination.page, pages: pagination.total_pages }
+}
+
+export query loadPublicPostCategories(slug: String) -> PublicCategoryLink[] {
+  return db.query("SELECT c.name,c.slug FROM legura_categories c JOIN legura_post_categories pc ON pc.category_id=c.id JOIN legura_posts p ON p.id=pc.post_id WHERE p.slug=? AND p.status='published' AND p.trashed=0 ORDER BY c.name COLLATE NOCASE,c.id", input.slug)
+}

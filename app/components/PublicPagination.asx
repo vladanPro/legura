@@ -1,0 +1,29 @@
+import { Button } from "@axonyx/ui/foundry/Button"
+
+component PublicPagination(path = "/", page = 1, pages = 1, locale = "en", switcher = false) {
+  return ASX {
+    <If when={pages > 1}>
+      <nav class="legura-links" aria-label={t("public.pagination.label", locale)}>
+        <If when={page > 1}>
+          <form method="get" action={path}>
+            <input type="hidden" name="page" value={page - 1} />
+            <If when={switcher}>
+              <input type="hidden" name="lang" value={locale} />
+            </If>
+            <Button type="submit" variant="secondary">{t("public.pagination.previous", locale)}</Button>
+          </form>
+        </If>
+        <span>{t("public.pagination.page", locale) + " " + page + " / " + pages}</span>
+        <If when={page < pages}>
+          <form method="get" action={path}>
+            <input type="hidden" name="page" value={page + 1} />
+            <If when={switcher}>
+              <input type="hidden" name="lang" value={locale} />
+            </If>
+            <Button type="submit" variant="secondary">{t("public.pagination.next", locale)}</Button>
+          </form>
+        </If>
+      </nav>
+    </If>
+  }
+}

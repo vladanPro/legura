@@ -28,6 +28,7 @@ if (!$categoryEdited.Body.Contains('value="Renamed"') -or !$categoryEdited.Body.
 if ($LASTEXITCODE -ne 0) { throw "Cannot prepare category assignment/pagination fixture" }
 . (Join-Path $root "tests/post-categories-http.ps1")
 . (Join-Path $root "tests/post-category-filter-http.ps1")
+. (Join-Path $root "tests/public-categories-http.ps1")
 $categoryPage = Invoke-Request -Path "/admin/categories?q=page-fixture&page=999" -Headers @{ Cookie = $cookie }
 if (!$categoryPage.Body.Contains('12 matching categories') -or !$categoryPage.Body.Contains('Page 2') -or $categoryPage.Body -notmatch '<input(?=[^>]*name="q")(?=[^>]*value="page-fixture")') { throw "Category search/pagination lost filtering or page clamp" }
 $categoryLiteral = Invoke-Request -Path "/admin/categories?q=%25" -Headers @{ Cookie = $cookie }

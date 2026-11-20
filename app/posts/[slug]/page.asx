@@ -6,6 +6,7 @@ page PublicPost() {
   data navigation: PublicNavigation = loadPublicNavigation()
   data contentLanguage: String = loadSiteContentLanguage()
   data post: PublishedStory = loadPublishedPost(params.slug)
+  data categories: PublicCategoryLink[] = loadPublicPostCategories(params.slug)
   data language: PublicLocale = loadPublicLocale(query.lang ?? "")
   data identity: PublicSiteIdentity = loadPublicSiteIdentity()
   const translate = I18n.withLocale(language.locale)
@@ -27,6 +28,13 @@ page PublicPost() {
       icon={identity.icon}
       currentPath={"/posts/" + params.slug}
     >
+      <If when={categories}>
+        <nav class="legura-links" aria-label={translate("public.categories")}>
+          <Each items={categories} as="category">
+            <a href={"/categories/" + category.slug + language.suffix} lang={contentLanguage}>{category.name}</a>
+          </Each>
+        </nav>
+      </If>
       <PostStory
         title={post.title}
         body={post.body}
