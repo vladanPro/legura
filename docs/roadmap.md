@@ -46,7 +46,9 @@ Editors/Subscribers cannot manage categories. Saved-post category selection lets
 Admin/Editor add/remove individual existing categories through native forms;
 the transactional service preserves other links and checks current authority.
 The picker has search/pagination, separate from unsaved content editing.
-Post-list filtering and public published-only routes remain follow-ups; each
+The Posts category filter combines title/status/category before counting and
+pagination, preserves filters across pages and returns empty results for an
+unavailable category. Public published-only routes remain a follow-up; each
 step's HTTP/Aegis gates must pass before merging.
 See [the category contract](post-categories-v0.md).
 

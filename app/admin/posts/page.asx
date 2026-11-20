@@ -14,7 +14,7 @@ import { TableHeaderCell } from "@axonyx/ui/foundry/TableHeaderCell"
 import { TableCell } from "@axonyx/ui/foundry/TableCell"
 
 page ManagePosts() {
-  data listing: AdminPostPage = loadAdminPosts(query.status ?? "all", query.page ?? "1", query.q ?? "")
+  data listing: AdminPostPage = loadAdminPosts(query.status ?? "all", query.page ?? "1", query.q ?? "", query.category ?? "")
   const posts = listing.posts
   data showAdmin: Bool = loadContentAdminControls()
   return ASX {
@@ -41,25 +41,40 @@ page ManagePosts() {
               <option value="trash" selected={listing.status == "trash"}>Trash</option>
             </Select>
           </div>
+          <div class="legura-list-filter-field">
+            <label for="post-category">Filter category</label>
+            <Select id="post-category" name="category">
+              <option value="" selected={listing.category == ""}>All categories</option>
+              <If when={!listing.category_available}>
+                <option value={listing.category} selected="true">Unavailable category</option>
+              </If>
+              <Each items={listing.categories} as="category">
+                <option value={category.id} selected={listing.category == category.id}>{category.name}</option>
+              </Each>
+            </Select>
+          </div>
           <Button type="submit" variant="secondary">Apply filters</Button>
-          <If when={listing.status != "all" || listing.search != ""}>
+          <If when={listing.status != "all" || listing.search != "" || listing.category != ""}>
             <a class="legura-filter-reset" href="/admin/posts">Reset filters</a>
           </If>
         </form>
         <p class="legura-hint">{listing.total + " matching posts"}</p>
-        <If when={!posts && listing.status == "all" && listing.search == ""}>
+        <If when={!listing.category_available}>
+          <p class="legura-hint" role="status">The selected category is no longer available. Reset the filters or choose another category.</p>
+        </If>
+        <If when={!posts && listing.status == "all" && listing.search == "" && listing.category == ""}>
           <Card title="No posts yet">
             <p>Create your first draft. It stays private until published.</p>
           </Card>
         </If>
-        <If when={!posts && listing.status == "trash" && listing.search == ""}>
+        <If when={!posts && listing.status == "trash" && listing.search == "" && listing.category == ""}>
           <Card title="Trash is empty">
             <p>Posts moved to Trash are kept until you restore or permanently delete them.</p>
           </Card>
         </If>
-        <If when={!posts && (listing.search != "" || listing.status == "draft" || listing.status == "published")}>
+        <If when={!posts && (listing.search != "" || listing.category != "" || listing.status == "draft" || listing.status == "published")}>
           <Card title="No matching posts">
-            <p>No titles match these filters. Change the search or reset the filters.</p>
+            <p>No posts match these filters. Change the search or reset the filters.</p>
             <a href="/admin/posts">Show all posts</a>
           </Card>
         </If>
@@ -136,6 +151,7 @@ page ManagePosts() {
             <form method="get" action="/admin/posts">
               <input type="hidden" name="q" value={listing.search} />
               <input type="hidden" name="status" value={listing.status} />
+              <input type="hidden" name="category" value={listing.category} />
               <input type="hidden" name="page" value={listing.page - 1} />
               <Button type="submit" variant="secondary">Previous page</Button>
             </form>
@@ -145,6 +161,7 @@ page ManagePosts() {
             <form method="get" action="/admin/posts">
               <input type="hidden" name="q" value={listing.search} />
               <input type="hidden" name="status" value={listing.status} />
+              <input type="hidden" name="category" value={listing.category} />
               <input type="hidden" name="page" value={listing.page + 1} />
               <Button type="submit" variant="secondary">Next page</Button>
             </form>

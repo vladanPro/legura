@@ -7,7 +7,7 @@ package. Work is delivered in separate reviewed steps:
 
 1. Schema and integrity contract (implemented).
 2. Administrator category management with native form validation (implemented).
-3. Editor/Admin post assignments (this step), then administration post filtering.
+3. Editor/Admin post assignments and administration post filtering (implemented).
 4. Public category routes showing only published, non-trashed posts.
 5. Compiled HTTP and Aegis browser acceptance of the complete flow.
 
@@ -57,9 +57,28 @@ choices are not overwritten by another writer. Missing categories produce a
 validation error; missing/trashed posts are not editable. No content,
 publication status or other post's assignments change.
 
-There is no post-list category filter or public category endpoint yet. No
-installed database is migrated by this PR, and no new package or release is
-published.
+## Post List Filter
+
+Admin and Editor can choose one category in **Posts > Filter category**.
+The default **All categories** also includes uncategorized posts. A selected
+category is combined with title search and collection/status before both
+counting and ten-row pagination. The query uses `EXISTS`, so assigning additional
+categories to a post does not duplicate it in the list or inflate counts.
+
+Next/Previous retain category, status and title search. Submitting the filter
+form starts at the first matching page; Reset filters clears all three. The
+existing Posts/Trash collection tabs remain shortcuts that reset other filters;
+choose Trash in the status selector to combine it with a category.
+
+An unknown or deleted category stays selected as **Unavailable category**, with
+zero results and a reset hint. It never silently falls back to all posts.
+Category IDs longer than the schema's 128-character limit return not-found.
+Search remains literal and parameter-bound; SQLite's built-in case folding is
+ASCII-only, not locale-aware Unicode search. The native dropdown lists all
+categories; remote searchable category selection is not included in V0.
+
+There is no public category endpoint yet. No installed database is migrated by
+this PR, and no new package or release is published.
 
 ## Data Model
 
@@ -134,3 +153,10 @@ boundaries and SQL-failure rollback. The Aegis category flow opens the saved
 post picker, adds/removes a category, reloads saved state, checks search retention
 and captures 320/390-pixel layouts with page scripts on and off. These browser
 checks must pass before merging the assignment step.
+
+The `-Users` fixture also proves post filtering for Admin and Editor with more
+than ten matching posts, multiple assignments, draft/published/Trash combinations,
+literal percent/underscore/SQL-looking input, final-page clamping and retained
+category/status/search. Unknown and deleted category filters must remain empty.
+Subscriber/anonymous access is denied. Aegis exercises the combined category,
+status and title controls, reset and 320/390-pixel layouts in both browser modes.
