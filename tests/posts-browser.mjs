@@ -265,25 +265,25 @@ async function checkPostListing() {
   assert.equal(await rows.first().textContent(), 'Listing 01listing-01');
   assert.equal(await navigation.getByRole('button', { name: 'Previous page' }).count(), 0);
   await navigation.getByRole('button', { name: 'Next page' }).click();
-  await page.waitForURL(`${baseUrl}/admin/posts?q=&status=all&page=2`);
+  await page.waitForURL(`${baseUrl}/admin/posts?q=&status=all&category=&page=2`);
   assert.equal(await rows.count(), 1);
   assert.match(await rows.first().textContent(), /Listing 11/);
   assert.equal(await navigation.getByRole('button', { name: 'Next page' }).count(), 0);
   await page.reload();
   assert.equal(await rows.count(), 1);
   await navigation.getByRole('button', { name: 'Previous page' }).click();
-  await page.waitForURL(`${baseUrl}/admin/posts?q=&status=all&page=1`);
+  await page.waitForURL(`${baseUrl}/admin/posts?q=&status=all&category=&page=1`);
   assert.equal(await rows.count(), 10);
 
   await navigate(page, '/admin/posts?status=all&page=2');
   await page.getByLabel('Filter status', { exact: true }).selectOption('draft');
   await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
-  await page.waitForURL(`${baseUrl}/admin/posts?q=&status=draft`);
+  await page.waitForURL(`${baseUrl}/admin/posts?q=&status=draft&category=`);
   assert.equal(await rows.count(), 6);
   assert.deepEqual(await table.locator('tbody .ax-badge').allTextContents(), Array(6).fill('draft'));
   await page.getByLabel('Filter status', { exact: true }).selectOption('published');
   await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
-  await page.waitForURL(`${baseUrl}/admin/posts?q=&status=published`);
+  await page.waitForURL(`${baseUrl}/admin/posts?q=&status=published&category=`);
   assert.equal(await rows.count(), 5);
   assert.deepEqual(await table.locator('tbody .ax-badge').allTextContents(), Array(5).fill('published'));
 

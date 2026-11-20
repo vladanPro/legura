@@ -145,6 +145,54 @@ fn check_assignment(
     println!(
         "Aegis: post category add/remove, saved state, retained search and mobile layout passed"
     );
+    check_post_filter(page, screenshots)?;
+    Ok(())
+}
+
+fn check_post_filter(
+    page: &BrowserPage,
+    screenshots: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let category = page.evaluate("return document.querySelector('form[action*=\"name=SetPostCategory\"] input[name=category_id]').value", &[])?;
+    let category = category
+        .as_str()
+        .ok_or("picker did not expose a category ID")?;
+    page.try_click("nav[aria-label='Administration'] a[href='/admin/posts']")?;
+    page.try_click(&format!("#post-category option[value='{category}']"))?;
+    page.try_click("#post-status option[value=draft]")?;
+    page.type_text("#post-search", "Aegis table draft")?;
+    page.try_click("form:has(#post-search) button[type=submit]")?;
+    wait_for(page, "const q = new URL(location.href).searchParams; return q.get('category') === arguments[0] && q.get('status') === 'draft' && q.get('q') === 'Aegis table draft'", &[category])?;
+    assert_eq!(
+        page.evaluate(
+            "return document.querySelectorAll('table tbody tr').length",
+            &[]
+        )?,
+        1
+    );
+    assert_eq!(
+        page.evaluate("return document.querySelector('#post-category').value", &[])?,
+        category
+    );
+    for width in [320, 390] {
+        page.set_viewport(width, 844)?;
+        assert_eq!(
+            page.evaluate(
+                "return document.documentElement.scrollWidth <= innerWidth",
+                &[]
+            )?,
+            true,
+            "Post filters overflow at {width}px"
+        );
+        std::fs::write(
+            screenshots.join(format!("post-category-filter-{width}.png")),
+            page.full_page_png()?,
+        )?;
+    }
+    page.set_viewport(1280, 900)?;
+    page.try_click("a.legura-filter-reset")?;
+    wait_for(page, "return location.pathname === '/admin/posts' && location.search === '' && document.querySelector('#post-category')?.value === '' && document.querySelector('#post-status')?.value === 'all' && document.querySelector('#post-search')?.value === ''", &[])?;
+    println!("Aegis: combined post category/status/title filter, reset and mobile layout passed");
     Ok(())
 }
 

@@ -27,6 +27,7 @@ if (!$categoryEdited.Body.Contains('value="Renamed"') -or !$categoryEdited.Body.
 & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);d.execute("INSERT INTO legura_posts(id,title,slug,body,status) VALUES (?,?,?,?,?)",("category-proof","Preserved post","category-proof","Original body","published"));d.execute("INSERT INTO legura_post_categories VALUES (?,?)",("category-proof",sys.argv[2]));d.executemany("INSERT INTO legura_categories VALUES (?,?,?)",[(f"category-page-{i}",f"Page fixture {i:02}",f"page-fixture-{i:02}") for i in range(12)]);d.commit();d.close()' $db $categoryId
 if ($LASTEXITCODE -ne 0) { throw "Cannot prepare category assignment/pagination fixture" }
 . (Join-Path $root "tests/post-categories-http.ps1")
+. (Join-Path $root "tests/post-category-filter-http.ps1")
 $categoryPage = Invoke-Request -Path "/admin/categories?q=page-fixture&page=999" -Headers @{ Cookie = $cookie }
 if (!$categoryPage.Body.Contains('12 matching categories') -or !$categoryPage.Body.Contains('Page 2') -or $categoryPage.Body -notmatch '<input(?=[^>]*name="q")(?=[^>]*value="page-fixture")') { throw "Category search/pagination lost filtering or page clamp" }
 $categoryLiteral = Invoke-Request -Path "/admin/categories?q=%25" -Headers @{ Cookie = $cookie }
@@ -37,6 +38,8 @@ Invoke-Request -Path $categoryDelete -Method POST -Body "id=$categoryId&confirmS
 Invoke-Request -Path $categoryRoute -Headers @{ Cookie = $cookie } | Out-Null
 Invoke-Request -Path $categoryDelete -Method POST -Body "id=$categoryId&confirmSlug=renamed-pilot" -Headers $sessionProof -Status 303 | Out-Null
 Invoke-Request -Path $categoryRoute -Headers @{ Cookie = $cookie } -Status 404 | Out-Null
+$deletedCategoryFilter = Invoke-Request -Path "/admin/posts?category=$categoryId" -Headers @{ Cookie = $cookie }
+if (!$deletedCategoryFilter.Body.Contains('0 matching posts') -or !$deletedCategoryFilter.Body.Contains('Unavailable category')) { throw "Deleted category filter exposed unfiltered posts" }
 Invoke-Request -Path $categoryDelete -Method POST -Body "id=$categoryId&confirmSlug=renamed-pilot" -Headers $sessionProof -Status 404 | Out-Null
 & $python.Source -c 'import sqlite3,sys;d=sqlite3.connect(sys.argv[1]);assert d.execute("SELECT body,status FROM legura_posts WHERE id=?",("category-proof",)).fetchone()==("Original body","published");assert d.execute("SELECT COUNT(*) FROM legura_post_categories WHERE category_id=?",(sys.argv[2],)).fetchone()[0]==0;d.execute("DELETE FROM legura_posts WHERE id=?",("category-proof",));d.execute("DELETE FROM legura_categories WHERE id LIKE ?",("category-page-%",));d.commit();d.close()' $db $categoryId
 if ($LASTEXITCODE -ne 0) { throw "Category deletion changed its post or retained assignments" }
