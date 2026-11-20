@@ -2,14 +2,19 @@
 
 ## Scope And Delivery
 
-This is a development-source feature, not part of the published 0.0.3 Pilot 1
-package. Work is delivered in separate reviewed steps:
+This feature is integrated into dev and included in the 0.0.4 Pilot 1 candidate,
+not the published 0.0.3 Pilot 1 package. Work was delivered in separate steps:
 
 1. Schema and integrity contract (implemented).
 2. Administrator category management with native form validation (implemented).
 3. Editor/Admin post assignments and administration post filtering (implemented).
-4. Public category routes showing only published, non-trashed posts (this step).
-5. Compiled HTTP and Aegis browser acceptance of the complete flow.
+4. Public category routes showing only published, non-trashed posts (implemented).
+5. Compiled HTTP and Aegis browser acceptance of the complete flow (passed).
+
+[Full registry CI](https://github.com/vladanPro/legura/actions/runs/44705590774)
+passed for PR #172, including anonymous public archives and both browser modes.
+Release preparation adds a separate 0.0.3-to-0.0.4 native-package upgrade gate;
+that gate is not implied by source/browser acceptance.
 
 The administrator's Content sidebar now includes Categories. The list supports
 literal name/slug search, stable ten-row pagination, assignment counts and links
@@ -151,8 +156,8 @@ rehearsal procedure before activation with this source build.
 Rollback refuses to discard any categories or assignments, including unused
 categories. An empty category schema can be rolled back transactionally without
 removing posts. Do not manually delete editorial data to force a downgrade.
-The product version remains unchanged during development; versioning and
-compatibility must be reviewed before the next native-package release.
+The 0.0.4 release candidate adds an explicit historical-backup reader policy;
+package compatibility and upgrade rehearsal remain gates before publication.
 
 ## Acceptance
 
@@ -166,8 +171,8 @@ those require the later route and browser gates.
 
 `pwsh -File scripts/smoke-auth.ps1 -Users` now also checks category CRUD, 403/404,
 CSRF, invalid/duplicate slugs, escaped labels, literal search, page clamping and
-deletion of an attached category without changing the post. Only that disposable
-fixture seeds assignments directly until post assignment actions exist.
+deletion of an attached category without changing the post. Direct SQL seeding
+is limited to disposable fixtures; separate HTTP checks exercise assignment actions.
 The Aegis `-PostsTableAegis` gate includes category validation retry, search,
 editing, slug-confirmed deletion and 320/390-pixel captures, in JS and no-JS modes.
 Browser execution must pass in CI before merging this management step.

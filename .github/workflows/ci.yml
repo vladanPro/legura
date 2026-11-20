@@ -153,7 +153,7 @@ jobs:
     name: Native Package Archive
     if: github.base_ref == 'main' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -173,6 +173,10 @@ jobs:
         with:
           ref: f4b065a60150fe94e98f19f4d8af4b52667f0227
           path: pilot
+      - uses: actions/checkout@v4
+        with:
+          ref: 1bd77e0cc2f70cbc8dba8b396263d682440b8661
+          path: released-pilot
       - name: Verify 0.0.1 backup compatibility with 0.0.2
         shell: pwsh
         run: |
@@ -189,6 +193,11 @@ jobs:
           ./scripts/package.ps1 -OutputDirectory $currentPackage
           python -B ./scripts/smoke-schema-upgrade.py $pilotPackage $currentPackage
           if ($LASTEXITCODE -ne 0) { throw 'Pre-Pages schema upgrade rehearsal failed' }
+          $releasedPackage = Join-Path $env:RUNNER_TEMP ('legura-released-package-' + [Guid]::NewGuid().ToString('N'))
+          ./released-pilot/scripts/local.ps1 -Task init
+          ./released-pilot/scripts/package.ps1 -OutputDirectory $releasedPackage
+          python -B ./scripts/smoke-schema-upgrade.py $releasedPackage $currentPackage --released-pilot
+          if ($LASTEXITCODE -ne 0) { throw 'Released pilot category upgrade rehearsal failed' }
           $inputDirectory = Join-Path $env:RUNNER_TEMP 'legura-clean-linux-input'
           New-Item -ItemType Directory -Path $inputDirectory | Out-Null
           ./scripts/archive-package.ps1 -PackageDirectory $currentPackage -OutputDirectory $inputDirectory

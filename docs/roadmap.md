@@ -38,7 +38,10 @@ the current pilot intentionally uses explicit 403 guards.
 
 ## 1. First End-to-End CMS
 
-Post Categories V0 is being delivered in scoped steps. The schema adds category
+Post Categories V0 is integrated into dev with full registry HTTP and Aegis
+acceptance (PRs #168 through #172). It is part of the 0.0.4 Pilot 1 candidate,
+not the published 0.0.3 package. Release upgrade/package gates remain separate.
+The schema adds category
 records and many-to-many post assignments with non-destructive deletion and
 rollback guards. Administrator management adds a searchable/paginated Foundry
 list, validated create/edit forms and a separate slug-confirmed delete screen.
