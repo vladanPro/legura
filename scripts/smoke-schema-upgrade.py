@@ -1,4 +1,4 @@
-"""Rehearse a pre-Pages native package upgrade using disposable copies only."""
+"""Rehearse a native package upgrade using disposable copies only."""
 
 import argparse
 from contextlib import closing
@@ -309,7 +309,64 @@ def verify_general_settings(admin):
     assert re.search(rb'<time datetime="[^"]+Z">\s*\d{2}/\d{2}/\d{4} \d{1,2}:\d{2} (AM|PM)\s*</time>', posts)
 
 
-def rehearse(prior_package, candidate_package, root, port):
+def verify_released_categories(candidate, database, image_url, image, port, original_post):
+    """Prove the new category schema works with a genuinely older post and image."""
+    with closing(sqlite3.connect(f"{database.as_uri()}?mode=ro", uri=True)) as db:
+        post = db.execute(
+            "SELECT id,created_by,created_at FROM legura_posts WHERE slug='clean-linux'"
+        ).fetchone()
+        assert post and post[1] and post[2], "Prior release did not persist authorship"
+        assert post == original_post, "Migration changed original post authorship"
+        assert db.execute("SELECT COUNT(*) FROM legura_categories").fetchone() == (0,)
+    with fixture.server(candidate, port):
+        admin = login()
+        guest = fixture.Client()
+        admin.request("/setup", 403)
+        guest.request("/admin/categories", 403)
+        guest.request("/categories/upgrade-proof", 404)
+        admin.action("/admin/categories", "CreateCategory", fields={
+            "name": "Upgrade proof", "slug": "upgrade-proof",
+        })
+        with closing(sqlite3.connect(f"{database.as_uri()}?mode=ro", uri=True)) as db:
+            category = db.execute(
+                "SELECT id FROM legura_categories WHERE slug='upgrade-proof'"
+            ).fetchone()[0]
+        route = f"/admin/posts/{post[0]}/categories"
+        fields = {"id": post[0], "category_id": category, "assigned": 1}
+        guest.action(route, "SetPostCategory", 403, fields=fields)
+        _, headers = admin.action(route, "SetPostCategory", fields=fields)
+        assert headers["Location"].startswith(route), "Category redirect was not a URL"
+        catalog, _ = guest.request("/categories", 200)
+        assert b"Upgrade proof" in catalog
+        archive, headers = guest.request("/categories/upgrade-proof", 200)
+        assert headers["Cache-Control"] == "no-store"
+        assert b"Clean Linux proof" in archive
+        story, _ = guest.request("/posts/clean-linux", 200)
+        assert b'/categories/upgrade-proof' in story
+        assert fixture.verify_public(image_url) == image.read_bytes()
+        admin.action("/admin/posts", "TrashPost", fields={"id": post[0]})
+        guest.request("/categories/upgrade-proof", 404)
+        guest.request(image_url, 404)
+        admin.action("/admin/posts", "RestorePost", fields={"id": post[0]})
+        guest.request("/categories/upgrade-proof", 404)
+        admin.action(f"/admin/posts/{post[0]}/edit", "UpdatePost", fields={
+            "id": post[0], "title": "Clean Linux proof", "slug": "clean-linux",
+            "body": "Native package proof", "status": "published",
+        })
+    with fixture.server(candidate, port):
+        login().request("/admin/categories", 200)
+        fixture.Client().request("/categories/upgrade-proof", 200)
+        assert fixture.verify_public(image_url) == image.read_bytes()
+    with closing(sqlite3.connect(f"{database.as_uri()}?mode=ro", uri=True)) as db:
+        assert db.execute(
+            "SELECT id,created_by,created_at FROM legura_posts WHERE slug='clean-linux'"
+        ).fetchone() == post, "Upgrade changed original post authorship"
+        assert db.execute(
+            "SELECT post_id,category_id FROM legura_post_categories"
+        ).fetchall() == [(post[0], category)]
+
+
+def rehearse(prior_package, candidate_package, root, port, released_pilot=False):
     if prior_package == candidate_package:
         raise ValueError("Use separate prior and candidate packages")
     prior = root / "prior"
@@ -320,7 +377,17 @@ def rehearse(prior_package, candidate_package, root, port):
         fixture.maintenance(package, "verify-package", package)
         shutil.copytree(package, copy)
 
+    if released_pilot:
+        assert json.loads((prior / "package.json").read_text())["version"] == "0.0.3"
+        assert json.loads((candidate / "package.json").read_text())["version"] == "0.0.4"
+
     database, media, image_id, image_url = seed_prior(prior, port)
+    original_post = None
+    if released_pilot:
+        with closing(sqlite3.connect(f"{database.as_uri()}?mode=ro", uri=True)) as db:
+            original_post = db.execute(
+                "SELECT id,created_by,created_at FROM legura_posts WHERE slug='clean-linux'"
+            ).fetchone()
     archive = root / "before.legura"
     fixture.maintenance(prior, "archive-backup", database, "local-media", media, archive)
     original = [database, media / image_id, archive, prior / ".env"]
@@ -342,6 +409,21 @@ def rehearse(prior_package, candidate_package, root, port):
     assert settings(candidate / ".env")["AX_SECRET_SESSION_KEY"] != settings(prior / ".env")["AX_SECRET_SESSION_KEY"]
     restored_image = recovery / "media" / "local-media" / image_id
     assert hashes([restored_image])[0] == before[1], "Migrated archive changed image bytes"
+
+    if released_pilot:
+        recovered_db = recovery / "database.sqlite"
+        verify_released_categories(candidate, recovered_db, image_url, restored_image, port, original_post)
+        after = root / "after-categories.legura"
+        fixture.maintenance(candidate, "archive-backup", recovered_db, "local-media", recovery / "media" / "local-media", after)
+        fixture.maintenance(candidate, "archive-verify", after)
+        after_recovery = root / "after-categories-recovery"
+        fixture.maintenance(candidate, "archive-restore", after, after_recovery)
+        fixture.maintenance(candidate, "archive-check-recovery", after, after_recovery)
+        with closing(sqlite3.connect(f"{(after_recovery / 'database.sqlite').as_uri()}?mode=ro", uri=True)) as db:
+            assert db.execute("SELECT slug FROM legura_categories").fetchall() == [("upgrade-proof",)]
+            assert db.execute("SELECT post_id FROM legura_post_categories").fetchall() == [(original_post[0],)]
+        assert hashes(original) == before, "Rehearsal changed the stopped source or backup"
+        return
 
     with fixture.server(candidate, port):
         admin = login()
@@ -408,10 +490,11 @@ if __name__ == "__main__":
     parser.add_argument("prior", type=Path)
     parser.add_argument("candidate", type=Path)
     parser.add_argument("--port", type=int, default=3968)
+    parser.add_argument("--released-pilot", action="store_true", help="Verify the 0.0.3 to 0.0.4 category upgrade")
     args = parser.parse_args()
     with socket.socket() as listener:
         listener.bind(("127.0.0.1", args.port))
     fixture.BASE = f"http://127.0.0.1:{args.port}"
     with TemporaryDirectory(prefix="legura-schema-upgrade-") as scratch:
-        rehearse(args.prior.resolve(strict=True), args.candidate.resolve(strict=True), Path(scratch), args.port)
+        rehearse(args.prior.resolve(strict=True), args.candidate.resolve(strict=True), Path(scratch), args.port, args.released_pilot)
     print("Schema upgrade passed: exact candidate migration history and preserved content.")
