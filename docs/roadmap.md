@@ -38,6 +38,25 @@ the current pilot intentionally uses explicit 403 guards.
 
 ## 1. First End-to-End CMS
 
+Post Categories V0 is integrated into dev with full registry HTTP and Aegis
+acceptance (PRs #168 through #172). It is part of the 0.0.4 Pilot 1 candidate,
+not the published 0.0.3 package. Release upgrade/package gates remain separate.
+The schema adds category
+records and many-to-many post assignments with non-destructive deletion and
+rollback guards. Administrator management adds a searchable/paginated Foundry
+list, validated create/edit forms and a separate slug-confirmed delete screen.
+Editors/Subscribers cannot manage categories. Saved-post category selection lets
+Admin/Editor add/remove individual existing categories through native forms;
+the transactional service preserves other links and checks current authority.
+The picker has search/pagination, separate from unsaved content editing.
+The Posts category filter combines title/status/category before counting and
+pagination, preserves filters across pages and returns empty results for an
+unavailable category. Public `/categories` and `/categories/:slug` add paginated
+published-only discovery and story links; empty/private-only categories return
+404. Routes preserve public appearance/locale and never prerender category data
+as static HTML. Each step's HTTP/Aegis gates must pass before merging.
+See [the category contract](post-categories-v0.md).
+
 Media Deletion Service V0 adds an administrator-checked Rust service
 that refuses referenced images and commits metadata removal before file cleanup.
 Cleanup failure is explicit, not reported as complete deletion. See
@@ -140,12 +159,13 @@ while the stored timestamp remains UTC. Week start is saved for future calendars
 Public registration is intentionally unavailable.
 The admin-only Users directory lists accounts and opens account details.
 The server-side policy now defines Admin (administration, users, content),
-Editor (content only), and Subscriber (no back-office capabilities). It denies
+Editor (content and own profile), and Subscriber (own profile only). It denies
 unknown roles and capabilities. Posts and Pages now check content capability
 for listing, creation, editing, preview, Trash and restore. Permanent deletion,
 media administration, user management, and site settings stay admin-only.
-Login routes Admin to the dashboard, Editor to Posts, and Subscriber to the
-public site. Editors see only content links and sign-out in their admin menu.
+Login routes Admin to the dashboard, Editor to Posts, and Subscriber to their
+own Profile. Editor navigation includes content, own Profile and sign-out;
+Subscriber navigation includes only own Profile, public site and sign-out.
 The account schema accepts Admin, Editor, and Subscriber and protects the
 installation owner from demotion or deletion. Users > Add user lets an
 administrator create Editor and Subscriber accounts with an initial password.
@@ -165,12 +185,17 @@ combined email/role/status filters in Chromium with page scripts enabled and
 disabled. It captures the inactive account listing at 320 and 390 pixels.
 Run the compiled fixture with `pwsh -File scripts/smoke-auth.ps1 -Users`.
 
-Administrator Profile now has a current-password-confirmed password change.
+Own Profile has a current-password-confirmed password change for every known role.
 The guarded action hashes through Axonyx Password, then compares the stored
 hash and session generation again inside an immediate SQLite transaction.
 Password replacement and revocation of all that account's sessions commit
-together. A fresh sign-in is required. Editor/Subscriber self-service,
-email-based reset links and administrator-managed resets are not included.
+together. A fresh sign-in is required. The authenticated session selects the
+account; client-supplied IDs cannot select a different profile or credential.
+Site preferences and other users remain administrator-only. Email-based reset
+links and administrator-managed resets are not included.
+The `-Users` HTTP fixture checks both roles, forged account IDs, independent
+sessions and deactivated-account denial. The Aegis profile scenario covers
+password feedback, fresh sign-in and mobile layout with page scripts on and off.
 
 The administration overview shows guarded database-backed total/draft/published
 counts and links to those lists, plus a first-draft prompt for empty installations.

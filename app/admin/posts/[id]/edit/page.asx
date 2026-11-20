@@ -56,6 +56,14 @@ page EditPost() {
           <button type="submit" class="ax-button" data-variant="secondary">Move to Trash</button>
         </form>
       </Card>
+      <Card title="Categories">
+        <p>Save content changes before choosing categories. Category changes are saved separately.</p>
+        <a
+          class="ax-button"
+          data-variant="secondary"
+          href={"/admin/posts/" + post.id + "/categories"}
+        >Choose categories</a>
+      </Card>
       <If when={post.media_available}>
         <Card title="Featured image">
           <If when={post.image_id != ""}>

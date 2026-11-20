@@ -1,7 +1,7 @@
-//! Atomic administrator password updates behind the guarded Profile action.
+//! Atomic own-account password updates behind the guarded Profile action.
 use axonyx_runtime::backend::{AxDataTransport, AxDatabaseDriver, AxEnv};
 use axonyx_runtime::native::{AxNativeError, AxNativeRegistry};
-use rusqlite::{params, Connection, OpenFlags, TransactionBehavior};
+use rusqlite::{params, Connection, OpenFlags, OptionalExtension, TransactionBehavior};
 use serde::Deserialize;
 use std::{path::Path, time::Duration};
 
@@ -10,7 +10,7 @@ use std::{path::Path, time::Duration};
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct PasswordUpdate {
-    administrator_id: String,
+    account_id: String,
     expected_hash: String,
     new_hash: String,
     session_generation: String,
@@ -26,20 +26,27 @@ fn update(connection: &mut Connection, input: &PasswordUpdate) -> Result<bool, A
     let tx = connection
         .transaction_with_behavior(TransactionBehavior::Immediate)
         .map_err(|_| AxNativeError::Rejected)?;
+    let role: Option<String> = tx
+        .query_row(
+            "SELECT u.role FROM legura_users u
+             JOIN legura_credentials c ON c.user_id=u.id AND c.email=u.email
+             WHERE u.id=?1 AND u.status='active' AND u.session_generation=?2 AND c.password_hash=?3",
+            params![input.account_id, input.session_generation, input.expected_hash],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|_| AxNativeError::Rejected)?;
+    if !role
+        .as_deref()
+        .is_some_and(crate::authorization::allows_own_profile)
+    {
+        return Ok(false);
+    }
     let changed = tx
         .execute(
             "UPDATE legura_credentials SET password_hash=?1
-         WHERE user_id=?2 AND password_hash=?3 AND EXISTS (
-           SELECT 1 FROM legura_users u WHERE u.id=?2 AND u.role='admin'
-             AND u.status='active' AND u.session_generation=?4
-             AND u.email=legura_credentials.email
-         )",
-            params![
-                input.new_hash,
-                input.administrator_id,
-                input.expected_hash,
-                input.session_generation
-            ],
+             WHERE user_id=?2 AND password_hash=?3",
+            params![input.new_hash, input.account_id, input.expected_hash,],
         )
         .map_err(|_| AxNativeError::Rejected)?;
     if changed != 1 {
@@ -48,7 +55,7 @@ fn update(connection: &mut Connection, input: &PasswordUpdate) -> Result<bool, A
     let changed = tx
         .execute(
             "UPDATE legura_users SET session_generation=?1 WHERE id=?2 AND session_generation=?3",
-            params![generation, input.administrator_id, input.session_generation],
+            params![generation, input.account_id, input.session_generation],
         )
         .map_err(|_| AxNativeError::Rejected)?;
     if changed != 1 {
@@ -120,7 +127,7 @@ mod tests {
         (
             db,
             PasswordUpdate {
-                administrator_id: "owner".into(),
+                account_id: "owner".into(),
                 expected_hash,
                 new_hash: AxPassword::hash("Replacement test password").unwrap(),
                 session_generation: "".into(),
@@ -187,16 +194,88 @@ mod tests {
         input.session_generation = "stale".into();
         assert!(!update(&mut db, &input).unwrap());
         input.session_generation.clear();
-        input.administrator_id = "editor".into();
+        input.account_id = "editor".into();
         db.execute(
             "INSERT INTO legura_credentials VALUES ('editor','editor@example.test',?1)",
             [&input.expected_hash],
         )
         .unwrap();
-        assert!(!update(&mut db, &input).unwrap());
-        input.administrator_id = "missing".into();
+        assert!(update(&mut db, &input).unwrap());
+        input.account_id = "missing".into();
         assert!(!update(&mut db, &input).unwrap());
         input.new_hash = "plaintext".into();
         assert!(update(&mut db, &input).is_err());
+    }
+
+    #[test]
+    fn each_known_role_can_change_only_the_guard_selected_account() {
+        for role in ["admin", "editor", "subscriber"] {
+            let (mut db, mut input) = fixture();
+            db.execute(
+                "INSERT INTO legura_users (id,email,role) VALUES ('member','member@example.test',?1)",
+                [role],
+            ).unwrap();
+            db.execute(
+                "INSERT INTO legura_credentials VALUES ('member','member@example.test',?1)",
+                [&input.expected_hash],
+            )
+            .unwrap();
+            db.execute(
+                "INSERT INTO ax_sessions VALUES ('member-session','member','{}',1,1,10)",
+                [],
+            )
+            .unwrap();
+            input.account_id = "member".into();
+            assert!(update(&mut db, &input).unwrap());
+            let hash: String = db
+                .query_row(
+                    "SELECT password_hash FROM legura_credentials WHERE user_id='member'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(hash, input.new_hash);
+            assert!(db
+                .prepare("SELECT 1 FROM ax_sessions WHERE id='old'")
+                .unwrap()
+                .exists([])
+                .unwrap());
+            assert!(!db
+                .prepare("SELECT 1 FROM ax_sessions WHERE id='member-session'")
+                .unwrap()
+                .exists([])
+                .unwrap());
+            let owner_hash: String = db
+                .query_row(
+                    "SELECT password_hash FROM legura_credentials WHERE user_id='owner'",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            assert_eq!(owner_hash, input.expected_hash);
+        }
+    }
+
+    #[test]
+    fn disabled_or_unknown_roles_cannot_update_passwords() {
+        for role in ["subscriber", "unknown"] {
+            let (mut db, mut input) = fixture();
+            db.execute(
+                "INSERT INTO legura_credentials VALUES ('editor','editor@example.test',?1)",
+                [&input.expected_hash],
+            )
+            .unwrap();
+            input.account_id = "editor".into();
+            if role == "subscriber" {
+                db.execute(
+                    "UPDATE legura_users SET role='subscriber', status='inactive', session_generation='revoked' WHERE id='editor'", []
+                ).unwrap();
+                input.session_generation = "revoked".into();
+            } else {
+                // Simulate corrupt data: the service must deny it independently of table checks.
+                db.execute_batch("PRAGMA ignore_check_constraints=ON; UPDATE legura_users SET role='unknown' WHERE id='editor';").unwrap();
+            }
+            assert!(!update(&mut db, &input).unwrap());
+        }
     }
 }

@@ -92,6 +92,10 @@ the shared Cargo target binary, give the tests a separate CARGO_TARGET_DIR.
 
 ## Recover An Administrator Password
 
+For everyday account management and signed-in password changes, use the
+[accounts guide](accounts-guide.md). This offline procedure is only for the
+installation administrator; it does not reset an arbitrary user's password.
+
 Stop the CMS before resetting the original installation administrator. First
 create and verify a backup using the procedures above (include media when
 configured). Use the maintenance binary for the installed schema and pass the

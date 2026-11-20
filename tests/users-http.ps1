@@ -51,7 +51,7 @@ $subscriberForm = $editorForm.Replace("editor-account", "subscriber-account").Re
 Invoke-Request -Path $createUserPath -Method POST -Body $subscriberForm -Headers $sessionProof -Status 303 | Out-Null
 foreach ($account in @(
   @{ Email = "editor-account"; Role = "editor"; Landing = "/admin/posts"; Content = 200 },
-  @{ Email = "subscriber-account"; Role = "subscriber"; Landing = "/"; Content = 403 }
+  @{ Email = "subscriber-account"; Role = "subscriber"; Landing = "/admin/profile"; Content = 403 }
 )) {
   $login = Invoke-Request -Path "/__axonyx/action?path=%2Flogin&name=SignIn" -Method POST -Body "email=$($account.Email)%40example.com&password=$newUserPassword" -Headers (Get-Proof) -Status 303
   if ($login.Headers.Location -ne $account.Landing) {
@@ -59,6 +59,22 @@ foreach ($account in @(
   }
   $memberCookie = ([string]$login.Headers["Set-Cookie"]).Split(';')[0]
   if ($account.Role -eq "editor") { $editorCookie = $memberCookie }
+  Invoke-Request -Path "/admin/categories" -Headers @{ Cookie = $memberCookie } -Status 403 | Out-Null
+  Invoke-Request -Path "/admin/categories/missing" -Headers @{ Cookie = $memberCookie } -Status 403 | Out-Null
+  Invoke-Request -Path "/__axonyx/action?path=%2Fadmin%2Fcategories&name=CreateCategory" -Method POST -Body "name=Denied&slug=denied" -Headers (Get-Proof -Cookie $memberCookie) -Status 403 | Out-Null
+  Invoke-Request -Path "/__axonyx/action?path=%2Fadmin%2Fcategories%2Fmissing&name=UpdateCategory" -Method POST -Body "id=missing&name=Denied&slug=denied" -Headers (Get-Proof -Cookie $memberCookie) -Status 403 | Out-Null
+  Invoke-Request -Path "/__axonyx/action?path=%2Fadmin%2Fcategories%2Fmissing%2Fdelete&name=DeleteCategory" -Method POST -Body "id=missing&confirmSlug=denied" -Headers (Get-Proof -Cookie $memberCookie) -Status 403 | Out-Null
+  $ownProfile = Invoke-Request -Path "/admin/profile" -Headers @{ Cookie = $memberCookie }
+  if (!$ownProfile.Body.Contains("$($account.Email)@example.com") -or
+      $ownProfile.Body.Contains($identity.email) -or $ownProfile.Body -match 'password_hash|session_generation|argon2') {
+    throw "Own profile exposed another account or internal credential data"
+  }
+  if ($ownProfile.Body -match 'href="/admin/(users|settings|language|media)"') {
+    throw "Own profile offered forbidden administration links"
+  }
+  if ($account.Role -eq "subscriber" -and $ownProfile.Body -match 'href="/admin/(posts|pages)"') {
+    throw "Subscriber profile offered content management links"
+  }
   foreach ($path in "/admin/posts", "/admin/pages", "/admin/posts/new", "/admin/pages/new") {
     Invoke-Request -Path $path -Headers @{ Cookie = $memberCookie } -Status $account.Content | Out-Null
   }

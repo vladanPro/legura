@@ -1,0 +1,33 @@
+export type Category {
+  id: String
+  name: String
+  slug: String
+  post_count: Number
+}
+
+export type CategoryListing {
+  categories: Category[]
+  total: Number
+  page: Number
+  search: String
+}
+
+export query loadCategories(page: String = "1", search: String = "") -> CategoryListing {
+  require Auth.subject else forbidden()
+  data user = db.legura_users.where({ id: Auth.subject, status: "active", role: "admin" }).first()
+  require user else forbidden()
+  data filters = Native.call("legura.listing.filters", { page: input.page, search: input.search })
+  data counts = db.query("SELECT COUNT(*) AS total FROM legura_categories WHERE instr(lower(name), lower(?)) > 0 OR instr(slug, lower(?)) > 0", filters.search, filters.search)
+  data pagination = Native.call("legura.pagination", { total: counts[0]["total"], requested_page: filters.requested_page, page_size: 10 })
+  data categories = db.query("SELECT c.id,c.name,c.slug,(SELECT COUNT(*) FROM legura_post_categories pc WHERE pc.category_id=c.id) AS post_count FROM legura_categories c WHERE instr(lower(c.name), lower(?)) > 0 OR instr(c.slug, lower(?)) > 0 ORDER BY c.name COLLATE NOCASE,c.id LIMIT ? OFFSET ?", filters.search, filters.search, pagination.page_size, pagination.offset)
+  return { categories: categories, total: counts[0]["total"], page: pagination.page, search: filters.search }
+}
+
+export query loadCategory(id: String) -> Category {
+  require Auth.subject else forbidden()
+  data user = db.legura_users.where({ id: Auth.subject, status: "active", role: "admin" }).first()
+  require user else forbidden()
+  data categories = db.query("SELECT c.id,c.name,c.slug,(SELECT COUNT(*) FROM legura_post_categories pc WHERE pc.category_id=c.id) AS post_count FROM legura_categories c WHERE c.id=?", input.id)
+  require categories[0] else notFound()
+  return categories[0]
+}

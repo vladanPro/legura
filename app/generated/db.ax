@@ -25,6 +25,24 @@ export type AxSessionsUpdateInput {
   expires_at_unix: Optional<Int>
 }
 
+export type LeguraCategoriesRow {
+  id: String
+  name: String
+  slug: String
+}
+
+export type LeguraCategoriesCreateInput {
+  id: String
+  name: String
+  slug: String
+}
+
+export type LeguraCategoriesUpdateInput {
+  id: Optional<String>
+  name: Optional<String>
+  slug: Optional<String>
+}
+
 export type LeguraCredentialsRow {
   user_id: String
   email: String
@@ -248,6 +266,21 @@ export type LeguraPagesUpdateInput {
   body: Optional<String>
   status: Optional<String>
   trashed: Optional<Int>
+}
+
+export type LeguraPostCategoriesRow {
+  post_id: String
+  category_id: String
+}
+
+export type LeguraPostCategoriesCreateInput {
+  post_id: String
+  category_id: String
+}
+
+export type LeguraPostCategoriesUpdateInput {
+  post_id: Optional<String>
+  category_id: Optional<String>
 }
 
 export type LeguraPostImagesRow {

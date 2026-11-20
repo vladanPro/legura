@@ -3,7 +3,7 @@
   "driver": "sqlite",
   "transport": "direct",
   "url": "sqlite://data/legura.db",
-  "schema_hash": "sha256:87801b980db3ffef7b9352c050dd404c7d9856521b4d27e585a9db5810c07952",
+  "schema_hash": "sha256:8ff5a462fefedec15a2a06bd41070fac4f71a43d56e01af34ab1ef64227a771a",
   "types_path": "app/generated/db.ax",
   "tables": [
     {
@@ -55,6 +55,37 @@
           "name": "expires_at_unix",
           "ty": "INTEGER",
           "ax_type": "Int",
+          "nullable": false,
+          "primary_key": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "name": "legura_categories",
+      "kind": "table",
+      "record": "LeguraCategoriesRow",
+      "columns": [
+        {
+          "name": "id",
+          "ty": "TEXT",
+          "ax_type": "String",
+          "nullable": false,
+          "primary_key": true,
+          "default": null
+        },
+        {
+          "name": "name",
+          "ty": "TEXT",
+          "ax_type": "String",
+          "nullable": false,
+          "primary_key": false,
+          "default": null
+        },
+        {
+          "name": "slug",
+          "ty": "TEXT",
+          "ax_type": "String",
           "nullable": false,
           "primary_key": false,
           "default": null
@@ -488,6 +519,29 @@
           "nullable": false,
           "primary_key": false,
           "default": "0"
+        }
+      ]
+    },
+    {
+      "name": "legura_post_categories",
+      "kind": "table",
+      "record": "LeguraPostCategoriesRow",
+      "columns": [
+        {
+          "name": "post_id",
+          "ty": "TEXT",
+          "ax_type": "String",
+          "nullable": false,
+          "primary_key": true,
+          "default": null
+        },
+        {
+          "name": "category_id",
+          "ty": "TEXT",
+          "ax_type": "String",
+          "nullable": false,
+          "primary_key": true,
+          "default": null
         }
       ]
     },

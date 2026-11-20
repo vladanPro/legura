@@ -27,7 +27,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug --force
+        run: cargo install cargo-axonyx --version '=0.8.10' --locked --debug --force
       - name: Check storage hook formatting
         shell: pwsh
         run: |
@@ -62,6 +62,7 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo test --locked --lib
       - run: cargo test --locked --test account-roles --test account-status
+      - run: cargo test --locked --test post-categories
       - run: python -B -m unittest discover -s tests -p test_schema_upgrade.py
       - run: cargo test --locked --test media-check
       - run: cargo test --locked --test private-media-read
@@ -78,7 +79,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
+      - run: cargo install cargo-axonyx --version '=0.8.10' --locked --debug
       - run: bash scripts/format-sources.sh --check
       - name: Check staged-source hook safety
         shell: pwsh
@@ -96,7 +97,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
+        run: cargo install cargo-axonyx --version '=0.8.10' --locked --debug
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -123,7 +124,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
+        run: cargo install cargo-axonyx --version '=0.8.10' --locked --debug
       - name: Verify compiled native content with disposable SQLite
         shell: pwsh
         run: |
@@ -152,7 +153,7 @@ jobs:
     name: Native Package Archive
     if: github.base_ref == 'main' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -160,7 +161,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
+        run: cargo install cargo-axonyx --version '=0.8.10' --locked --debug
       - name: Verify archive extraction and toolchain-free native flow
         shell: pwsh
         run: ./scripts/smoke-local.ps1 -Port 3943 -Package -Systemd
@@ -172,6 +173,10 @@ jobs:
         with:
           ref: f4b065a60150fe94e98f19f4d8af4b52667f0227
           path: pilot
+      - uses: actions/checkout@v4
+        with:
+          ref: 1bd77e0cc2f70cbc8dba8b396263d682440b8661
+          path: released-pilot
       - name: Verify 0.0.1 backup compatibility with 0.0.2
         shell: pwsh
         run: |
@@ -188,6 +193,11 @@ jobs:
           ./scripts/package.ps1 -OutputDirectory $currentPackage
           python -B ./scripts/smoke-schema-upgrade.py $pilotPackage $currentPackage
           if ($LASTEXITCODE -ne 0) { throw 'Pre-Pages schema upgrade rehearsal failed' }
+          $releasedPackage = Join-Path $env:RUNNER_TEMP ('legura-released-package-' + [Guid]::NewGuid().ToString('N'))
+          ./released-pilot/scripts/local.ps1 -Task init
+          ./released-pilot/scripts/package.ps1 -OutputDirectory $releasedPackage
+          python -B ./scripts/smoke-schema-upgrade.py $releasedPackage $currentPackage --released-pilot
+          if ($LASTEXITCODE -ne 0) { throw 'Released pilot category upgrade rehearsal failed' }
           $inputDirectory = Join-Path $env:RUNNER_TEMP 'legura-clean-linux-input'
           New-Item -ItemType Directory -Path $inputDirectory | Out-Null
           ./scripts/archive-package.ps1 -PackageDirectory $currentPackage -OutputDirectory $inputDirectory
@@ -222,7 +232,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
+        run: cargo install cargo-axonyx --version '=0.8.10' --locked --debug
       - name: Build and verify the Windows candidate
         shell: pwsh
         run: |
@@ -257,7 +267,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published private-binary CLI
-        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
+        run: cargo install cargo-axonyx --version '=0.8.10' --locked --debug
       - name: Verify SQLite maintenance safety
         run: |
           cargo fmt --all -- --check
@@ -343,7 +353,7 @@ jobs:
           python-version: "3.12"
       - uses: Swatinem/rust-cache@v2
       - name: Install published CLI
-        run: cargo install cargo-axonyx --version '=0.8.9' --locked --debug
+        run: cargo install cargo-axonyx --version '=0.8.10' --locked --debug
       - name: Smoke-test compiled setup and login
         shell: pwsh
         run: ./scripts/smoke-auth.ps1 -Port 3941

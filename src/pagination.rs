@@ -65,7 +65,7 @@ fn normalize_user_filters(input: UserFilterInput) -> UserFilters {
     }
 }
 
-fn normalize_search(search: &str) -> String {
+pub(crate) fn normalize_search(search: &str) -> String {
     // Preserve the SQLite trim/substr text-prefix semantics used by Posts.
     search
         .trim_matches(' ')
@@ -118,6 +118,19 @@ pub struct PaginationInput {
     pub page_size: i64,
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ListingFilterInput {
+    page: String,
+    search: String,
+}
+
+#[derive(Deserialize, Serialize)]
+struct ListingFilters {
+    requested_page: i64,
+    search: String,
+}
+
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Pagination {
@@ -143,6 +156,12 @@ pub fn paginate(input: PaginationInput) -> Result<Pagination, &'static str> {
 }
 
 pub fn register(registry: &mut AxNativeRegistry) -> Result<(), AxNativeError> {
+    registry.register("legura.listing.filters", |input: ListingFilterInput| {
+        Ok::<_, ()>(ListingFilters {
+            requested_page: normalize_page(&input.page),
+            search: normalize_search(&input.search),
+        })
+    })?;
     registry.register("legura.pagination.request", |input: PageRequestInput| {
         Ok::<_, ()>(normalize_page_request(input))
     })?;
@@ -348,6 +367,21 @@ mod tests {
     fn native_callbacks_enforce_types_and_fail_closed() {
         let mut registry = AxNativeRegistry::default();
         register(&mut registry).unwrap();
+        assert_eq!(
+            registry
+                .call(
+                    "legura.listing.filters",
+                    serde_json::json!({"page":"-2","search":"  news  "})
+                )
+                .unwrap(),
+            serde_json::json!({"requested_page":1,"search":"news"})
+        );
+        assert!(registry
+            .call(
+                "legura.listing.filters",
+                serde_json::json!({"page":"1","search":"","role":"admin"})
+            )
+            .is_err());
         assert!(register(&mut registry).is_err());
         for payload in [
             serde_json::json!({"page": 2}),

@@ -18,5 +18,15 @@
   "public.posts.empty.hint": "Revenez bientôt pour découvrir le premier article.",
   "public.posts.read": "Lire l'article",
   "public.posts.all": "Tous les articles",
-  "public.image.unavailable": "L'image mise en avant est indisponible."
+  "public.image.unavailable": "L'image mise en avant est indisponible.",
+  "public.categories": "Catégories",
+  "public.categories.browse": "Parcourir les catégories",
+  "public.categories.all": "Toutes les catégories",
+  "public.categories.count": "Articles publiés",
+  "public.categories.empty": "Aucune catégorie publiée",
+  "public.categories.empty.hint": "Les catégories apparaissent ici quand elles contiennent des articles publiés.",
+  "public.pagination.label": "Pagination",
+  "public.pagination.page": "Page",
+  "public.pagination.previous": "Page précédente",
+  "public.pagination.next": "Page suivante"
 }

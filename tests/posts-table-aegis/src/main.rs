@@ -2,6 +2,8 @@ use aegis::{Browser, BrowserOptions, BrowserPage, Key};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
+mod categories;
+mod profile;
 mod users;
 
 const TABLE: &str = "[role='region'][aria-label='Scrollable posts table']";
@@ -209,14 +211,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mode = if javascript { "javascript" } else { "native" };
         let output = screenshots.join(mode);
         std::fs::create_dir_all(&output)?;
-        let mut page = BrowserPage::connect(
-            &endpoint,
-            BrowserOptions {
-                browser,
-                javascript,
-                ..BrowserOptions::default()
-            },
-        )?;
+        let options = BrowserOptions {
+            browser,
+            javascript,
+            ..BrowserOptions::default()
+        };
+        let profile_context = profile::ProfileContext {
+            endpoint: &endpoint,
+            base_url: &base_url,
+            options: options.clone(),
+        };
+        let mut page = BrowserPage::connect(&endpoint, options)?;
         page.try_goto(&login_url)?;
         check_mobile_login(&page, &output, "login")?;
         check_native_login_validation(&page)?;
@@ -266,7 +271,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             std::thread::sleep(Duration::from_millis(50));
         }
         println!("Aegis: Legura Posts table scrolls at 320 px (page scripts: {javascript})");
-        users::check_users(&page, mode, &format!("member-{password}"), &output)?;
+        users::check_users(
+            &page,
+            mode,
+            &format!("member-{password}"),
+            &output,
+            &profile_context,
+        )?;
+        categories::check_categories(&mut page, mode, &output, &profile_context)?;
         page.try_goto(&admin_url)?;
         page.try_click("form[action*='name=SignOut'] button[type='submit']")?;
         wait_for_url(&page, &login_url)?;

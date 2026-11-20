@@ -6,16 +6,20 @@ import { Field } from "@axonyx/ui/foundry/Field"
 import { FieldLabel } from "@axonyx/ui/foundry/FieldLabel"
 
 page Profile() {
-  data administrator: Administrator = loadAdministrator()
+  data account: OwnProfile = loadOwnProfile()
   return ASX {
-    <AdminFrame section="profile">
+    <AdminFrame
+      section="profile"
+      showAdmin={account.role == "admin"}
+      showContent={account.role == "admin" || account.role == "editor"}
+    >
       <AdminPageHeader title="Profile" description="Details for your signed-in Legura account." />
       <Card title="Account details">
         <dl class="legura-profile-details">
           <dt>Email</dt>
-          <dd>{administrator.email}</dd>
+          <dd>{account.email}</dd>
           <dt>Role</dt>
-          <dd>Administrator</dd>
+          <dd>{account.role}</dd>
         </dl>
       </Card>
       <Card title="Change password">
@@ -83,10 +87,12 @@ page Profile() {
           <Button type="submit" variant="primary">Change password and sign out</Button>
         </form>
       </Card>
-      <Card title="Preferences">
-        <p>Manage the admin panel language separately from the public website.</p>
-        <a class="ax-button" data-variant="secondary" href="/admin/language">Language preferences</a>
-      </Card>
+      <If when={account.role == "admin"}>
+        <Card title="Preferences">
+          <p>Manage the admin panel language separately from the public website.</p>
+          <a class="ax-button" data-variant="secondary" href="/admin/language">Language preferences</a>
+        </Card>
+      </If>
     </AdminFrame>
   }
 }

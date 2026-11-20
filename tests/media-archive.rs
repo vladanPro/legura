@@ -777,6 +777,12 @@ fn current_product_recovery_check_is_read_only_and_checks_original_payloads() {
     let database = Connection::open(&db_path).unwrap();
     database.execute_batch("INSERT INTO legura_posts(id,title,slug,body,status) VALUES('post','Title','title','Original body','published')").unwrap();
     database.execute("INSERT INTO legura_post_images(post_id,media_id,alt) VALUES('post',?,'Restored image')", [&key]).unwrap();
+    database
+        .execute_batch(
+            "INSERT INTO legura_categories VALUES ('news','News','news'), ('unused','Unused','unused');
+             INSERT INTO legura_post_categories VALUES ('post','news');",
+        )
+        .unwrap();
     let rich = legura::content::PostContent::rich(
         &serde_json::json!({"format":"legura-richtext","version":1,"blocks":[
             {"type":"paragraph","children":[{"text":"Rich body","marks":["bold"]}]}
@@ -804,6 +810,20 @@ fn current_product_recovery_check_is_read_only_and_checks_original_payloads() {
         )
         .unwrap();
     assert_eq!(selection, (key.clone(), "Restored image".into()));
+    let category: (String, String) = recovered
+        .query_row(
+            "SELECT c.name,c.slug FROM legura_categories c
+             JOIN legura_post_categories pc ON pc.category_id=c.id WHERE pc.post_id='post'",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(category, ("News".into(), "news".into()));
+    assert!(recovered
+        .prepare("SELECT 1 FROM legura_categories WHERE id='unused'")
+        .unwrap()
+        .exists([])
+        .unwrap());
     drop(recovered);
     let db_before = fs::read(root.join("database.sqlite")).unwrap();
     let receipt_before = fs::read(root.join("recovery.json")).unwrap();

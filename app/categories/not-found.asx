@@ -1,0 +1,14 @@
+import { PublicFrame } from "@/components/PublicFrame"
+
+page PublicCategoryNotFound() {
+  return ASX {
+    <PublicFrame>
+      <section class="legura-route-fallback" aria-labelledby="category-not-found-title">
+        <p class="legura-route-fallback__code">404 / CATEGORY NOT FOUND</p>
+        <h1 id="category-not-found-title">This category is not available.</h1>
+        <p>It may have moved, or it may have no published posts.</p>
+        <a class="ax-button" data-variant="primary" href="/categories">Back to categories</a>
+      </section>
+    </PublicFrame>
+  }
+}

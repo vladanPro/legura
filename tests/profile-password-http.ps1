@@ -11,7 +11,10 @@ if ($profile.Body -notmatch 'name=ChangeProfilePassword' -or
 Invoke-Request -Path $changePasswordPath -Method POST -Body $profileForm -Headers (Get-Proof) -Status 403 | Out-Null
 Invoke-Request -Path $changePasswordPath -Method POST -Body $profileForm -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null
 $activeEditorCookie = ([string]$fresh.Headers["Set-Cookie"]).Split(';')[0]
-Invoke-Request -Path $changePasswordPath -Method POST -Body $profileForm -Headers (Get-Proof -Cookie $activeEditorCookie) -Status 403 | Out-Null
+$wrongAccountPassword = Invoke-Request -Path $changePasswordPath -Method POST -Body $profileForm -Headers (Get-Proof -Cookie $activeEditorCookie) -Status 422
+if ($wrongAccountPassword.Body -notmatch 'Current password is incorrect') {
+  throw "Editor must verify their own password, not the administrator password"
+}
 foreach ($invalidPassword in @(
   @{ Body = $profileForm.Replace("currentPassword=$password", "currentPassword=incorrect"); Field = "currentPassword" },
   @{ Body = $profileForm.Replace("password=$replacementPassword", "password=short"); Field = "password" },

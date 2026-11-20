@@ -1,0 +1,59 @@
+import { Card } from "@axonyx/ui/foundry/Card"
+import { PublicFrame } from "@/components/PublicFrame"
+import { PublicPagination } from "@/components/PublicPagination"
+
+page PublicCategories() {
+  data listing: PublicCategoryListing = loadPublicCategories(query.page ?? "1")
+  data appearance: PublicAppearance = loadPublicAppearance()
+  data navigation: PublicNavigation = loadPublicNavigation()
+  data language: PublicLocale = loadPublicLocale(query.lang ?? "")
+  data identity: PublicSiteIdentity = loadPublicSiteIdentity()
+  data contentLanguage: String = loadSiteContentLanguage()
+  const translate = I18n.withLocale(language.locale)
+  return ASX {
+    <PublicFrame
+      theme={appearance.theme}
+      colorMode={appearance.color_mode}
+      palette={appearance.resolved_palette}
+      headerAssigned={navigation.header_assigned}
+      hasHeader={navigation.has_header}
+      hasFooter={navigation.has_footer}
+      headerItems={navigation.header}
+      footerItems={navigation.footer}
+      locale={language.locale}
+      switcher={language.switcher}
+      suffix={language.suffix}
+      siteTitle={identity.title}
+      tagline={identity.tagline}
+      icon={identity.icon}
+      currentPath="/categories"
+    >
+      <section class="legura-posts">
+        <h1>{translate("public.categories")}</h1>
+        <a href={"/posts" + language.suffix}>{translate("public.posts.all")}</a>
+        <If when={!listing.categories}>
+          <Card title={translate("public.categories.empty")}>
+            <p>{translate("public.categories.empty.hint")}</p>
+          </Card>
+        </If>
+        <div class="legura-post-list">
+          <Each items={listing.categories} as="category">
+            <Card>
+              <h2 lang={contentLanguage}>
+                <a href={"/categories/" + category.slug + language.suffix}>{category.name}</a>
+              </h2>
+              <p>{translate("public.categories.count") + ": " + category.total}</p>
+            </Card>
+          </Each>
+        </div>
+        <PublicPagination
+          path="/categories"
+          page={listing.page}
+          pages={listing.pages}
+          locale={language.locale}
+          switcher={language.switcher}
+        />
+      </section>
+    </PublicFrame>
+  }
+}
