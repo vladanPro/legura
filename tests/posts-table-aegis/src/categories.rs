@@ -235,7 +235,7 @@ fn exercise_public_archive(
     let edit = owner.current_url()?;
     owner.try_click("#status option[value=published]")?;
     owner.try_click("form[action*='name=UpdatePost'] button[type=submit]")?;
-    wait_for(owner, "return location.pathname === '/admin/posts' && !!document.querySelector('table tbody') && document.querySelector('table tbody').textContent.includes('published')", &[])?;
+    wait_for(owner, "return location.href === arguments[0] && document.querySelector('#status')?.value === 'published' && document.querySelector('#status option[value=published]')?.hasAttribute('selected')", &[&edit])?;
     reader.try_goto(&format!("{base_url}/posts"))?;
     reader.try_click("a[href='/categories']")?;
     reader.try_click(&format!("a[href='/categories/{slug}']"))?;
@@ -274,7 +274,7 @@ fn exercise_public_archive(
     owner.try_goto(&edit)?;
     owner.try_click("#status option[value=draft]")?;
     owner.try_click("form[action*='name=UpdatePost'] button[type=submit]")?;
-    wait_for(owner, "return location.pathname === '/admin/posts' && !!document.querySelector('table tbody') && document.querySelector('table tbody').textContent.includes('draft')", &[])?;
+    wait_for(owner, "return location.href === arguments[0] && document.querySelector('#status')?.value === 'draft' && document.querySelector('#status option[value=draft]')?.hasAttribute('selected')", &[&edit])?;
     reader.try_goto(&archive)?;
     assert_eq!(
         reader.evaluate(
