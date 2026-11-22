@@ -10,12 +10,19 @@
 .legura-main { max-width: 42rem; margin: 3rem auto; }
 .legura-public[data-legura-public-theme='editorial'] .legura-main { max-width: 68rem; margin-block: clamp(2rem, 5vw, 5rem); }
 .legura-public[data-legura-public-theme='editorial'] .legura-post-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.legura-public[data-legura-public-theme='legura'] .legura-public-header { flex-wrap: wrap; align-items: center; }
+.legura-public[data-legura-public-theme='legura'] .legura-main { max-width: 50rem; margin-block: clamp(2rem, 6vw, 5rem); }
+.legura-public[data-legura-public-theme='legura'] .legura-main :is(h1, h2, h3) {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+}
+.legura-public[data-legura-public-theme='legura'] .legura-main h1 { font-size: clamp(2.25rem, 5vw, 4rem); line-height: 1.08; }
 .legura-editorial-nav { display: flex; flex-wrap: wrap; align-items: center; gap: 1.5rem; }
 .legura-editorial-nav a { font-size: 0.95rem; font-weight: 600; }
 .legura-public-footer { margin-top: 2rem; padding-block: 1rem; border-top: 1px solid var(--ax-border, currentColor); }
 .legura-navigation-item { margin-block-start: 1.5rem; }
 .legura-language-switcher { gap: 0.75rem; font-size: 0.875rem; }
-.legura-theme-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.legura-theme-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 1rem; }
 .legura-theme-choices .ax-card { min-width: 0; }
 .legura-theme-choices form { margin-top: 1.5rem; }
 .legura-theme-active { color: var(--ax-accent); font-weight: 700; }

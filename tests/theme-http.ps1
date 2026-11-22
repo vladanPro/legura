@@ -4,13 +4,14 @@ $paletteAction = '/__axonyx/action?path=%2Fadmin%2Fappearance&name=SetPublicPale
 
 function Assert-PublicTheme {
   param([string]$Expected, [string]$Mode = 'light', [string]$Palette = '')
-  if (!$Palette) { $Palette = if ($Expected -eq 'editorial') { 'bronze' } else { 'silver' } }
-  foreach ($path in @('/', '/posts')) {
+  if (!$Palette) { $Palette = if ($Expected -in @('editorial', 'legura')) { 'bronze' } else { 'silver' } }
+  $finish = @{ default = 'classic'; editorial = 'alloy'; legura = 'legura' }[$Expected]
+  foreach ($path in @('/', '/posts', '/categories')) {
     $response = Invoke-Request -Path $path
     if (!$response.Body.Contains('data-legura-public-theme="' + $Expected + '"')) {
       throw "Public theme $Expected was not rendered at $path"
     }
-    $frame = '<div(?=[^>]*data-legura-public-theme="' + $Expected + '")(?=[^>]*data-foundry="' + $Palette + '")[^>]*data-foundry-mode="' + $Mode + '"'
+    $frame = '<div(?=[^>]*data-legura-public-theme="' + $Expected + '")(?=[^>]*data-foundry="' + $Palette + '")(?=[^>]*data-foundry-style="' + $finish + '")[^>]*data-foundry-mode="' + $Mode + '"'
     if ($response.Body -notmatch $frame) {
       throw "Public color mode $Mode and palette $Palette were not rendered together at $path"
     }
@@ -23,8 +24,8 @@ Invoke-Request -Path $themeAction -Method POST -Body 'theme=editorial' -Headers 
 Invoke-Request -Path $modeAction -Method POST -Body 'color_mode=dark' -Headers (Get-Proof) -Status 403 | Out-Null
 Invoke-Request -Path $paletteAction -Method POST -Body 'palette=gold' -Headers (Get-Proof) -Status 403 | Out-Null
 $appearance = Invoke-Request -Path '/admin/appearance' -Headers @{ Cookie = $cookie }
-if (!$appearance.Body.Contains('Public theme') -or !$appearance.Body.Contains('Default') -or !$appearance.Body.Contains('Editorial')) {
-  throw 'Admin theme selector did not render both installed themes'
+if (!$appearance.Body.Contains('Public themes') -or !$appearance.Body.Contains('>Classic</h2>') -or !$appearance.Body.Contains('Activate Alloy') -or !$appearance.Body.Contains('Activate Legura')) {
+  throw 'Admin theme selector did not render all built-in bundles'
 }
 Invoke-Request -Path $themeAction -Method POST -Body 'theme=editorial' -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null
 Invoke-Request -Path $themeAction -Method POST -Body 'theme=unknown' -Headers $sessionProof -Status 422 | Out-Null
@@ -71,4 +72,18 @@ Invoke-Request -Path $themeAction -Method POST -Body 'theme=default' -Headers $s
 Assert-PublicTheme -Expected 'default' -Palette 'gold'
 Invoke-Request -Path $paletteAction -Method POST -Body 'palette=theme' -Headers $sessionProof -Status 303 | Out-Null
 Assert-PublicTheme -Expected 'default'
-Write-Host 'Legura public appearance HTTP passed: authorization, CSRF, allowlists, independent layout, mode and palette, and restart persistence.'
+Invoke-Request -Path $themeAction -Method POST -Body 'theme=legura' -Headers (Get-Proof) -Status 403 | Out-Null
+Invoke-Request -Path $themeAction -Method POST -Body 'theme=legura' -Headers $sessionProof -Status 303 | Out-Null
+Assert-PublicTheme -Expected 'legura'
+$appearance = Invoke-Request -Path '/admin/appearance' -Headers @{ Cookie = $cookie }
+if ($appearance.Body.Contains('Activate Legura') -or !$appearance.Body.Contains('Activate Classic') -or
+    !$appearance.Body.Contains('Activate Alloy') -or $appearance.Body -notmatch 'class="legura-app"[^>]*data-foundry="silver"[^>]*data-foundry-mode="light"') {
+  throw 'Activating Legura did not update the theme card or changed the admin appearance'
+}
+Stop-Fixture
+Start-Fixture
+Assert-PublicTheme -Expected 'legura'
+$sessionProof = Get-Proof -Cookie $cookie
+Invoke-Request -Path $themeAction -Method POST -Body 'theme=default' -Headers $sessionProof -Status 303 | Out-Null
+Assert-PublicTheme -Expected 'default'
+Write-Host 'Legura public themes HTTP passed: Classic, Alloy, Legura, authorization, CSRF, independent overrides and restart persistence.'

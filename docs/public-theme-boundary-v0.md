@@ -5,12 +5,16 @@ public home page and `/posts` subtree render inside `PublicFrame`; setup,
 login and `/admin` render inside `BackofficeFrame`. Both frames share the root
 head/assets, database and route graph, but own separate Foundry boundaries.
 
-The public frame supports two built-in themes: `default` (Silver + Light +
-Classic, centered reading layout) and `editorial` (Bronze + Light + Alloy,
-wider layout and public navigation). The selected theme is stored in the
+The public frame ships with **Classic** (Silver, centered reading layout),
+**Alloy** (Bronze, wider editorial layout) and **Legura** (Bronze, paper
+surfaces in Light mode, serif headings, and public navigation). Classic and
+Alloy keep the historical `default` and `editorial` IDs. The selected theme is stored in the
 singleton `legura_public_theme` database row. An administrator selects it at
-`/admin/appearance`; the choice takes effect on the next public request and
-survives a restart. The backoffice keeps its Silver + Classic frame and
+`/admin/appearance` using **Activate**; the choice takes effect on the next
+public request and survives a restart. Explicit public mode and palette
+settings stay in place. Before downgrading to a release without Legura,
+activate Classic or Alloy; the downgrade rejects an active Legura bundle.
+The backoffice keeps its Silver + Classic frame and
 its independent Light/Dark preference. The appearance script and picker target
 only `.legura-app`, never `.legura-public`. A saved backoffice Dark preference
 must not change the public frame, even in the same browser session.
