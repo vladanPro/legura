@@ -17,12 +17,16 @@ page Appearance() {
       >
         <a class="ax-button" data-variant="secondary" href="/posts">View public site</a>
       </AdminPageHeader>
-      <p class="legura-hint">Previews show the default palette in Light mode. Activating a theme keeps your saved color mode and palette.</p>
+      <p class="legura-hint">Previews use your saved public mode and palette. With Theme default, each theme uses its own palette.</p>
       <div class="legura-theme-choices">
         <Card>
           <PublicThemeCardHeader title="Classic" active={appearance.theme == "default"} />
-          <PublicThemePreview finish="classic" palette="silver" />
-          <p>A centered reading layout with Silver accents.</p>
+          <PublicThemePreview
+            finish="classic"
+            palette={appearance.palette_override ?? "silver"}
+            colorMode={appearance.color_mode}
+          />
+          <p>A centered reading layout. Defaults to Silver.</p>
           <If when={appearance.theme != "default"}>
             <form method="post" action={action SelectPublicTheme}>
               <input type="hidden" name="theme" value="default" />
@@ -32,8 +36,12 @@ page Appearance() {
         </Card>
         <Card>
           <PublicThemeCardHeader title="Alloy" active={appearance.theme == "editorial"} />
-          <PublicThemePreview finish="alloy" palette="bronze" />
-          <p>A wider, magazine-like layout with Bronze accents.</p>
+          <PublicThemePreview
+            finish="alloy"
+            palette={appearance.palette_override ?? "bronze"}
+            colorMode={appearance.color_mode}
+          />
+          <p>A wider, magazine-like layout. Defaults to Bronze.</p>
           <If when={appearance.theme != "editorial"}>
             <form method="post" action={action SelectPublicTheme}>
               <input type="hidden" name="theme" value="editorial" />
@@ -43,8 +51,12 @@ page Appearance() {
         </Card>
         <Card>
           <PublicThemeCardHeader title="Legura" active={appearance.theme == "legura"} />
-          <PublicThemePreview finish="legura" palette="bronze" />
-          <p>Warm paper surfaces in Light mode, serif titles, and a spacious reading layout with Bronze accents.</p>
+          <PublicThemePreview
+            finish="legura"
+            palette={appearance.palette_override ?? "bronze"}
+            colorMode={appearance.color_mode}
+          />
+          <p>Paper surfaces in Light mode and serif titles. Defaults to Bronze.</p>
           <If when={appearance.theme != "legura"}>
             <form method="post" action={action SelectPublicTheme}>
               <input type="hidden" name="theme" value="legura" />

@@ -1,10 +1,10 @@
-component PublicThemePreview(finish = "classic", palette = "silver") {
+component PublicThemePreview(finish = "classic", palette = "silver", colorMode = "light") {
   return ASX {
     <div
       class="legura-theme-preview"
       data-foundry={palette}
       data-foundry-style={finish}
-      data-foundry-mode="light"
+      data-foundry-mode={colorMode}
       aria-hidden="true"
     >
       <div class="legura-theme-preview__header">

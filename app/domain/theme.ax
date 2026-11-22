@@ -2,12 +2,13 @@ export type PublicAppearance {
   theme: String
   color_mode: String
   palette: String
+  palette_override?: String
   resolved_palette: String
   finish: String
 }
 
 export query loadPublicAppearance() -> PublicAppearance {
-  data rows = db.query("SELECT theme, color_mode, palette, CASE WHEN palette != 'theme' THEN palette WHEN theme IN ('editorial', 'legura') THEN 'bronze' ELSE 'silver' END AS resolved_palette, CASE theme WHEN 'editorial' THEN 'alloy' WHEN 'legura' THEN 'legura' ELSE 'classic' END AS finish FROM legura_public_theme WHERE id = 1")
+  data rows = db.query("SELECT theme, color_mode, palette, NULLIF(palette, 'theme') AS palette_override, COALESCE(NULLIF(palette, 'theme'), CASE WHEN theme IN ('editorial', 'legura') THEN 'bronze' ELSE 'silver' END) AS resolved_palette, CASE theme WHEN 'editorial' THEN 'alloy' WHEN 'legura' THEN 'legura' ELSE 'classic' END AS finish FROM legura_public_theme WHERE id = 1")
   data active = rows[0]
-  return { theme: active["theme"], color_mode: active["color_mode"], palette: active["palette"], resolved_palette: active["resolved_palette"], finish: active["finish"] }
+  return { theme: active["theme"], color_mode: active["color_mode"], palette: active["palette"], palette_override: active["palette_override"], resolved_palette: active["resolved_palette"], finish: active["finish"] }
 }
