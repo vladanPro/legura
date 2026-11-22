@@ -27,6 +27,9 @@ $appearance = Invoke-Request -Path '/admin/appearance' -Headers @{ Cookie = $coo
 if (!$appearance.Body.Contains('Public themes') -or !$appearance.Body.Contains('>Classic</h2>') -or !$appearance.Body.Contains('Activate Alloy') -or !$appearance.Body.Contains('Activate Legura')) {
   throw 'Admin theme selector did not render all built-in bundles'
 }
+if ([regex]::Matches($appearance.Body, 'class="ax-badge"[^>]*>\s*Active theme\s*</span>').Count -ne 1) {
+  throw 'Expected exactly one active theme badge'
+}
 foreach ($sample in @(@{ Finish = 'classic'; Palette = 'silver' }, @{ Finish = 'alloy'; Palette = 'bronze' }, @{ Finish = 'legura'; Palette = 'bronze' })) {
   $preview = '<div(?=[^>]*class="legura-theme-preview")(?=[^>]*data-foundry="' + $sample.Palette + '")(?=[^>]*data-foundry-style="' + $sample.Finish + '")(?=[^>]*data-foundry-mode="light")(?=[^>]*aria-hidden="true")[^>]*>'
   if ([regex]::Matches($appearance.Body, $preview).Count -ne 1) {

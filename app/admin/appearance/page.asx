@@ -3,6 +3,7 @@ import { Card } from "@axonyx/ui/foundry/Card"
 import { Select } from "@axonyx/ui/foundry/Select"
 import { AdminFrame } from "@/components/AdminFrame"
 import { AdminPageHeader } from "@/components/AdminPageHeader"
+import { PublicThemeCardHeader } from "@/components/PublicThemeCardHeader"
 import { PublicThemePreview } from "@/components/PublicThemePreview"
 
 page Appearance() {
@@ -18,12 +19,10 @@ page Appearance() {
       </AdminPageHeader>
       <p class="legura-hint">Previews show the default palette in Light mode. Activating a theme keeps your saved color mode and palette.</p>
       <div class="legura-theme-choices">
-        <Card title="Classic">
+        <Card>
+          <PublicThemeCardHeader title="Classic" active={appearance.theme == "default"} />
           <PublicThemePreview finish="classic" palette="silver" />
-          <p>The original Default theme: a centered reading layout with Silver accents.</p>
-          <If when={appearance.theme == "default"}>
-            <p class="legura-theme-active">Active theme</p>
-          </If>
+          <p>A centered reading layout with Silver accents.</p>
           <If when={appearance.theme != "default"}>
             <form method="post" action={action SelectPublicTheme}>
               <input type="hidden" name="theme" value="default" />
@@ -31,12 +30,10 @@ page Appearance() {
             </form>
           </If>
         </Card>
-        <Card title="Alloy">
+        <Card>
+          <PublicThemeCardHeader title="Alloy" active={appearance.theme == "editorial"} />
           <PublicThemePreview finish="alloy" palette="bronze" />
-          <p>The original Editorial theme: a wider, magazine-like layout with Bronze accents.</p>
-          <If when={appearance.theme == "editorial"}>
-            <p class="legura-theme-active">Active theme</p>
-          </If>
+          <p>A wider, magazine-like layout with Bronze accents.</p>
           <If when={appearance.theme != "editorial"}>
             <form method="post" action={action SelectPublicTheme}>
               <input type="hidden" name="theme" value="editorial" />
@@ -44,12 +41,10 @@ page Appearance() {
             </form>
           </If>
         </Card>
-        <Card title="Legura">
+        <Card>
+          <PublicThemeCardHeader title="Legura" active={appearance.theme == "legura"} />
           <PublicThemePreview finish="legura" palette="bronze" />
-          <p>Warm paper surfaces in Light mode, serif titles, and a spacious reading layout. Uses Bronze by default.</p>
-          <If when={appearance.theme == "legura"}>
-            <p class="legura-theme-active">Active theme</p>
-          </If>
+          <p>Warm paper surfaces in Light mode, serif titles, and a spacious reading layout with Bronze accents.</p>
           <If when={appearance.theme != "legura"}>
             <form method="post" action={action SelectPublicTheme}>
               <input type="hidden" name="theme" value="legura" />
