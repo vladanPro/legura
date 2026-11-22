@@ -27,6 +27,13 @@ $appearance = Invoke-Request -Path '/admin/appearance' -Headers @{ Cookie = $coo
 if (!$appearance.Body.Contains('Public themes') -or !$appearance.Body.Contains('>Classic</h2>') -or !$appearance.Body.Contains('Activate Alloy') -or !$appearance.Body.Contains('Activate Legura')) {
   throw 'Admin theme selector did not render all built-in bundles'
 }
+foreach ($sample in @(@{ Finish = 'classic'; Palette = 'silver' }, @{ Finish = 'alloy'; Palette = 'bronze' }, @{ Finish = 'legura'; Palette = 'bronze' })) {
+  $preview = '<div(?=[^>]*class="legura-theme-preview")(?=[^>]*data-foundry="' + $sample.Palette + '")(?=[^>]*data-foundry-style="' + $sample.Finish + '")(?=[^>]*data-foundry-mode="light")(?=[^>]*aria-hidden="true")[^>]*>'
+  if ([regex]::Matches($appearance.Body, $preview).Count -ne 1) {
+    throw "Expected one decorative $($sample.Finish) preview with its default palette"
+  }
+}
+Assert-PublicTheme -Expected 'default'
 Invoke-Request -Path $themeAction -Method POST -Body 'theme=editorial' -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null
 Invoke-Request -Path $themeAction -Method POST -Body 'theme=unknown' -Headers $sessionProof -Status 422 | Out-Null
 Invoke-Request -Path $modeAction -Method POST -Body 'color_mode=dark' -Headers @{ Cookie = $cookie; Origin = $baseUrl } -Status 403 | Out-Null

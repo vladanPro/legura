@@ -268,6 +268,34 @@ try {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Mobile overflow on ${path}`);
     await page.setViewportSize({ width: 1280, height: 900 });
   }
+  await navigate("/admin/appearance");
+  await page.getByRole("heading", { name: "Public themes", level: 1 }).waitFor();
+  const previews = page.locator(".legura-theme-preview");
+  const samples = await previews.evaluateAll((nodes) => nodes.map((node) => ({
+    finish: node.dataset.foundryStyle,
+    background: getComputedStyle(node).backgroundColor,
+    stories: node.querySelectorAll(".legura-theme-preview__story").length,
+  })));
+  assert.deepEqual(samples.map(({ finish, stories }) => [finish, stories]), [
+    ["classic", 1], ["alloy", 2], ["legura", 1],
+  ]);
+  assert.equal(samples[2].background, "rgb(245, 242, 235)", "Legura preview did not get its paper background");
+  assert.notEqual(samples[0].background, samples[2].background);
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.ok(await previews.evaluateAll((nodes) => nodes.every((node) => {
+      const rect = node.getBoundingClientRect();
+      return rect.width > 0 && rect.left >= 0 && rect.right <= innerWidth && node.scrollWidth <= node.clientWidth;
+    })), `Theme previews overflow at ${width}px`);
+    await page.locator(".legura-theme-choices").screenshot({ path: resolve(results, `theme-previews-${width}.png`) });
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await submitSuccess("Activate Legura");
+  await page.locator(".ax-card").filter({ has: page.getByRole("heading", { name: "Legura", exact: true }) })
+    .getByText("Active theme", { exact: true }).waitFor();
+  await navigate("/");
+  await page.locator('.legura-public[data-foundry-style="legura"]').waitFor();
+  await navigate("/admin/appearance");
   await adminNav.getByRole("link", { name: "Overview", exact: true }).click();
   await page.waitForURL(baseUrl + "/admin");
   await page.setViewportSize({ width: 390, height: 844 });
