@@ -3,6 +3,7 @@ import { Card } from "@axonyx/ui/foundry/Card"
 import { Select } from "@axonyx/ui/foundry/Select"
 import { AdminFrame } from "@/components/AdminFrame"
 import { AdminPageHeader } from "@/components/AdminPageHeader"
+import { PublicThemePreview } from "@/components/PublicThemePreview"
 
 page Appearance() {
   data appearance: PublicAppearance = loadPublicAppearance()
@@ -15,8 +16,10 @@ page Appearance() {
       >
         <a class="ax-button" data-variant="secondary" href="/posts">View public site</a>
       </AdminPageHeader>
+      <p class="legura-hint">Previews show the default palette in Light mode. Activating a theme keeps your saved color mode and palette.</p>
       <div class="legura-theme-choices">
         <Card title="Classic">
+          <PublicThemePreview finish="classic" palette="silver" />
           <p>The original Default theme: a centered reading layout with Silver accents.</p>
           <If when={appearance.theme == "default"}>
             <p class="legura-theme-active">Active theme</p>
@@ -29,6 +32,7 @@ page Appearance() {
           </If>
         </Card>
         <Card title="Alloy">
+          <PublicThemePreview finish="alloy" palette="bronze" />
           <p>The original Editorial theme: a wider, magazine-like layout with Bronze accents.</p>
           <If when={appearance.theme == "editorial"}>
             <p class="legura-theme-active">Active theme</p>
@@ -41,6 +45,7 @@ page Appearance() {
           </If>
         </Card>
         <Card title="Legura">
+          <PublicThemePreview finish="legura" palette="bronze" />
           <p>Warm paper surfaces in Light mode, serif titles, and a spacious reading layout. Uses Bronze by default.</p>
           <If when={appearance.theme == "legura"}>
             <p class="legura-theme-active">Active theme</p>
