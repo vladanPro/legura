@@ -17,6 +17,7 @@ pub fn register(registry: &mut AxNativeRegistry) -> Result<(), AxNativeError> {
     )?;
     legura::content_loading::register(registry)?;
     legura::content_rendering::register(registry)?;
+    legura::public_metadata::register(registry)?;
     registry.register("legura.content.prepare", |input: ContentFormInput| {
         Ok::<_, ()>(prepare_content_form(input))
     })

@@ -21,7 +21,7 @@ struct CheckedForm {
     errors: BTreeMap<&'static str, &'static str>,
 }
 
-fn valid_address(value: &str) -> bool {
+pub(crate) fn valid_address(value: &str) -> bool {
     value.is_empty()
         || (value.len() <= 2048
             && (value.starts_with("http://") || value.starts_with("https://"))

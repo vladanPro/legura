@@ -1,10 +1,14 @@
 export type PublishedSitePage {
   title: String
   body: String
+  description?: String
+  canonical?: String
 }
 
 export query loadPublishedSitePage(slug: String) -> PublishedSitePage {
   data entry = db.legura_pages.where({ slug: input.slug, status: "published", trashed: 0 }).first()
   require entry else notFound()
-  return { title: entry["title"], body: entry["body"] }
+  data settings = db.query("SELECT site_address FROM legura_general_settings WHERE id = 1")
+  data metadata = Native.call("legura.public.metadata", { body: entry["body"], site_address: settings[0]["site_address"], collection: "pages", slug: entry["slug"] })
+  return { title: entry["title"], body: entry["body"], description: metadata.description, canonical: metadata.canonical }
 }
