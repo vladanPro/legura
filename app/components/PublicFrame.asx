@@ -2,7 +2,7 @@ import { Container } from "@axonyx/ui/foundry/Container"
 import { PublicMenu } from "@/components/PublicMenu"
 import { SiteLanguageSwitcher } from "@/components/SiteLanguageSwitcher"
 
-component PublicFrame(theme = "default", colorMode = "light", palette = "silver", headerAssigned = 0, hasHeader = false, hasFooter = false, headerItems = [], footerItems = [], locale = "en", switcher = false, currentPath = "/", suffix = "", siteTitle = "Legura", tagline = "", icon = "/legura-mark.svg") {
+component PublicFrame(theme = "default", finish = "classic", colorMode = "light", palette = "silver", headerAssigned = 0, hasHeader = false, hasFooter = false, headerItems = [], footerItems = [], locale = "en", switcher = false, currentPath = "/", suffix = "", siteTitle = "Legura", tagline = "", icon = "/legura-mark.svg") {
   return ASX {
     <If when={theme == "editorial"}>
       <div
@@ -56,9 +56,9 @@ component PublicFrame(theme = "default", colorMode = "light", palette = "silver"
       <div
         class="legura-public"
         lang={locale}
-        data-legura-public-theme="default"
+        data-legura-public-theme={theme}
         data-foundry={palette}
-        data-foundry-style="classic"
+        data-foundry-style={finish}
         data-foundry-mode={colorMode}
       >
         <a class="legura-skip-link" href="#main-content">{t("public.skip", locale)}</a>
@@ -68,8 +68,14 @@ component PublicFrame(theme = "default", colorMode = "light", palette = "silver"
             <If when={tagline != ""}>
               <span>{tagline}</span>
             </If>
-            <If when={headerAssigned == 0 && tagline == ""}>
+            <If when={theme == "default" && headerAssigned == 0 && tagline == ""}>
               <span>{t("public.tagline", locale)}</span>
+            </If>
+            <If when={theme == "legura" && headerAssigned == 0}>
+              <nav class="legura-editorial-nav" aria-label={t("public.nav.main", locale)}>
+                <a href={"/" + suffix}>{t("public.home", locale)}</a>
+                <a href={"/posts" + suffix}>{t("public.stories", locale)}</a>
+              </nav>
             </If>
             <If when={hasHeader}>
               <PublicMenu

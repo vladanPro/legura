@@ -1,0 +1,25 @@
+component PublicThemePreview(finish = "classic", palette = "silver", colorMode = "light") {
+  return ASX {
+    <div
+      class="legura-theme-preview"
+      data-foundry={palette}
+      data-foundry-style={finish}
+      data-foundry-mode={colorMode}
+      aria-hidden="true"
+    >
+      <div class="legura-theme-preview__header">
+        <span>Journal</span>
+        <span>Home / Stories</span>
+      </div>
+      <div class="legura-theme-preview__body">
+        <div class="legura-theme-preview__headline">Latest stories</div>
+        <div class="legura-theme-preview__grid">
+          <div class="legura-theme-preview__story">Field notes</div>
+          <If when={finish == "alloy"}>
+            <div class="legura-theme-preview__story">In focus</div>
+          </If>
+        </div>
+      </div>
+    </div>
+  }
+}
