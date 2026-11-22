@@ -379,7 +379,6 @@ def rehearse(prior_package, candidate_package, root, port, released_pilot=False)
 
     if released_pilot:
         assert json.loads((prior / "package.json").read_text())["version"] == "0.0.3"
-        assert json.loads((candidate / "package.json").read_text())["version"] == "0.0.4"
 
     database, media, image_id, image_url = seed_prior(prior, port)
     original_post = None
@@ -396,7 +395,13 @@ def rehearse(prior_package, candidate_package, root, port, released_pilot=False)
     candidate_contract = root / "candidate-contract.db"
     fixture.maintenance(candidate, "init", candidate_contract)
     current_history = migration_history(candidate_contract)
-    expected_pending = pending_migrations(migration_history(database), current_history)
+    prior_history = migration_history(database)
+    expected_pending = pending_migrations(prior_history, current_history)
+    if released_pilot:
+        assert any(
+            version == "20261119000000_020" and name == "post_categories"
+            for version, name, _ in current_history[len(prior_history):]
+        ), "The released-pilot rehearsal must apply the post categories migration"
     workspace = root / "rehearsal"
     report = json.loads(fixture.maintenance(candidate, "upgrade-rehearse", archive, workspace, capture=True))
     assert report["migrations_applied"] == expected_pending and report["archive"]["files"] == 2, report
@@ -490,7 +495,7 @@ if __name__ == "__main__":
     parser.add_argument("prior", type=Path)
     parser.add_argument("candidate", type=Path)
     parser.add_argument("--port", type=int, default=3968)
-    parser.add_argument("--released-pilot", action="store_true", help="Verify the 0.0.3 to 0.0.4 category upgrade")
+    parser.add_argument("--released-pilot", action="store_true", help="Verify the category upgrade from the 0.0.3 pilot")
     args = parser.parse_args()
     with socket.socket() as listener:
         listener.bind(("127.0.0.1", args.port))
