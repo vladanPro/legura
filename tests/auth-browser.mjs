@@ -294,12 +294,23 @@ try {
     await page.locator(".legura-theme-choices").screenshot({ path: resolve(results, `theme-previews-${width}.png`) });
   }
   await page.setViewportSize({ width: 1280, height: 900 });
+  await page.locator("#public-color-mode").selectOption("dark");
+  await submitSuccess("Save color mode");
+  await previews.and(page.locator('[data-foundry-mode="dark"]')).last().waitFor();
+  await page.locator("#public-palette").selectOption("gold");
+  await submitSuccess("Save palette");
+  await previews.and(page.locator('[data-foundry="gold"]')).last().waitFor();
+  assert.deepEqual(await previews.evaluateAll((nodes) => nodes.map((node) => [
+    node.dataset.foundry, getComputedStyle(node).colorScheme,
+  ])), Array.from({ length: 3 }, () => ["gold", "dark"]));
+  assert.equal(await page.locator(".legura-app").getAttribute("data-foundry-mode"), "light");
+  await page.locator(".legura-theme-choices").screenshot({ path: resolve(results, "theme-previews-dark-gold.png") });
   await submitSuccess("Activate Legura");
   await themeCards.filter({ has: page.getByRole("heading", { name: "Legura", exact: true }) })
     .locator(".legura-theme-card__header").getByText("Active theme", { exact: true }).waitFor();
   assert.equal(await activeBadge.count(), 1);
   await navigate("/");
-  await page.locator('.legura-public[data-foundry-style="legura"]').waitFor();
+  await page.locator('.legura-public[data-foundry-style="legura"][data-foundry-mode="dark"][data-foundry="gold"]').waitFor();
   await navigate("/admin/appearance");
   await adminNav.getByRole("link", { name: "Overview", exact: true }).click();
   await page.waitForURL(baseUrl + "/admin");
