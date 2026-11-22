@@ -25,6 +25,7 @@ pub mod pagination;
 pub mod post_categories;
 pub mod post_dates;
 pub mod post_images;
+pub mod public_metadata;
 pub mod published_image;
 pub mod recovery_config;
 pub mod storage;

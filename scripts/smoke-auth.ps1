@@ -358,7 +358,10 @@ try {
   }
   if ($Content) { . (Join-Path $root "tests/content-http/proof.ps1") }
   if ($Media) { . (Join-Path $root "tests/media-http/proof.ps1") }
-  if ($Posts) { . (Join-Path $root "tests/posts-http.ps1") }
+  if ($Posts) {
+    . (Join-Path $root "tests/public-seo-http.ps1")
+    . (Join-Path $root "tests/posts-http.ps1")
+  }
   if ($Theme) { . (Join-Path $root "tests/theme-http.ps1") }
   if ($Users) {
     . (Join-Path $root "tests/users-http.ps1")

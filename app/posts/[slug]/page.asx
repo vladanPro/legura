@@ -11,6 +11,11 @@ page PublicPost() {
   data identity: PublicSiteIdentity = loadPublicSiteIdentity()
   const translate = I18n.withLocale(language.locale)
   return ASX {
+    <Head>
+      <Title>{post.title + " | " + identity.title}</Title>
+      <Meta name="description" content={post.description} />
+      <Link rel="canonical" href={post.canonical} />
+    </Head>
     <PublicFrame
       theme={appearance.theme}
       finish={appearance.finish}
