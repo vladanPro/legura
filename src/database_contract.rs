@@ -105,6 +105,11 @@ pub const MIGRATIONS: &[(&str, &str, &str)] = &[
         include_str!("../db/migrations/20261119000000_020_post_categories/up.sql"),
         include_str!("../db/migrations/20261119000000_020_post_categories/down.sql"),
     ),
+    (
+        "20261122000000_021",
+        include_str!("../db/migrations/20261122000000_021_public_theme_bundles/up.sql"),
+        include_str!("../db/migrations/20261122000000_021_public_theme_bundles/down.sql"),
+    ),
 ];
 
 pub fn migration_hash(up: &str, down: &str) -> String {
@@ -142,6 +147,7 @@ pub fn embedded_migrations() -> Vec<AxMigration> {
                 "20261115000000_018" => "account_roles",
                 "20261118000000_019" => "account_status",
                 "20261119000000_020" => "post_categories",
+                "20261122000000_021" => "public_theme_bundles",
                 _ => unreachable!("embedded migration name is missing"),
             }
             .into(),
@@ -193,7 +199,9 @@ pub fn validate_structure(connection: &Connection) -> Result<usize> {
             |row| Ok((row.get(0)?, row.get(1)?)),
         )?;
         ensure!(
-            id == 1 && matches!(theme.as_str(), "default" | "editorial"),
+            id == 1
+                && (matches!(theme.as_str(), "default" | "editorial")
+                    || (count >= 21 && theme == "legura")),
             "invalid public theme"
         );
     }
@@ -281,6 +289,47 @@ pub fn validate_structure(connection: &Connection) -> Result<usize> {
         ensure!(valid, "invalid public interface language preferences");
     }
     Ok(count)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn theme_bundle_migration_preserves_settings_and_historical_schema() -> Result<()> {
+        let mut db = Connection::open_in_memory()?;
+        for (_, up, _) in &MIGRATIONS[..20] {
+            db.execute_batch(up)?;
+        }
+        let previous_schema = schema(&db)?;
+        db.execute_batch(
+            "UPDATE legura_public_theme SET theme='editorial', color_mode='dark', palette='gold'",
+        )?;
+        let (_, up, down) = MIGRATIONS[20];
+        db.execute_batch(up)?;
+        let appearance = |db: &Connection| -> rusqlite::Result<[String; 3]> {
+            db.query_row(
+                "SELECT theme, color_mode, palette FROM legura_public_theme",
+                [],
+                |row| Ok([row.get::<_, String>(0)?, row.get(1)?, row.get(2)?]),
+            )
+        };
+        assert_eq!(appearance(&db)?, ["editorial", "dark", "gold"]);
+        db.execute_batch("UPDATE legura_public_theme SET theme='legura'")?;
+        {
+            let tx = db.transaction()?;
+            assert!(tx.execute_batch(down).is_err());
+            tx.rollback()?;
+        }
+        assert_eq!(appearance(&db)?, ["legura", "dark", "gold"]);
+        db.execute_batch("UPDATE legura_public_theme SET theme='editorial'")?;
+        let tx = db.transaction()?;
+        tx.execute_batch(down)?;
+        tx.commit()?;
+        assert!(schema(&db)? == previous_schema);
+        assert_eq!(appearance(&db)?, ["editorial", "dark", "gold"]);
+        Ok(())
+    }
 }
 
 pub fn validate(connection: &Connection) -> Result<()> {

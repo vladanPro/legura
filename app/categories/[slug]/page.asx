@@ -13,6 +13,7 @@ page PublicCategoryArchive() {
   return ASX {
     <PublicFrame
       theme={appearance.theme}
+      finish={appearance.finish}
       colorMode={appearance.color_mode}
       palette={appearance.resolved_palette}
       headerAssigned={navigation.header_assigned}

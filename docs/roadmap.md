@@ -312,8 +312,9 @@ Backup / Restore V1 passed those gates and PR #6 is integrated into dev.
 
 Public Theme Boundary V0 separates the public home/blog Foundry root from the
 stable setup/login/admin appearance without changing content or auth routes.
-The public default is fixed; theme selection and installation remain later
-product work. The `/posts` subtree has public error/404 pages, while global
+Administrators can activate the built-in Classic, Alloy or Legura bundles.
+Third-party theme installation remains later product work. The `/posts`
+subtree has public error/404 pages, while global
 fallbacks still use the backoffice frame. See public-theme-boundary-v0.md.
 
 The `.legura` archive V0 container packages a supplied frozen SQLite/media snapshot
