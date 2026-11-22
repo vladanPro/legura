@@ -270,6 +270,10 @@ try {
   }
   await navigate("/admin/appearance");
   await page.getByRole("heading", { name: "Public themes", level: 1 }).waitFor();
+  const themeCards = page.locator(".legura-theme-choices .ax-card");
+  const activeBadge = themeCards.locator(".legura-theme-card__header .ax-badge");
+  assert.equal(await activeBadge.count(), 1);
+  assert.equal(await activeBadge.evaluate((node) => node.closest(".ax-card").querySelector("h2").textContent), "Classic");
   const previews = page.locator(".legura-theme-preview");
   const samples = await previews.evaluateAll((nodes) => nodes.map((node) => ({
     finish: node.dataset.foundryStyle,
@@ -291,8 +295,9 @@ try {
   }
   await page.setViewportSize({ width: 1280, height: 900 });
   await submitSuccess("Activate Legura");
-  await page.locator(".ax-card").filter({ has: page.getByRole("heading", { name: "Legura", exact: true }) })
-    .getByText("Active theme", { exact: true }).waitFor();
+  await themeCards.filter({ has: page.getByRole("heading", { name: "Legura", exact: true }) })
+    .locator(".legura-theme-card__header").getByText("Active theme", { exact: true }).waitFor();
+  assert.equal(await activeBadge.count(), 1);
   await navigate("/");
   await page.locator('.legura-public[data-foundry-style="legura"]').waitFor();
   await navigate("/admin/appearance");

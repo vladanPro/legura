@@ -1,0 +1,12 @@
+import { Badge } from "@axonyx/ui/foundry/Badge"
+
+component PublicThemeCardHeader(title = "", active = false) {
+  return ASX {
+    <div class="legura-theme-card__header">
+      <h2 class="ax-card__title">{title}</h2>
+      <If when={active}>
+        <Badge variant="outline">Active theme</Badge>
+      </If>
+    </div>
+  }
+}

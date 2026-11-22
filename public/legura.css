@@ -24,9 +24,11 @@
 .legura-language-switcher { gap: 0.75rem; font-size: 0.875rem; }
 .legura-theme-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 1rem; }
 .legura-theme-choices .ax-card { min-width: 0; grid-template-rows: auto auto 1fr minmax(2.75rem, auto); gap: 0.85rem; }
-.legura-theme-choices .ax-card > :is(p, form) { margin: 0; }
-.legura-theme-choices :is(.legura-theme-active, form) { align-self: center; }
-.legura-theme-active { color: var(--ax-accent); font-weight: 700; }
+.legura-theme-choices .ax-card:has(.legura-theme-card__header .ax-badge) { border-color: var(--ax-link); }
+.legura-theme-choices .ax-card > p { margin: 0; }
+.legura-theme-choices form { margin: 0; align-self: center; }
+.legura-theme-card__header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+.legura-theme-card__header .ax-badge { border-color: var(--ax-link); color: var(--ax-link); font-weight: 600; }
 .legura-theme-preview { min-height: 8.5rem; border: 1px solid var(--ax-border); border-radius: var(--ax-radius-md); }
 .legura-theme-preview__header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 0.5rem; padding: 0.45rem 0.65rem; border-bottom: 1px solid var(--ax-border); color: var(--ax-text-soft); font-size: 0.65rem; font-weight: 600; }
 .legura-theme-preview__body { margin-inline: auto; padding: 0.55rem 0.65rem 0.65rem; }
