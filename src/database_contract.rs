@@ -291,47 +291,6 @@ pub fn validate_structure(connection: &Connection) -> Result<usize> {
     Ok(count)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn theme_bundle_migration_preserves_settings_and_historical_schema() -> Result<()> {
-        let mut db = Connection::open_in_memory()?;
-        for (_, up, _) in &MIGRATIONS[..20] {
-            db.execute_batch(up)?;
-        }
-        let previous_schema = schema(&db)?;
-        db.execute_batch(
-            "UPDATE legura_public_theme SET theme='editorial', color_mode='dark', palette='gold'",
-        )?;
-        let (_, up, down) = MIGRATIONS[20];
-        db.execute_batch(up)?;
-        let appearance = |db: &Connection| -> rusqlite::Result<[String; 3]> {
-            db.query_row(
-                "SELECT theme, color_mode, palette FROM legura_public_theme",
-                [],
-                |row| Ok([row.get::<_, String>(0)?, row.get(1)?, row.get(2)?]),
-            )
-        };
-        assert_eq!(appearance(&db)?, ["editorial", "dark", "gold"]);
-        db.execute_batch("UPDATE legura_public_theme SET theme='legura'")?;
-        {
-            let tx = db.transaction()?;
-            assert!(tx.execute_batch(down).is_err());
-            tx.rollback()?;
-        }
-        assert_eq!(appearance(&db)?, ["legura", "dark", "gold"]);
-        db.execute_batch("UPDATE legura_public_theme SET theme='editorial'")?;
-        let tx = db.transaction()?;
-        tx.execute_batch(down)?;
-        tx.commit()?;
-        assert!(schema(&db)? == previous_schema);
-        assert_eq!(appearance(&db)?, ["editorial", "dark", "gold"]);
-        Ok(())
-    }
-}
-
 pub fn validate(connection: &Connection) -> Result<()> {
     if validate_structure(connection)? >= 3 {
         ensure!(
@@ -513,4 +472,45 @@ fn validate_recovery_schema(connection: &Connection, require_current: bool) -> R
         "Recovered post content is incompatible"
     );
     Ok(count)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn theme_bundle_migration_preserves_settings_and_historical_schema() -> Result<()> {
+        let mut db = Connection::open_in_memory()?;
+        for (_, up, _) in &MIGRATIONS[..20] {
+            db.execute_batch(up)?;
+        }
+        let previous_schema = schema(&db)?;
+        db.execute_batch(
+            "UPDATE legura_public_theme SET theme='editorial', color_mode='dark', palette='gold'",
+        )?;
+        let (_, up, down) = MIGRATIONS[20];
+        db.execute_batch(up)?;
+        let appearance = |db: &Connection| -> rusqlite::Result<[String; 3]> {
+            db.query_row(
+                "SELECT theme, color_mode, palette FROM legura_public_theme",
+                [],
+                |row| Ok([row.get::<_, String>(0)?, row.get(1)?, row.get(2)?]),
+            )
+        };
+        assert_eq!(appearance(&db)?, ["editorial", "dark", "gold"]);
+        db.execute_batch("UPDATE legura_public_theme SET theme='legura'")?;
+        {
+            let tx = db.transaction()?;
+            assert!(tx.execute_batch(down).is_err());
+            tx.rollback()?;
+        }
+        assert_eq!(appearance(&db)?, ["legura", "dark", "gold"]);
+        db.execute_batch("UPDATE legura_public_theme SET theme='editorial'")?;
+        let tx = db.transaction()?;
+        tx.execute_batch(down)?;
+        tx.commit()?;
+        assert!(schema(&db)? == previous_schema);
+        assert_eq!(appearance(&db)?, ["editorial", "dark", "gold"]);
+        Ok(())
+    }
 }
