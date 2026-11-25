@@ -366,7 +366,45 @@ def verify_released_categories(candidate, database, image_url, image, port, orig
         ).fetchall() == [(post[0], category)]
 
 
-def rehearse(prior_package, candidate_package, root, port, released_pilot=False):
+def verify_runtime_refresh(candidate, database, image_url, image, port):
+    """Edit the recovered post without changing its authorship or exposing drafts."""
+    with closing(sqlite3.connect(f"{database.as_uri()}?mode=ro", uri=True)) as db:
+        post = db.execute(
+            "SELECT id,created_by,created_at FROM legura_posts WHERE slug='clean-linux'"
+        ).fetchone()
+    assert post and post[1] and post[2]
+    with fixture.server(candidate, port):
+        admin = login()
+        guest = fixture.Client()
+        slug = "/posts/clean-linux"
+        route = f"/admin/posts/{post[0]}/edit"
+        admin.request(route, 200)
+        assert fixture.verify_public(image_url) == image.read_bytes()
+        fields = {
+            "id": post[0], "title": "Fresh & tested", "slug": "clean-linux",
+            "body": "Recovered article excerpt", "status": "draft",
+        }
+        admin.action(route, "UpdatePost", fields=fields)
+        draft, _ = guest.request(slug, 404)
+        assert b"Recovered article excerpt" not in draft
+        guest.request(image_url, 404)
+        fields["status"] = "published"
+        admin.action(route, "UpdatePost", fields=fields)
+        public, _ = guest.request(slug, 200)
+        head, separator, _ = public.partition(b"</head>")
+        assert separator and head.count(b"<title>") == 1
+        assert b"<title>Fresh &amp; tested | Schema upgrade proof</title>" in head
+        assert re.search(rb'<meta(?=[^>]*name="description")(?=[^>]*content="Recovered article excerpt")[^>]*>', head)
+        assert image_url.encode() in public
+        image_body, headers = guest.request(image_url, 200)
+        assert headers.get_content_type() == "image/png" and image_body == image.read_bytes()
+    with closing(sqlite3.connect(f"{database.as_uri()}?mode=ro", uri=True)) as db:
+        assert db.execute(
+            "SELECT id,created_by,created_at FROM legura_posts WHERE slug='clean-linux'"
+        ).fetchone() == post
+
+
+def rehearse(prior_package, candidate_package, root, port, released_pilot=False, runtime_refresh=False):
     if prior_package == candidate_package:
         raise ValueError("Use separate prior and candidate packages")
     prior = root / "prior"
@@ -379,6 +417,9 @@ def rehearse(prior_package, candidate_package, root, port, released_pilot=False)
 
     if released_pilot:
         assert json.loads((prior / "package.json").read_text())["version"] == "0.0.3"
+    if runtime_refresh:
+        for package in (prior, candidate):
+            assert json.loads((package / "package.json").read_text())["version"] == "0.0.5"
 
     database, media, image_id, image_url = seed_prior(prior, port)
     original_post = None
@@ -396,7 +437,11 @@ def rehearse(prior_package, candidate_package, root, port, released_pilot=False)
     fixture.maintenance(candidate, "init", candidate_contract)
     current_history = migration_history(candidate_contract)
     prior_history = migration_history(database)
-    expected_pending = pending_migrations(prior_history, current_history)
+    if runtime_refresh:
+        assert prior_history == current_history, "Runtime refresh must not change the schema"
+        expected_pending = 0
+    else:
+        expected_pending = pending_migrations(prior_history, current_history)
     if released_pilot:
         assert any(
             version == "20261119000000_020" and name == "post_categories"
@@ -414,6 +459,11 @@ def rehearse(prior_package, candidate_package, root, port, released_pilot=False)
     assert settings(candidate / ".env")["AX_SECRET_SESSION_KEY"] != settings(prior / ".env")["AX_SECRET_SESSION_KEY"]
     restored_image = recovery / "media" / "local-media" / image_id
     assert hashes([restored_image])[0] == before[1], "Migrated archive changed image bytes"
+
+    if runtime_refresh:
+        verify_runtime_refresh(candidate, recovery / "database.sqlite", image_url, restored_image, port)
+        assert hashes(original) == before, "Rehearsal changed the stopped source or backup"
+        return
 
     if released_pilot:
         recovered_db = recovery / "database.sqlite"
@@ -495,11 +545,19 @@ if __name__ == "__main__":
     parser.add_argument("prior", type=Path)
     parser.add_argument("candidate", type=Path)
     parser.add_argument("--port", type=int, default=3968)
-    parser.add_argument("--released-pilot", action="store_true", help="Verify the category upgrade from the 0.0.3 pilot")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--released-pilot", action="store_true", help="Verify the category upgrade from the 0.0.3 pilot")
+    mode.add_argument("--runtime-refresh", action="store_true", help="Verify a same-schema package refresh from the 0.0.5 pilot")
     args = parser.parse_args()
     with socket.socket() as listener:
         listener.bind(("127.0.0.1", args.port))
     fixture.BASE = f"http://127.0.0.1:{args.port}"
     with TemporaryDirectory(prefix="legura-schema-upgrade-") as scratch:
-        rehearse(args.prior.resolve(strict=True), args.candidate.resolve(strict=True), Path(scratch), args.port, args.released_pilot)
-    print("Schema upgrade passed: exact candidate migration history and preserved content.")
+        rehearse(
+            args.prior.resolve(strict=True), args.candidate.resolve(strict=True), Path(scratch), args.port,
+            released_pilot=args.released_pilot, runtime_refresh=args.runtime_refresh,
+        )
+    if args.runtime_refresh:
+        print("Runtime refresh passed: no migrations, restored login/media, draft privacy and published metadata.")
+    else:
+        print("Schema upgrade passed: exact candidate migration history and preserved content.")
