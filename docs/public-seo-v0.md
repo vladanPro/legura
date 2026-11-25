@@ -13,4 +13,4 @@ server-generated HTML head. JavaScript is not required.
 Drafts, missing content and admin pages do not receive the public metadata.
 No new database columns, editor fields, sitemap, or social preview tags are
 introduced. The compiled `-Posts` smoke checks the emitted HTML and boundaries
-using the published Axonyx Runtime 0.8.5.
+using the published Axonyx Runtime 0.8.7.
