@@ -5,11 +5,15 @@ export type PublishedStory {
   imageSelected: Bool
   imageSrc: String
   imageAlt: String
+  description?: String
+  canonical?: String
 }
 export query loadPublishedPost(slug: String) -> PublishedStory {
   data post = db.legura_posts.where({ slug: input.slug, status: "published" }).first()
   require post else notFound()
   data rendered = Native.call("legura.content.render", { content_format: post["content_format"], body: post["body"], content_document: post["content_document"] })
   data image = Native.call("legura.post.image.presentation", { slug: input.slug })
-  return { title: post["title"], body: post["body"], html: rendered.html, imageSelected: image.selected, imageSrc: image.src, imageAlt: image.alt }
+  data settings = db.query("SELECT site_address FROM legura_general_settings WHERE id = 1")
+  data metadata = Native.call("legura.public.metadata", { body: post["body"], site_address: settings[0]["site_address"], collection: "posts", slug: post["slug"] })
+  return { title: post["title"], body: post["body"], html: rendered.html, imageSelected: image.selected, imageSrc: image.src, imageAlt: image.alt, description: metadata.description, canonical: metadata.canonical }
 }
