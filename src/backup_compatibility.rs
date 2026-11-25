@@ -8,6 +8,7 @@ pub fn reader_accepts_producer(reader: &str, producer: &str) -> bool {
                 | ("0.0.3", "0.0.1" | "0.0.2")
                 | ("0.0.4", "0.0.1" | "0.0.2" | "0.0.3")
                 | ("0.0.5", "0.0.1" | "0.0.2" | "0.0.3" | "0.0.4")
+                | ("0.0.6", "0.0.1" | "0.0.2" | "0.0.3" | "0.0.4" | "0.0.5")
         )
 }
 
@@ -51,11 +52,22 @@ mod tests {
     fn themes_release_keeps_known_backups_readable_without_enabling_downgrade() {
         for producer in ["0.0.1", "0.0.2", "0.0.3", "0.0.4", "0.0.5"] {
             assert!(reader_accepts_producer("0.0.5", producer));
-            assert!(current_reader_accepts(producer));
         }
         for producer in ["0.0.0", "0.0.6", "0.0.5-dev", "0.0.4-pilot.1", ""] {
             assert!(!reader_accepts_producer("0.0.5", producer));
         }
         assert!(!reader_accepts_producer("0.0.4", "0.0.5"));
+    }
+
+    #[test]
+    fn seo_release_accepts_known_backups_without_enabling_downgrade() {
+        for producer in ["0.0.1", "0.0.2", "0.0.3", "0.0.4", "0.0.5", "0.0.6"] {
+            assert!(reader_accepts_producer("0.0.6", producer));
+            assert!(current_reader_accepts(producer));
+        }
+        for producer in ["0.0.0", "0.0.7", "0.0.5-dev", "0.0.6-pilot.1", ""] {
+            assert!(!reader_accepts_producer("0.0.6", producer));
+        }
+        assert!(!reader_accepts_producer("0.0.5", "0.0.6"));
     }
 }
