@@ -418,8 +418,8 @@ def rehearse(prior_package, candidate_package, root, port, released_pilot=False,
     if released_pilot:
         assert json.loads((prior / "package.json").read_text())["version"] == "0.0.3"
     if runtime_refresh:
-        for package in (prior, candidate):
-            assert json.loads((package / "package.json").read_text())["version"] == "0.0.5"
+        assert json.loads((prior / "package.json").read_text())["version"] == "0.0.5"
+        assert json.loads((candidate / "package.json").read_text())["version"] == "0.0.6"
 
     database, media, image_id, image_url = seed_prior(prior, port)
     original_post = None
@@ -547,7 +547,7 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=3968)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--released-pilot", action="store_true", help="Verify the category upgrade from the 0.0.3 pilot")
-    mode.add_argument("--runtime-refresh", action="store_true", help="Verify a same-schema package refresh from the 0.0.5 pilot")
+    mode.add_argument("--runtime-refresh", action="store_true", help="Verify the same-schema refresh from the 0.0.5 to the 0.0.6 pilot")
     args = parser.parse_args()
     with socket.socket() as listener:
         listener.bind(("127.0.0.1", args.port))
